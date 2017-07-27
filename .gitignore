@@ -1,0 +1,18 @@
+.DS_Store
+*.swp
+*.swo
+*.orig
+.idea
+ext/
+.vscode
+
+# Dependencies
+node_modules
+bower_components
+
+# temp and output
+dist/
+manifest.json
+
+# logs
+*.log
