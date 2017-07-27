@@ -59,24 +59,23 @@ export class TrackerData {
     /** Player DOM element height in pixels. */
     this.height = null
 
+    /** The CDN serving the video. */
+    this.cdn = null
+
+    /** The name of the player. */
+    this.playerName = null
+
+    /* The version of the player. */
+    this.playerVersion = null
+
     // Only for ads
-    /** True if the ad has passed first quartile (included). */
-    this.isFirstQuartile = null
+    /** 
+     * Quartile of the ad. 0 before first, 1 after first quartile, 2 after midpoint, 
+     * 3 after third quartile, 4 when completed. */
+    this.adQuartile = null
 
-    /** True if the ad has passed midpoint (included). */
-    this.isMidpoint = null
-
-    /** True if the ad has passed third quartile (included). */
-    this.isThirdQuartile = null
-
-    /** True if the ad is a pre-roll */
-    this.isPreRoll = null
-
-    /** True if the ad is a mid-roll */
-    this.isMidRoll = null
-
-    /** True if the ad is a post-roll */
-    this.isPostRoll = null
+    /** The position of the ad. ie: 'pre', 'mid', 'post', 'companion'. */
+    this.adPosition = null
 
     if (values) Object.assign(this, values)
   }

@@ -78,6 +78,57 @@ export const Log = {
    */
   debug: function () {
     _report([].slice.call(arguments), Log.Levels.DEBUG, 'indigo')
+  },
+
+  /**
+   * This utility method will add most of the HTML5 common event listeners to the player sent.
+   * This common events will be listened: 'canplay', 'buffering', 'waiting', 'ended', 'play',
+   * 'playing', 'pause', 'resume', 'error', 'abort', 'seek', 'seeking', 'seeked', 'stalled',
+   * 'dispose', 'loadeddata', 'loadstart', 'loadedmetadata'
+   *
+   * Events will be reported as DEBUG level messages.
+   *
+   * @param {object|function} o Object to attach the events.
+   * @param {array} [extraEvents]
+   * An array of extra events to watch. ie:  ['timeupdate', 'progress'].
+   * If the first item is null, no common events will be added.
+   * @param {function} [report] Callback function called to report events.
+   * Default calls Log.debug()
+   */
+  listenCommonVideoEvents: function (o, extraEvents, report) {
+    try {
+      if (Log.level <= Log.Levels.DEBUG) {
+        report = report || function (e) {
+          Log.debug('Event: ' + e.type)
+        }
+
+        var playerEvents = [
+          'canplay', 'buffering', 'waiting', 'ended', 'play', 'playing',
+          'pause', 'resume', 'error', 'abort', 'seek', 'seeking', 'seeked',
+          'stalled', 'dispose', 'loadeddata', 'loadstart', 'loadedmetadata'
+        ]
+        if (extraEvents) {
+          if (extraEvents[0] === null) {
+            extraEvents.shift()
+            playerEvents = extraEvents
+          } else {
+            playerEvents = playerEvents.concat(extraEvents)
+          }
+        }
+
+        for (var i = 0; i < playerEvents.length; i++) {
+          if (typeof o === 'function') {
+            o.call(window, playerEvents[i], report)
+          } else if (o.on) {
+            o.on(playerEvents[i], report)
+          } else if (o.addEventListener) {
+            o.addEventListener(playerEvents[i], report)
+          }
+        }
+      }
+    } catch (err) {
+      Log.warn(err)
+    }
   }
 }
 

@@ -10,17 +10,12 @@
 </head>
 
 <body>
-  <video id="video1" controls height="315" width="560">
+  <video id="myPlayer" controls height="315" width="560">
     <source src="http://video.webmfiles.org/big-buck-bunny_trailer.webm" type='video/mp4'>
   </video>
     <script>
       nrvideo.Log.level = nrvideo.Log.Levels.DEBUG
-      var a = new nrvideo.Emitter()
-      a.on('lol', (e) =>{
-        nrvideo.Log.debug(e)
-      })
-
-      a.emit('lol', {value: 1})
+      var tracker = new nrvideo.Html5Tracker('myPlayer')
     </script>
 </body>
 

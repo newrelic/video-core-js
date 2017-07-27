@@ -15,7 +15,7 @@
     "url": "git@source.datanerd.us:video/core-js.git"
   },
   "author": "Jordi Aguilar",
-  "license": "UNLICENSED",
+  "license": "COMMERCIAL",
   "devDependencies": {
     "babel-core": "^6.25.0",
     "babel-loader": "^7.1.1",
