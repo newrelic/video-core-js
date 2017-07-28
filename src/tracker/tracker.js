@@ -1,32 +1,61 @@
+import { Log } from '../log'
 import { Emitter } from '../emitter'
-import { TrackerData } from './trackerdata'
+import { TrackerState } from './trackerstate'
 import { version } from '../../package.json'
 
+/**
+ *
+ * 
+ * @memberof nrvideo
+ */
 export class Tracker extends Emitter {
-  constructor (player, tag, options) {
+  /**
+   * Constructor, receives options.
+   * @param {Object} [options]
+   * @param {Object} [options.player] Player to track. {@link setPlayer}
+   * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
+   * @param {Boolean} [options.isAd] True if the tracker is tracking ads. See {@link setIsAd}.
+   * @param {Object} [options.customData] Set custom data. See {@link customData}.
+   * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
+   * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
+   */
+  constructor (options) {
     super()
-
     options = options || {}
-    this._viewId = null
-    this._viewCount = 1
 
     /**
-     * Store options from the constructor.
-     * @private
+     * TrackerState instance. Stores the state of the view. Tracker will automatically update the
+     * state of its instance, so there's no need to tamper with it manually.
+     * @type nrvideo.TrackerState
      */
-    this._options = options
-
-    if (player) this.setPlayer(player, tag)
+    this.state = new TrackerState()
 
     /**
-     * TrackerData instance, if you define a variable there, it will override the value gotten
-     * from a getter. 
+     * If you add something to this custom dictionary it will be added to every report. If you set
+     * any value, it will always override the values gotten from the getters.
      * 
-     * @example If you define tracker.data.title = 'a' and tracker.getTitle() returns 'b'. 'a' will 
-     * prevail.
-     * @type nrvideo.TrackerData
+     * @example 
+     * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'. 
+     * 'a' will prevail.
      */
-    this.data = new TrackerData(options.data)
+    this.customData = options.customData || {}
+
+    /**
+     * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
+     * @type nrvideo.Tracker
+     */
+    this.parentTracker = options.parentTracker || null
+
+    /**
+     * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
+     * @type nrvideo.Tracker
+     */
+    this.adsTracker = options.adsTracker || null
+
+    if (typeof options.isAd === 'boolean') this.setIsAd(options.isAd)
+    if (options.player) this.setPlayer(options.player, options.tag)
+
+    Log.notice('Tracker ' + this.getTrackerName() + ' v' + this.getTrackerVersion() + ' is ready.')
   }
 
   /**
@@ -51,6 +80,16 @@ export class Tracker extends Emitter {
     this.player = player
     this.tag = tag
     this.registerListeners()
+  }
+
+  /** Returns true if the tracker is currently on ads. */
+  isAd () {
+    return this.state.isAd()
+  }
+
+  /** Sets if the tracker is currenlty tracking ads */
+  setIsAd (isAd) {
+    this.state.setIsAd(isAd)
   }
 
   /**
@@ -111,22 +150,7 @@ export class Tracker extends Emitter {
    * view value, you can override this method to return it.
    */
   getViewId () {
-    if (!this._viewId) {
-      let time = new Date().getTime()
-      let random = Math.random().toString(36).substring(12)
-
-      this._viewId = time + '-' + random
-      this._viewCount++
-    }
-
-    return this._viewId + '-' + this._viewCount
-  }
-
-  /**
-   * Force viewId to increment when a new view starts.
-   */
-  nextView () {
-    this._viewId = null
+    return this.state.getViewId()
   }
 
   /** Override to return Title of the video. */
@@ -218,12 +242,17 @@ export class Tracker extends Emitter {
   }
 
   /** Override to return the name of the player. */
-  playerName () {
+  getPlayerName () {
     return null
   }
 
-  /* Override to return the version of the player. */
-  playerVersion () {
+  /** Override to return the version of the player. */
+  getPlayerVersion () {
+    return null
+  }
+
+  /** Override this to return current fps. */
+  getFps () {
     return null
   }
 
@@ -232,17 +261,356 @@ export class Tracker extends Emitter {
    * Override to return Quartile of the ad. 0 before first, 1 after first quartile, 2 after 
    * midpoint, 3 after third quartile, 4 when completed. 
    */
-  getQuartile () {
+  getAdQuartile () {
     return null
   }
 
-  /** Override to return The position of the ad. ie: 'pre', 'mid', 'post', 'companion'. */
-  getPosition () {
+  /** 
+   * Override to return The position of the ad. Use {@link nrvideo.Constants.AdPositions} enum 
+   * to fill this data.
+   */
+  getAdPosition () {
     return null
+  }
+
+  /**
+   * Override to return if the player was autoplayed. By default: this.tag.autoplay
+   */
+  isAutoplayed () {
+    return this.tag.autoplay
+  }
+
+  /**
+   * Override to return the player preload attribute. By default: this.tag.preload
+   */
+  getPreload () {
+    return this.tag.preload
+  }
+
+  /**
+   * Do NOT override. This function fill all the appropiate attributes for tracked video.
+   * 
+   * @param {object} [att] Collection fo key value attributes
+   * @return {object} Filled attributes
+   * @final
+   */
+  getAttributes (att) {
+    att = att || {}
+
+    att.viewId = this.getViewId()
+    att.trackerVersion = this.getTrackerVersion()
+    att.trackerName = this.getTrackerName()
+    att.playerVersion = this.getPlayerVersion()
+    att.playerName = this.getPlayerName()
+    try {
+      att.pageUrl = window.location.href
+    } catch (err) { /* skip */ }
+
+    att.isAd = this.isAd()
+
+    if (this.isAd()) { // Ads only
+      att.adTitle = this.getTitle()
+      att.adIsLive = this.isLive()
+      att.adBitrate = this.getBitrate()
+      att.adRenditionName = this.getRenditionName()
+      att.adRenditionBitrate = this.getRenditionBitrate()
+      att.adRenditionHeight = this.getRenditionHeight()
+      att.adRenditionWidth = this.getRenditionWidth()
+      att.adDuration = this.getDuration()
+      att.adPlayhead = this.getPlayhead()
+      att.adLanguage = this.getLanguage()
+      att.adSrc = this.getSrc()
+      att.adPlayrate = this.getPlayrate()
+      att.adHeight = this.getHeight()
+      att.adWidth = this.getWidth()
+      att.adIsFullscreen = this.isFullscreen()
+      att.adIsMuted = this.isMuted()
+      att.adCdn = this.getCdn()
+      att.adIsAutoplayed = this.isAutoplayed()
+      att.adPreload = this.getPreload()
+      att.adFps = this.getFps()
+      // ad exclusives
+      att.adQuartile = this.getAdQuartile()
+      att.adPosition = this.getAdPosition()
+    } else { // not ads
+      att.contentTitle = this.getTitle()
+      att.contentIsLive = this.isLive()
+      att.contentBitrate = this.getBitrate()
+      att.contentRenditionName = this.getRenditionName()
+      att.contentRenditionBitrate = this.getRenditionBitrate()
+      att.contentRenditionHeight = this.getRenditionHeight()
+      att.contentRenditionWidth = this.getRenditionWidth()
+      att.contentDuration = this.getDuration()
+      att.contentPlayhead = this.getPlayhead()
+      att.contentLanguage = this.getLanguage()
+      att.contentSrc = this.getSrc()
+      att.contentPlayrate = this.getPlayrate()
+      att.contentHeight = this.getHeight()
+      att.contentWidth = this.getWidth()
+      att.contentIsFullscreen = this.isFullscreen()
+      att.contentIsMuted = this.isMuted()
+      att.contentCdn = this.getCdn()
+      att.contentIsAutoplayed = this.isAutoplayed()
+      att.contentPreload = this.getPreload()
+      att.contentFps = this.getFps()
+    }
+
+    this.state.getStateAttributes(att)
+
+    for (let key in this.customData) {
+      att[key] = this.customData[key]
+    }
+
+    return att
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendPlayerInit (att) {
+    if (this.state.goPlayerInit()) {
+      this.emit(Tracker.Events.PLAYER_INIT, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendPlayerReady (att) {
+    if (this.state.goPlayerReady()) {
+      att = att || {}
+      att.timeSincePlayerInit = this.state.timeSincePlayerInit.getDeltaTime()
+      this.emit(Tracker.Events.PLAYER_INIT, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendRequested (att) {
+    if (this.state.goRequested()) {
+      this.emit(
+        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.REQUESTED,
+        this.getAttributes(att)
+      )
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendStart (att) {
+    if (this.state.goStart()) {
+      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.START, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendEnd (att) {
+    if (this.state.goEnd()) {
+      att = att || {}
+      att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
+      att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
+      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.END, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendPaused (att) {
+    if (this.state.goPause()) {
+      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.PAUSED, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendResumed (att) {
+    if (this.state.goResume()) {
+      att = att || {}
+      att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
+      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.RESUME, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendBuffeStart (att) {
+    if (this.state.goBufferStart()) {
+      this.emit(
+        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.BUFFER_START,
+        this.getAttributes(att)
+      )
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendBufferEnd (att) {
+    if (this.state.goBufferEnd()) {
+      att = att || {}
+      att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
+      this.emit(
+        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.BUFFER_END,
+        this.getAttributes(att)
+      )
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendSeekStart (att) {
+    if (this.state.goSeekStart()) {
+      this.emit(
+        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.SEEK_START,
+        this.getAttributes(att)
+      )
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendSeekEnd (att) {
+    if (this.state.goSeekEnd()) {
+      att = att || {}
+      att.timeSinceSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
+      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.SEEK_END, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * @param {String} att.state Download requires a string to distinguish different states.
+   */
+  sendDownload (att) {
+    if (!att.state) Log.warn('Called sendDownload without { state: xxxxx }.')
+    this.emit(Tracker.Events.DOWNLOAD, this.getAttributes(att))
+    this.state.goDownload()
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendError (att) {
+    this.state.goError()
+    this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.ERROR, this.getAttributes(att))
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendRenditionChanged (att) {
+    att = att || {}
+    att.timeSinceLastRenditionChange = this.state.timeSinceLastRenditionChange.getDeltaTime()
+    this.emit(
+      this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.RENDITION_CHANGE,
+      this.getAttributes(att)
+    )
+    this.state.goRenditionChange()
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendAdBreakStart (att) {
+    if (this.isAd() && this.state.goAdBreakStart()) {
+      this.emit(Tracker.Events.AD_BREAK_START, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   */
+  sendAdBreakEnd (att) {
+    if (this.isAd() && this.state.goSeekEnd()) {
+      att = att || {}
+      att.timeSinceAdBreakBegin = this.state.timeSinceAdBreakBegin.getDeltaTime()
+      this.emit(Tracker.Events.AD_BREAK_END, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * @param {number} att.quartile Number of the quartile.
+   */
+  sendAdQuartile (att) {
+    if (this.isAd()) {
+      if (!att.quartile) Log.warn('Called sendAdQuartile without { quartile: xxxxx }.')
+      att = att || {}
+      att.timeSinceLastAdQuartile = this.state.timeSinceLastAdQuartile.getDeltaTime()
+      this.emit(Tracker.Events.AD_QUARTILE, this.getAttributes(att))
+    }
+  }
+
+  /**
+   * Sends associated event and changes view state. An internal state machine will prevent
+   * duplicated events.
+   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * @param {number} att.url Url of the clicked ad.
+   * 
+   */
+  sendAdClick (att) {
+    if (this.isAd()) {
+      if (!att.url) Log.warn('Called sendAdClick without { url: xxxxx }.')
+      this.emit(Tracker.Events.AD_CLICK, this.getAttributes(att))
+    }
   }
 }
 
+/**
+ * Enumeration of events fired by this class.
+ * 
+ * @enum
+ */
 Tracker.Events = {
+  // Player
+  PLAYER_INIT: 'PLAYER_INIT',
+  PLAYER_READY: 'PLAYER_READY',
+  DOWNLOAD: 'DOWNLOAD',
+
+  // Video
   REQUESTED: 'REQUESTED',
   START: 'START',
   END: 'END',
@@ -257,8 +625,8 @@ Tracker.Events = {
   ERROR: 'ERROR',
 
   // Ads only
-  BREAK_START: 'BREAK_START',
-  BREAK_END: 'BREAK_END',
-  QUARTILE: 'QUARTILE',
-  CLICK: 'CLICK'
+  AD_BREAK_START: 'AD_BREAK_START',
+  AD_BREAK_END: 'AD_BREAK_END',
+  AD_QUARTILE: 'AD_QUARTILE',
+  AD_CLICK: 'AD_CLICK'
 }

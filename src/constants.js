@@ -33,3 +33,10 @@ export const Events = {
   AD_MIDPOINT: 'AD_MIDPOINT',
   AD_THIRD_QUARTILE: 'AD_THIRD_QUARTILE'
 }
+
+export const AdPositions = {
+  PRE: 'pre',
+  MID: 'mid',
+  POST: 'post',
+  COMPANION: 'companion'
+}
