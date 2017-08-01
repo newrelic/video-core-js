@@ -1,4 +1,4 @@
-FIT Instrumentation End User License Agreement
+# FIT Instrumentation End User License Agreement
 NEW RELIC, INC. FIT INSTRUMENTATION END USER LICENSE AGREEMENT In connection
 with the work provided by New Relic’s Field Instrumentation Team, you may be
 provided with certain custom-created software to enable, optimize, or enhance

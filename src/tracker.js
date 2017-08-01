@@ -1,10 +1,11 @@
-import { Log } from '../log'
-import { Emitter } from '../emitter'
+import { Log } from './log'
+import { Emitter } from './emitter'
 import { TrackerState } from './trackerstate'
-import { version } from '../../package.json'
+import { version } from '../package.json'
 
 /**
- *
+ * Base Tracker class provides extensible tracking over video elements. Extend this class to create
+ * you own tracker, override getter classes and register/unregister listeners for full coverage!
  * 
  * @memberof nrvideo
  */
@@ -18,6 +19,7 @@ export class Tracker extends Emitter {
    * @param {Object} [options.customData] Set custom data. See {@link customData}.
    * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
    * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
+   * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
    */
   constructor (options) {
     super()
@@ -51,6 +53,11 @@ export class Tracker extends Emitter {
      * @type nrvideo.Tracker
      */
     this.adsTracker = options.adsTracker || null
+
+    /**
+     * Time between hearbeats, in ms.
+     */
+    this.heartbeat = options.heartbeat || 10000
 
     if (typeof options.isAd === 'boolean') this.setIsAd(options.isAd)
     if (options.player) this.setPlayer(options.player, options.tag)
@@ -148,9 +155,14 @@ export class Tracker extends Emitter {
   /**
    * Trackers will generate unique id's for every new video iteration. If you have your own unique
    * view value, you can override this method to return it.
+   * If the trackes has a parentTracker defined, parent viewId will be used.
    */
   getViewId () {
-    return this.state.getViewId()
+    if (this.parentTracker) {
+      return this.parentTracker.getViewId()
+    } else {
+      return this.state.getViewId()
+    }
   }
 
   /** Override to return Title of the video. */
@@ -168,6 +180,19 @@ export class Tracker extends Emitter {
     return null
   }
 
+  /** Calculates consumed bitrate using webkitVideoDecodedByteCount. */
+  getWebkitBitrate () {
+    if (this.tag && this.tag.webkitVideoDecodedByteCount) {
+      let bitrate = this.tag.webkitVideoDecodedByteCount
+      if (this._lastWebkitBitrate) {
+        let delta = bitrate - this._lastWebkitBitrate
+        bitrate = Math.round((delta / (this.heartbeat / 1000)) * 8)
+      }
+      this._lastWebkitBitrate = this.tag.webkitVideoDecodedByteCount
+      return bitrate || null
+    }
+  }
+
   /** Override to return Name of the rendition (ie: 1080p). */
   getRenditionName () {
     return null
@@ -180,22 +205,22 @@ export class Tracker extends Emitter {
 
   /** Override to return Rendition height (before re-scaling). */
   getRenditionHeight () {
-    return null
+    return this.tag ? this.tag.videoHeight : null
   }
 
   /** Override to return Rendition width (before re-scaling). */
   getRenditionWidth () {
-    return null
+    return this.tag ? this.tag.videoWidth : null
   }
 
   /** Override to return Duration of the video, in ms. */
   getDuration () {
-    return null
+    return this.tag ? this.tag.duration : null
   }
 
   /** Override to return Playhead (currentTime) of the video, in ms. */
   getPlayhead () {
-    return null
+    return this.tag ? this.tag.currentTime : null
   }
 
   /** 
@@ -208,17 +233,17 @@ export class Tracker extends Emitter {
 
   /** Override to return URL of the resource being played. */
   getSrc () {
-    return null
+    return this.tag ? this.tag.currentSrc : null
   }
 
   /** Override to return Playrate (speed) of the video. ie: 1.0, 0.5, 1.25... */
   getPlayrate () {
-    return null
+    return this.tag ? this.tag.playbackRate : null
   }
 
   /** Override to return True if the video is currently muted. */
   isMuted () {
-    return null
+    return this.tag ? this.tag.muted : null
   }
 
   /** Override to return True if the video is currently fullscreen. */
@@ -243,7 +268,7 @@ export class Tracker extends Emitter {
 
   /** Override to return the name of the player. */
   getPlayerName () {
-    return null
+    return this.getTrackerName()
   }
 
   /** Override to return the version of the player. */
@@ -270,21 +295,21 @@ export class Tracker extends Emitter {
    * to fill this data.
    */
   getAdPosition () {
-    return null
+    return this.state.isStarted ? 'pre' : 'mid'
   }
 
   /**
    * Override to return if the player was autoplayed. By default: this.tag.autoplay
    */
   isAutoplayed () {
-    return this.tag.autoplay
+    return this.tag ? this.tag.autoplay : null
   }
 
   /**
    * Override to return the player preload attribute. By default: this.tag.preload
    */
   getPreload () {
-    return this.tag.preload
+    return this.tag ? this.tag.preload : null
   }
 
   /**
@@ -311,7 +336,7 @@ export class Tracker extends Emitter {
     if (this.isAd()) { // Ads only
       att.adTitle = this.getTitle()
       att.adIsLive = this.isLive()
-      att.adBitrate = this.getBitrate()
+      att.adBitrate = this.getBitrate() || this.getWebkitBitrate()
       att.adRenditionName = this.getRenditionName()
       att.adRenditionBitrate = this.getRenditionBitrate()
       att.adRenditionHeight = this.getRenditionHeight()
@@ -335,7 +360,7 @@ export class Tracker extends Emitter {
     } else { // not ads
       att.contentTitle = this.getTitle()
       att.contentIsLive = this.isLive()
-      att.contentBitrate = this.getBitrate()
+      att.contentBitrate = this.getBitrate() || this.getWebkitBitrate()
       att.contentRenditionName = this.getRenditionName()
       att.contentRenditionBitrate = this.getRenditionBitrate()
       att.contentRenditionHeight = this.getRenditionHeight()
@@ -390,15 +415,16 @@ export class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
+   * duplicated events. Calls {@link startHeartbeat}.
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    */
-  sendRequested (att) {
-    if (this.state.goRequested()) {
+  sendRequest (att) {
+    if (this.state.goRequest()) {
       this.emit(
-        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.REQUESTED,
+        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.REQUEST,
         this.getAttributes(att)
       )
+      this.startHeartbeat()
     }
   }
 
@@ -415,7 +441,7 @@ export class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
+   * duplicated events. Calls {@link stopHeartbeat}.
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    */
   sendEnd (att) {
@@ -423,6 +449,7 @@ export class Tracker extends Emitter {
       att = att || {}
       att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
       att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
+      this.stopHeartbeat()
       this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.END, this.getAttributes(att))
     }
   }
@@ -432,9 +459,9 @@ export class Tracker extends Emitter {
    * duplicated events.
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    */
-  sendPaused (att) {
+  sendPause (att) {
     if (this.state.goPause()) {
-      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.PAUSED, this.getAttributes(att))
+      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.PAUSE, this.getAttributes(att))
     }
   }
 
@@ -443,7 +470,7 @@ export class Tracker extends Emitter {
    * duplicated events.
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    */
-  sendResumed (att) {
+  sendResume (att) {
     if (this.state.goResume()) {
       att = att || {}
       att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
@@ -597,6 +624,34 @@ export class Tracker extends Emitter {
       this.emit(Tracker.Events.AD_CLICK, this.getAttributes(att))
     }
   }
+
+  sendHeartbeat (att) {
+    if (this.state.isRequested) {
+      this.emit(
+        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.HEARTBEAT,
+        this.getAttributes(att)
+      )
+      this.state.goHeartbeat()
+    }
+  }
+
+  /**
+   * Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.
+   * This method is automaticaly called by the tracker.
+   */
+  startHeartbeat () {
+    this._heartbeatInterval = setInterval(
+      this.sendHeartbeat.bind(this),
+      Math.min(this.heartbeat, 5000)
+    )
+  }
+
+  /**
+   * Stops heartbeating. This method is automaticaly called by the tracker.
+   */
+  stopHeartbeat () {
+    clearInterval(this._heartbeatInterval)
+  }
 }
 
 /**
@@ -611,7 +666,7 @@ Tracker.Events = {
   DOWNLOAD: 'DOWNLOAD',
 
   // Video
-  REQUESTED: 'REQUESTED',
+  REQUEST: 'REQUEST',
   START: 'START',
   END: 'END',
   PAUSE: 'PAUSE',
@@ -620,7 +675,7 @@ Tracker.Events = {
   SEEK_END: 'SEEK_END',
   BUFFER_START: 'BUFFER_START',
   BUFFER_END: 'BUFFER_END',
-  INPROGRESS: 'INPROGRESS',
+  HEARTBEAT: 'HEARTBEAT',
   RENDITION_CHANGE: 'RENDITION_CHANGE',
   ERROR: 'ERROR',
 

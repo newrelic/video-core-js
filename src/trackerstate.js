@@ -1,4 +1,4 @@
-import { Chrono } from '../chrono'
+import { Chrono } from './chrono'
 
 /**
  * State machine for a Tracker and its monitored video.
@@ -30,6 +30,11 @@ export class TrackerState {
      * Number of errors fired. 'End' resets it.
      */
     this.numberOfErrors = 0
+
+    /**
+     * Number of ads shown.
+     */
+    this.numberOfAds = 0
 
     this.resetFlags()
     this.resetChronos()
@@ -145,7 +150,7 @@ export class TrackerState {
       if (this.isBuffering) att.timeSinceAdBufferBegin = this.timeSinceBufferBegin.getDeltaTime()
       if (this.isSeeking) att.timeSinceAdSeekBegin = this.timeSinceSeekBegin.getDeltaTime()
       if (this.isAdBreak) att.timeSinceAdBreakBegin = this.timeSinceAdBreakBegin.getDeltaTime()
-      att.numberOfAds = this.viewCount
+      att.numberOfAds = this.numberOfAds
     } else {
       if (this.isRequested) {
         att.timeSinceRequested = this.timeSinceRequested.getDeltaTime()
@@ -200,7 +205,7 @@ export class TrackerState {
    */
   goStart () {
     if (this.isRequested && !this.isStarted) {
-      this.viewCount++
+      if (this.isAd()) this.numberOfAds++
       this.isStarted = true
       this.timeSinceStarted.start()
       return true
@@ -349,7 +354,7 @@ export class TrackerState {
    * Restarts heartbeat chrono.
    */
   goHeartbeat () {
-    this.timeSinceLastDownload.start()
+    this.timeSinceLastHeartbeat.start()
   }
 
   /**

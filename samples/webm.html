@@ -17,9 +17,7 @@
       nrvideo.Log.level = nrvideo.Log.Levels.DEBUG
       var myPlayer = document.getElementById('myPlayer')
       var tracker = new nrvideo.Html5Tracker({ player: myPlayer })
-      tracker.on('*', function (e) {
-        nrvideo.Log.notice(e.type, e.data)
-      })
+      nrvideo.addTracker(tracker)
     </script>
 </body>
 
