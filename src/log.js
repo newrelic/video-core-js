@@ -251,7 +251,11 @@ function _loadLevelFromUrl () {
   if (typeof window !== 'undefined' && window.location && window.location.search) {
     var m = /\?.*&*nrvideo-debug=(.+)/i.exec(window.location.search)
     if (m !== null) {
-      Log.level = m[1]
+      if (m[1] === 'true') {
+        Log.level = Log.Levels.ALL
+      } else {
+        Log.level = m[1]
+      }
     }
 
     var m2 = /\?.*&*nrvideo-colors=false/i.exec(window.location.search)
