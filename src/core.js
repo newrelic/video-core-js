@@ -71,7 +71,11 @@ let isErrorShown = false
  * @param {Event} e Event
  */
 function eventHandler (e) {
-  Log.notice(e.type)
+  if (Log.level <= Log.Levels.DEBUG) {
+    Log.notice('Sent', e.type, e.data)
+  } else {
+    Log.notice('Sent', e.type)
+  }
   core.send(e.type, e.data)
 }
 
