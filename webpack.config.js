@@ -12,7 +12,8 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, './dist'),
     filename: pkg.name + '.min.js',
-    library: 'nrvideo'
+    library: 'nrvideo',
+    libraryTarget: 'umd'
   },
   devtool: 'source-map',
   module: {

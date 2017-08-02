@@ -5,7 +5,7 @@
  * @static
  * @memberof nrvideo
  */
-export const Log = {
+const Log = {
   /**
    * Enum for log levels
    * @enum
@@ -263,3 +263,5 @@ function _loadLevelFromUrl () {
 
 // Execute load level
 _loadLevelFromUrl()
+
+export default Log

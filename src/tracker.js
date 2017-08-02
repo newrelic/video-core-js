@@ -1,7 +1,7 @@
-import { Log } from './log'
-import { Emitter } from './emitter'
-import { TrackerState } from './trackerstate'
-import { version } from '../package.json'
+import Log from './log'
+import Emitter from './emitter'
+import TrackerState from './trackerstate'
+import * as pkg from '../package.json'
 
 /**
  * Base Tracker class provides extensible tracking over video elements. Extend this class to create
@@ -9,7 +9,7 @@ import { version } from '../package.json'
  * 
  * @memberof nrvideo
  */
-export class Tracker extends Emitter {
+export default class Tracker extends Emitter {
   /**
    * Constructor, receives options.
    * @param {Object} [options]
@@ -144,7 +144,7 @@ export class Tracker extends Emitter {
 
   /** Override this to change of the version of tracker. ie: '1.0.1' */
   getTrackerVersion () {
-    return version
+    return pkg.version
   }
 
   /** Override this to change of the name of the tracker. ie: 'custom-html5' */

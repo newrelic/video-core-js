@@ -4,7 +4,7 @@
  * 
  * @memberof nrvideo
  */
-export class Emitter {
+export default class Emitter {
   /**
    * Sets a listener to a given event. Use {@link emit} to trigger those events.
    * Pass '*' to listen ALL events.

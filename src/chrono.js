@@ -3,7 +3,7 @@
  *
  * @memberof nrvideo
  */
-export class Chrono {
+export default class Chrono {
   /** Constructor */
   constructor () {
     this.reset()
