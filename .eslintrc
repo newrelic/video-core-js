@@ -5,9 +5,14 @@
         "sourceType": "module"
     },
     "plugins": [
-        "standard"
+        "standard",
+        "mocha"
     ],
+    "env": {
+        "mocha": true
+    },
     "globals": {
-        "newrelic": true
+        "newrelic": true,
+        "nrvideo": true
     }
 }

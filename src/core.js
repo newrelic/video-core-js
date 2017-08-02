@@ -54,7 +54,7 @@ let isErrorShown = false
  * @param {Object} data Data associated to the event.
  */
 export function send (event, data) {
-  if (newrelic && newrelic.addPageAction) {
+  if (typeof newrelic !== 'undefined' && newrelic.addPageAction) {
     cleanData(data)
     newrelic.addPageAction(event, data)
   } else {

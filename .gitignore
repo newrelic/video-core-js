@@ -12,6 +12,8 @@ bower_components
 
 # temp and output
 dist/
+coverage/
+.nyc_output
 manifest.json
 
 # logs

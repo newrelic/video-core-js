@@ -19,8 +19,10 @@ export const Log = {
     WARNING: 3,
     /** Console will show notices (ie: life-cyrcle logs) */
     NOTICE: 2,
-    /** Console will show verbose messages (ie: Http Requests) */
-    DEBUG: 1
+    /** Console will show debug messages. */
+    DEBUG: 1,
+    /** Show all messages. */
+    ALL: 0
   },
 
   /**
@@ -95,7 +97,7 @@ export const Log = {
    * @param {function} [report] Callback function called to report events.
    * Default calls Log.debug()
    */
-  listenCommonVideoEvents: function (o, extraEvents, report) {
+  debugCommonVideoEvents: function (o, extraEvents, report) {
     try {
       if (Log.level <= Log.Levels.DEBUG) {
         report = report || function (e) {
@@ -138,48 +140,42 @@ export const Log = {
  * Returns a console message
  *
  * @private
- * @param {(string|error|array)} msg Message string, error object or array of messages.
+ * @param {array} msg Message array, error object or array of messages.
  * @param {nrvideo.Log.Level} [level=nrvideo.Log.Levels.NOTICE] Defines the level of the error sent.
  * Only errors with higher or equal level than Log.logLevel will be displayed.
  * @param {string} [color='darkgreen'] Color of the header
  * @see {@link nrvideo.Log.level}
  */
 function _report (msg, level, color) {
-  if (console && console.log) {
-    level = level || Log.Levels.NOTICE
-    color = color || 'darkcyan'
+  level = level || Log.Levels.NOTICE
+  color = color || 'darkcyan'
 
-    var prefix = Log.prefix
-    if (Log.includeTime) prefix += _getCurrentTime() + ' '
-    prefix += _level2letter(level) + ':'
+  var prefix = Log.prefix
+  if (Log.includeTime) prefix += _getCurrentTime() + ' '
+  prefix += _level2letter(level) + ':'
 
-    // Show messages in actual console if level is enought
-    if (Log.level <= level && level !== Log.Levels.SILENT) {
-      if (!Log.colorful || document.documentMode) { // document.documentMode exits only in IE
-        // Plain log for IE and devices
-        _plainReport(msg, prefix)
+  // Show messages in actual console if level is enought
+  if (Log.level <= level && level !== Log.Levels.SILENT) {
+    if (!Log.colorful || (typeof document !== 'undefined' && document.documentMode)) {
+      // document.documentMode exits only in IE
+      _plainReport(msg, prefix)
+    } else {
+      // choose log method
+      var logMethod
+      if (level === Log.Levels.ERROR && console.error) {
+        logMethod = console.error
+      } else if (level === Log.Levels.WARNING && console.warn) {
+        logMethod = console.warn
+      } else if (level === Log.Levels.DEBUG && console.debug) {
+        logMethod = console.debug
       } else {
-        // choose log method
-        var logMethod
-        if (level === Log.Levels.ERROR && console.error) {
-          logMethod = console.error
-        } else if (level === Log.Levels.WARNING && console.warn) {
-          logMethod = console.warn
-        } else if (level === Log.Levels.DEBUG && console.debug) {
-          logMethod = console.debug
-        } else {
-          logMethod = console.log
-        }
-
-        // print message
-        prefix = '%c' + prefix
-        if (Array.isArray(msg)) {
-          msg.splice(0, 0, prefix, 'color: ' + color)
-          logMethod.apply(console, msg)
-        } else {
-          logMethod.call(console, prefix, 'color: ' + color, msg)
-        }
+        logMethod = console.log
       }
+
+      // print message
+      prefix = '%c' + prefix
+      msg.splice(0, 0, prefix, 'color: ' + color)
+      logMethod.apply(console, msg)
     }
   }
 }
