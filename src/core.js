@@ -6,10 +6,12 @@ import Log from './log'
 const core = {
   /**
    * Add a tracker to the system. Trackers added will start reporting its events to NR's backend.
-   * @param {Tracker} tracker 
+   * 
+   * @param {(Emitter|Tracker)} tracker 
    */
   addTracker: function (tracker) {
-    if (tracker.getTrackerName) {
+    if (tracker.on && tracker.emit) {
+      trackers.push(tracker)
       tracker.on('*', eventHandler)
       tracker.emit('TRACKER_READY', tracker.getAttributes())
     } else {
