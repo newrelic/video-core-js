@@ -642,7 +642,7 @@ export default class Tracker extends Emitter {
   startHeartbeat () {
     this._heartbeatInterval = setInterval(
       this.sendHeartbeat.bind(this),
-      Math.min(this.heartbeat, 5000)
+      Math.max(this.heartbeat, 5000)
     )
   }
 
