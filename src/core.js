@@ -1,4 +1,4 @@
-import { Log } from './log'
+import Log from './log'
 
 /**
  * Static class that sums up core functionalities of the library.
