@@ -11,7 +11,7 @@ module.exports = {
   entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, './dist'),
-    filename: 'nrvideo-core.min.js',
+    filename: pkg.name + '.min.js',
     library: 'nrvideo'
   },
   devtool: 'source-map',
