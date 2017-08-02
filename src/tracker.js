@@ -12,16 +12,16 @@ import * as pkg from '../package.json'
 export default class Tracker extends Emitter {
   /**
    * Constructor, receives options.
+   * @param {Object} [player] Player to track. {@link setPlayer}
    * @param {Object} [options]
-   * @param {Object} [options.player] Player to track. {@link setPlayer}
-   * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
    * @param {Boolean} [options.isAd] True if the tracker is tracking ads. See {@link setIsAd}.
    * @param {Object} [options.customData] Set custom data. See {@link customData}.
    * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
    * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
    * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
+   * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
    */
-  constructor (options) {
+  constructor (player, options) {
     super()
     options = options || {}
 
@@ -60,7 +60,7 @@ export default class Tracker extends Emitter {
     this.heartbeat = options.heartbeat || 10000
 
     if (typeof options.isAd === 'boolean') this.setIsAd(options.isAd)
-    if (options.player) this.setPlayer(options.player, options.tag)
+    if (player) this.setPlayer(player, options.tag)
 
     Log.notice('Tracker ' + this.getTrackerName() + ' v' + this.getTrackerVersion() + ' is ready.')
   }
