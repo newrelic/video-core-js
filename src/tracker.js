@@ -451,6 +451,7 @@ export default class Tracker extends Emitter {
       att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
       this.stopHeartbeat()
       this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.END, this.getAttributes(att))
+      if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
     }
   }
 

@@ -99,8 +99,11 @@ export default class TrackerState {
     /** Chrono that counts time since last rendition change. */    
     this.timeSinceLastRenditionChange = new Chrono()
 
-    /** Chrono that counts time since last ad quartile. */    
+    /** Ads only. Chrono that counts time since last ad quartile. */    
     this.timeSinceLastAdQuartile = new Chrono()
+
+    /** Content only. Chrono that counts time since last AD_END. */
+    this.timeSinceLastAd = new Chrono()
   }
 
   /** Returns true if the tracker is currently on ads. */
@@ -137,9 +140,6 @@ export default class TrackerState {
     att = att || {}
 
     att.timeSinceTrackerReady = this.timeSinceTrackerReady.getDeltaTime()
-
-    if (this.isReadyingPlayer) att.timeSincePlayerInit = this.timeSincePlayerInit.getDeltaTime()
-
     if (this.isAd()) {
       if (this.isRequested) {
         att.timeSinceAdRequested = this.timeSinceRequested.getDeltaTime()
@@ -160,10 +160,17 @@ export default class TrackerState {
       if (this.isPaused) att.timeSincePaused = this.timeSincePaused.getDeltaTime()
       if (this.isBuffering) att.timeSinceBufferBegin = this.timeSinceBufferBegin.getDeltaTime()
       if (this.isSeeking) att.timeSinceSeekBegin = this.timeSinceSeekBegin.getDeltaTime()
+      if (this.timeSinceLastAd.stopTime > 0) {
+        att.timeSinceLastAd = this.timeSinceLastAd.getDeltaTime()
+      }
     }
     att.numberOfErrors = this.numberOfErrors
   }
 
+  /**
+   * Checks flags and changes state
+   * @returns {boolean} True if the state changed.
+   */
   goPlayerInit () {
     if (!this.isReadyingPlayer) {
       this.isReadyingPlayer = true
@@ -174,9 +181,20 @@ export default class TrackerState {
     }
   }
 
+  /**
+   * Checks flags and changes state. If playerInit was not called, trackerReady will be used
+   * as a starting point.
+   * @returns {boolean} True if the state changed. 
+   */
   goPlayerReady () {
     if (this.isReadyingPlayer) {
       this.isReadyingPlayer = false
+      this.timeSincePlayerInit.stop()
+      return true
+    } else if (this.timeSincePlayerInit.startTime > 0) {
+      // If player ready is called but the timer has not been initiated, use time since tracker
+      // ready instead.
+      this.timeSincePlayerInit.startTime = this.timeSinceTrackerReady.startTime
       this.timeSincePlayerInit.stop()
       return true
     } else {
@@ -376,5 +394,12 @@ export default class TrackerState {
    */
   goError () {
     this.numberOfErrors++
+  }
+
+  /**
+   * Restarts last ad chrono. 
+   */
+  goLastAd () {
+    this.timeSinceLastAd.start()
   }
 }
