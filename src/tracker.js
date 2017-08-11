@@ -110,7 +110,7 @@ export default class Tracker extends Emitter {
     this.adsTracker = tracker
     this.adsTracker.setIsAd(true)
     this.adsTracker.parentTracker = this
-    this.adsTracker.on('*', funnelAdEvents)
+    this.adsTracker.on('*', funnelAdEvents.bind(this))
   }
 
   /**
