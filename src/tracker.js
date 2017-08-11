@@ -409,7 +409,7 @@ export default class Tracker extends Emitter {
     if (this.state.goPlayerReady()) {
       att = att || {}
       att.timeSincePlayerInit = this.state.timeSincePlayerInit.getDeltaTime()
-      this.emit(Tracker.Events.PLAYER_INIT, this.getAttributes(att))
+      this.emit(Tracker.Events.PLAYER_READY, this.getAttributes(att))
     }
   }
 
