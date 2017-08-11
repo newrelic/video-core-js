@@ -100,9 +100,33 @@ export default class Tracker extends Emitter {
   }
 
   /**
+   * Use this function to set up a child ad tracker. You will be able to access it using 
+   * this.adsTracker.
+   * 
+   * @param {nrvideo.Tracker} tracker Ad tracker to add 
+   */
+  setAdsTracker (tracker) {
+    this.disposeAdsTracker() // dispose current one
+    this.adsTracker = tracker
+    this.adsTracker.parentTracker = this
+    this.adsTracker.on('*', funnelAdEvents)
+  }
+
+  /**
+   * Dispose current adsTracker.
+   */
+  disposeAdsTracker () {
+    if (this.adsTracker) {
+      this.adsTracker.off('*', funnelAdEvents)
+      this.adsTracker.dispose()
+    }
+  }
+
+  /**
    * Prepares tracker to dispose. Calls unregisterListener and drops references to player and tag.
    */
   dispose () {
+    this.disposeAdsTracker()
     this.unregisterListeners()
     this.player = null
     this.tag = null
@@ -685,4 +709,9 @@ Tracker.Events = {
   AD_BREAK_END: 'AD_BREAK_END',
   AD_QUARTILE: 'AD_QUARTILE',
   AD_CLICK: 'AD_CLICK'
+}
+
+// Private members
+function funnelAdEvents (e) {
+  this.emit(e.type, e.data)
 }
