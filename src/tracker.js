@@ -108,6 +108,7 @@ export default class Tracker extends Emitter {
   setAdsTracker (tracker) {
     this.disposeAdsTracker() // dispose current one
     this.adsTracker = tracker
+    this.adsTracker.setIsAd(true)
     this.adsTracker.parentTracker = this
     this.adsTracker.on('*', funnelAdEvents)
   }
