@@ -22,15 +22,15 @@ export default class Chrono {
   }
 
   /**
-   * Returns the time between start() and the last stop() in ms. Returns -1 if start wasn't
+   * Returns the time between start() and the last stop() in ms. Returns null if start wasn't
    * called.
-   * @return {number} Time lapse in ms.
+   * @return {(number|null)} Time lapse in ms.
    */
   getDeltaTime () {
     if (this.startTime) {
       return this.offset + (new Date().getTime() - this.startTime)
     } else {
-      return -1
+      return null
     }
   }
 
