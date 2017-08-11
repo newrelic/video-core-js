@@ -47,7 +47,6 @@ const core = {
    */
   send: function (event, data) {
     if (typeof newrelic !== 'undefined' && newrelic.addPageAction) {
-      cleanData(data)
       newrelic.addPageAction(event, data)
     } else {
       if (!isErrorShown) {
@@ -71,12 +70,13 @@ let isErrorShown = false
  * @param {Event} e Event
  */
 function eventHandler (e) {
+  let data = cleanData(e.data)
   if (Log.level <= Log.Levels.DEBUG) {
-    Log.notice('Sent', e.type, e.data)
+    Log.notice('Sent', e.type, data)
   } else {
     Log.notice('Sent', e.type)
   }
-  core.send(e.type, e.data)
+  core.send(e.type, data)
 }
 
 /**
@@ -88,7 +88,7 @@ function eventHandler (e) {
 function cleanData (data) {
   let ret = {}
   for (let i in data) {
-    if (data[i] !== null) ret[i] = data[i]
+    if (data[i] !== null && typeof data[i] !== 'undefined') ret[i] = data[i]
   }
   return ret
 }
