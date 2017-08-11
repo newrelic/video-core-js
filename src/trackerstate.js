@@ -160,9 +160,7 @@ export default class TrackerState {
       if (this.isPaused) att.timeSincePaused = this.timeSincePaused.getDeltaTime()
       if (this.isBuffering) att.timeSinceBufferBegin = this.timeSinceBufferBegin.getDeltaTime()
       if (this.isSeeking) att.timeSinceSeekBegin = this.timeSinceSeekBegin.getDeltaTime()
-      if (this.timeSinceLastAd.stopTime > 0) {
-        att.timeSinceLastAd = this.timeSinceLastAd.getDeltaTime()
-      }
+      att.timeSinceLastAd = this.timeSinceLastAd.getDeltaTime()
     }
     att.numberOfErrors = this.numberOfErrors
   }
