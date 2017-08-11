@@ -358,7 +358,7 @@ export default class Tracker extends Emitter {
 
     att.isAd = this.isAd()
 
-    if (this.isAd()) { // Ads only
+    if (this.isAd()) { // Ads
       att.adTitle = this.getTitle()
       att.adIsLive = this.isLive()
       att.adBitrate = this.getBitrate() || this.getWebkitBitrate()
@@ -382,7 +382,7 @@ export default class Tracker extends Emitter {
       // ad exclusives
       att.adQuartile = this.getAdQuartile()
       att.adPosition = this.getAdPosition()
-    } else { // not ads
+    } else { // no ads
       att.contentTitle = this.getTitle()
       att.contentIsLive = this.isLive()
       att.contentBitrate = this.getBitrate() || this.getWebkitBitrate()
@@ -445,10 +445,8 @@ export default class Tracker extends Emitter {
    */
   sendRequest (att) {
     if (this.state.goRequest()) {
-      this.emit(
-        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.REQUEST,
-        this.getAttributes(att)
-      )
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.REQUEST, this.getAttributes(att))
       this.startHeartbeat()
     }
   }
@@ -460,7 +458,8 @@ export default class Tracker extends Emitter {
    */
   sendStart (att) {
     if (this.state.goStart()) {
-      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.START, this.getAttributes(att))
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.START, this.getAttributes(att))
     }
   }
 
@@ -475,7 +474,8 @@ export default class Tracker extends Emitter {
       att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
       att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
       this.stopHeartbeat()
-      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.END, this.getAttributes(att))
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.END, this.getAttributes(att))
       if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
     }
   }
@@ -487,7 +487,8 @@ export default class Tracker extends Emitter {
    */
   sendPause (att) {
     if (this.state.goPause()) {
-      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.PAUSE, this.getAttributes(att))
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.PAUSE, this.getAttributes(att))
     }
   }
 
@@ -500,7 +501,8 @@ export default class Tracker extends Emitter {
     if (this.state.goResume()) {
       att = att || {}
       att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
-      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.RESUME, this.getAttributes(att))
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.RESUME, this.getAttributes(att))
     }
   }
 
@@ -511,10 +513,8 @@ export default class Tracker extends Emitter {
    */
   sendBuffeStart (att) {
     if (this.state.goBufferStart()) {
-      this.emit(
-        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.BUFFER_START,
-        this.getAttributes(att)
-      )
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.BUFFER_START, this.getAttributes(att))
     }
   }
 
@@ -526,11 +526,9 @@ export default class Tracker extends Emitter {
   sendBufferEnd (att) {
     if (this.state.goBufferEnd()) {
       att = att || {}
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
-      this.emit(
-        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.BUFFER_END,
-        this.getAttributes(att)
-      )
+      this.emit(prefix + Tracker.Events.BUFFER_END, this.getAttributes(att))
     }
   }
 
@@ -541,10 +539,8 @@ export default class Tracker extends Emitter {
    */
   sendSeekStart (att) {
     if (this.state.goSeekStart()) {
-      this.emit(
-        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.SEEK_START,
-        this.getAttributes(att)
-      )
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.SEEK_START, this.getAttributes(att))
     }
   }
 
@@ -556,8 +552,9 @@ export default class Tracker extends Emitter {
   sendSeekEnd (att) {
     if (this.state.goSeekEnd()) {
       att = att || {}
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       att.timeSinceSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
-      this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.SEEK_END, this.getAttributes(att))
+      this.emit(prefix + Tracker.Events.SEEK_END, this.getAttributes(att))
     }
   }
 
@@ -580,7 +577,8 @@ export default class Tracker extends Emitter {
    */
   sendError (att) {
     this.state.goError()
-    this.emit(this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.ERROR, this.getAttributes(att))
+    let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+    this.emit(prefix + Tracker.Events.ERROR, this.getAttributes(att))
   }
 
   /**
@@ -590,11 +588,9 @@ export default class Tracker extends Emitter {
    */
   sendRenditionChanged (att) {
     att = att || {}
+    let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
     att.timeSinceLastRenditionChange = this.state.timeSinceLastRenditionChange.getDeltaTime()
-    this.emit(
-      this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.RENDITION_CHANGE,
-      this.getAttributes(att)
-    )
+    this.emit(prefix + Tracker.Events.RENDITION_CHANGE, this.getAttributes(att))
     this.state.goRenditionChange()
   }
 
@@ -615,7 +611,7 @@ export default class Tracker extends Emitter {
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    */
   sendAdBreakEnd (att) {
-    if (this.isAd() && this.state.goSeekEnd()) {
+    if (this.isAd() && this.state.goAdBreakEnd()) {
       att = att || {}
       att.timeSinceAdBreakBegin = this.state.timeSinceAdBreakBegin.getDeltaTime()
       this.emit(Tracker.Events.AD_BREAK_END, this.getAttributes(att))
@@ -634,6 +630,7 @@ export default class Tracker extends Emitter {
       att = att || {}
       att.timeSinceLastAdQuartile = this.state.timeSinceLastAdQuartile.getDeltaTime()
       this.emit(Tracker.Events.AD_QUARTILE, this.getAttributes(att))
+      this.state.goAdQuartile()
     }
   }
 
@@ -653,10 +650,8 @@ export default class Tracker extends Emitter {
 
   sendHeartbeat (att) {
     if (this.state.isRequested) {
-      this.emit(
-        this.isAd() ? 'AD_' : 'CONTENT_' + Tracker.Events.HEARTBEAT,
-        this.getAttributes(att)
-      )
+      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      this.emit(prefix + Tracker.Events.HEARTBEAT, this.getAttributes(att))
       this.state.goHeartbeat()
     }
   }
