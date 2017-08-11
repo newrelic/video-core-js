@@ -88,7 +88,7 @@ export default class TrackerState {
     this.timeSinceBufferBegin = new Chrono()
 
     /** Chrono that counts time since last ad break start event. */    
-    this.timeSinceAdBreakBegin = new Chrono()
+    this.timeSinceAdBreakStart = new Chrono()
 
     /** Chrono that counts time since last download event. */    
     this.timeSinceLastDownload = new Chrono()
@@ -149,7 +149,7 @@ export default class TrackerState {
       if (this.isPaused) att.timeSinceAdPaused = this.timeSincePaused.getDeltaTime()
       if (this.isBuffering) att.timeSinceAdBufferBegin = this.timeSinceBufferBegin.getDeltaTime()
       if (this.isSeeking) att.timeSinceAdSeekBegin = this.timeSinceSeekBegin.getDeltaTime()
-      if (this.isAdBreak) att.timeSinceAdBreakBegin = this.timeSinceAdBreakBegin.getDeltaTime()
+      if (this.isAdBreak) att.timeSinceAdBreakBegin = this.timeSinceAdBreakStart.getDeltaTime()
       att.numberOfAds = this.numberOfAds
     } else {
       if (this.isRequested) {
@@ -340,7 +340,7 @@ export default class TrackerState {
   goAdBreakStart () {
     if (!this.isAdBreak) {
       this.isAdBreak = true
-      this.timeSinceAdBreakBegin.start()
+      this.timeSinceAdBreakStart.start()
       return true
     } else {
       return false
@@ -354,7 +354,7 @@ export default class TrackerState {
   goAdBreakEnd () {
     if (this.isAdBreak) {
       this.isAdBreak = false
-      this.timeSinceAdBreakBegin.stop()
+      this.timeSinceAdBreakStart.stop()
       return true
     } else {
       return false

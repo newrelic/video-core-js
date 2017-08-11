@@ -588,8 +588,8 @@ export default class Tracker extends Emitter {
    */
   sendRenditionChanged (att) {
     att = att || {}
-    let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
     att.timeSinceLastRenditionChange = this.state.timeSinceLastRenditionChange.getDeltaTime()
+    let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
     this.emit(prefix + Tracker.Events.RENDITION_CHANGE, this.getAttributes(att))
     this.state.goRenditionChange()
   }
@@ -613,7 +613,7 @@ export default class Tracker extends Emitter {
   sendAdBreakEnd (att) {
     if (this.isAd() && this.state.goAdBreakEnd()) {
       att = att || {}
-      att.timeSinceAdBreakBegin = this.state.timeSinceAdBreakBegin.getDeltaTime()
+      att.timeSinceAdBreakBegin = this.state.timeSinceAdBreakStart.getDeltaTime()
       this.emit(Tracker.Events.AD_BREAK_END, this.getAttributes(att))
     }
   }
