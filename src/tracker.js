@@ -276,16 +276,6 @@ export default class Tracker extends Emitter {
     return null
   }
 
-  /** Override to return Player DOM element width in pixels. */
-  getWidth () {
-    return this.tag ? this.tag.width : null
-  }
-
-  /** Override to return Player DOM element height in pixels. */
-  getHeight () {
-    return this.tag ? this.tag.height : null
-  }
-
   /** Override to return the CDN serving the content */
   getCdn () {
     return null
