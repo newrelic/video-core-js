@@ -8,8 +8,8 @@ The changelog format is based on [Keep a Changelog](http://keepachangelog.com/en
 
 This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-### Eslint
+### Eslint & Standard
 Use eslint to help you maintain code standards:
 ```bash
-npm install eslint eslint-config-standard eslint-plugin-import eslint-plugin-mocha eslint-plugin-node eslint-plugin-promise eslint-plugin-standard --global
+npm i -g standard
 ````

@@ -30,7 +30,7 @@ const Log = {
    * @default nrvideo.Log.Levels.ERROR
    * @see {@link nrvideo.Log.Levels}
    */
-  level: 5, // Error
+  level: 4, // Error
 
   /**
    * If true, logs will be outputed with colors.
@@ -225,7 +225,7 @@ const _letters = {
 
 /**
  * Transforms a level to a letter to identify every message.
- * 
+ *
  * @private
  * @param {nrvideo.Log.Level} level Level of the message
  */
@@ -244,7 +244,7 @@ function _level2letter (level) {
  * 1: DEBUG,
  *
  * If nrvideo-colors=false is present, Log.colorful will be set to false.
- * 
+ *
  * @private
  */
 function _loadLevelFromUrl () {

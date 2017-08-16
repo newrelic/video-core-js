@@ -5,12 +5,8 @@
         "sourceType": "module"
     },
     "plugins": [
-        "standard",
-        "mocha"
+        "standard"
     ],
-    "env": {
-        "mocha": true
-    },
     "globals": {
         "newrelic": true,
         "nrvideo": true

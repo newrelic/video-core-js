@@ -3,11 +3,11 @@ import Log from './log'
 /**
  * Static class that sums up core functionalities of the library.
  */
-const core = {
+const Core = {
   /**
    * Add a tracker to the system. Trackers added will start reporting its events to NR's backend.
-   * 
-   * @param {(Emitter|Tracker)} tracker 
+   *
+   * @param {(Emitter|Tracker)} tracker
    */
   addTracker: function (tracker) {
     if (tracker.on && tracker.emit) {
@@ -21,7 +21,7 @@ const core = {
 
   /**
    * Disposes and remove given tracker. Removes its listeners.
-   * 
+   *
    * @param {Tracker} tracker Tracker to remove.
    */
   removeTracker: function (tracker) {
@@ -33,7 +33,7 @@ const core = {
 
   /**
    * Returns the array of trackers.
-   * 
+   *
    * @returns {Tracker[]} Array of trackers.
    */
   getTrackers: function () {
@@ -57,6 +57,17 @@ const core = {
         isErrorShown = true
       }
     }
+  },
+
+  /**
+   * Sends an error event. This may be used for external errors launched by the app, the network or
+   * any external factor. Note that errors within the player are normally reported with
+   * tracker.sendError, so this method should not be used to report those.
+   *
+   * @param {object} att attributes to be sent along the error.
+   */
+  sendError (att) {
+    Core.send('ERROR', att)
   }
 }
 
@@ -76,7 +87,7 @@ function eventHandler (e) {
   } else {
     Log.notice('Sent', e.type)
   }
-  core.send(e.type, data)
+  Core.send(e.type, data)
 }
 
 /**
@@ -93,4 +104,4 @@ function cleanData (data) {
   return ret
 }
 
-export default core
+export default Core

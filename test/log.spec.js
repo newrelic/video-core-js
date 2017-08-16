@@ -1,12 +1,11 @@
-// check loadFromUrl to not throw
-global.window = { location: { search: '?nrvideo-debug=0&nrvideo-colors=false' } }
-
-var Log = require('../src/log.js').Log
-
-const chai = require('chai')
-const sinon = require('sinon')
+import Log from '../src/log.js'
+import chai from 'chai'
+import sinon from 'sinon'
 
 const assert = chai.assert
+
+// check loadFromUrl to not throw
+global.window = { location: { search: '?nrvideo-debug=0&nrvideo-colors=false' } }
 
 describe('Log', () => {
   let cwarn = console.warn

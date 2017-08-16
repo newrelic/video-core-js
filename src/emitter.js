@@ -1,7 +1,7 @@
 /**
  * This base class implements a basic behavior of listeners and events. Extend this object to have
  * this feature built-in inside your classes.
- * 
+ *
  * @memberof nrvideo
  */
 export default class Emitter {

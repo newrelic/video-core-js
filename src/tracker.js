@@ -6,7 +6,7 @@ import * as pkg from '../package.json'
 /**
  * Base Tracker class provides extensible tracking over video elements. Extend this class to create
  * you own tracker, override getter classes and register/unregister listeners for full coverage!
- * 
+ *
  * @memberof nrvideo
  */
 export default class Tracker extends Emitter {
@@ -35,9 +35,9 @@ export default class Tracker extends Emitter {
     /**
      * If you add something to this custom dictionary it will be added to every report. If you set
      * any value, it will always override the values gotten from the getters.
-     * 
-     * @example 
-     * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'. 
+     *
+     * @example
+     * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'.
      * 'a' will prevail.
      */
     this.customData = options.customData || {}
@@ -48,11 +48,13 @@ export default class Tracker extends Emitter {
      */
     this.parentTracker = options.parentTracker || null
 
+    if (options.adsTracker) {
     /**
      * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
      * @type nrvideo.Tracker
      */
-    this.adsTracker = options.adsTracker || null
+      this.setAdsTracker(options.adsTracker)
+    }
 
     /**
      * Time between hearbeats, in ms.
@@ -69,15 +71,15 @@ export default class Tracker extends Emitter {
    * Set a player and/or a tag. If there was one already defined, it will call dispose() first.
    * Will call this.registerListeners() afterwards.
    *
-   * @param {Object|string} player New player to save as this.player. If a string is passed, 
+   * @param {Object|string} player New player to save as this.player. If a string is passed,
    * document.getElementById will be called.
-   * @param {DOMObject|string} [tag] Optional DOMElement to save as this.tag. If a string is passed, 
+   * @param {DOMObject|string} [tag] Optional DOMElement to save as this.tag. If a string is passed,
    * document.getElementById will be called.
    */
   setPlayer (player, tag) {
     if (this.player || this.tag) this.dispose()
 
-    if (document && document.getElementById) {
+    if (typeof document !== 'undefined' && document.getElementById) {
       if (typeof player === 'string') player = document.getElementById(player)
       if (typeof tag === 'string') tag = document.getElementById(tag)
     }
@@ -100,17 +102,19 @@ export default class Tracker extends Emitter {
   }
 
   /**
-   * Use this function to set up a child ad tracker. You will be able to access it using 
+   * Use this function to set up a child ad tracker. You will be able to access it using
    * this.adsTracker.
-   * 
-   * @param {nrvideo.Tracker} tracker Ad tracker to add 
+   *
+   * @param {nrvideo.Tracker} tracker Ad tracker to add
    */
   setAdsTracker (tracker) {
     this.disposeAdsTracker() // dispose current one
-    this.adsTracker = tracker
-    this.adsTracker.setIsAd(true)
-    this.adsTracker.parentTracker = this
-    this.adsTracker.on('*', funnelAdEvents.bind(this))
+    if (tracker) {
+      this.adsTracker = tracker
+      this.adsTracker.setIsAd(true)
+      this.adsTracker.parentTracker = this
+      this.adsTracker.on('*', funnelAdEvents.bind(this))
+    }
   }
 
   /**
@@ -140,7 +144,7 @@ export default class Tracker extends Emitter {
    *  registerListeners() {
    *    this.player.on('play', () => this.playHandler)
    *  }
-   * 
+   *
    *  playHandler() {
    *    this.emit(Tracker.Events.REQUESTED)
    *  }
@@ -155,11 +159,11 @@ export default class Tracker extends Emitter {
    *  registerListeners() {
    *    this.player.on('play', () => this.playHandler)
    *  }
-   * 
+   *
    *  unregisterListeners() {
    *    this.player.off('play', () => this.playHandler)
    *  }
-   * 
+   *
    *  playHandler() {
    *    this.emit(Tracker.Events.REQUESTED)
    *  }
@@ -208,8 +212,9 @@ export default class Tracker extends Emitter {
   /** Calculates consumed bitrate using webkitVideoDecodedByteCount. */
   getWebkitBitrate () {
     if (this.tag && this.tag.webkitVideoDecodedByteCount) {
-      let bitrate = this.tag.webkitVideoDecodedByteCount
+      let bitrate
       if (this._lastWebkitBitrate) {
+        bitrate = this.tag.webkitVideoDecodedByteCount
         let delta = bitrate - this._lastWebkitBitrate
         bitrate = Math.round((delta / (this.heartbeat / 1000)) * 8)
       }
@@ -248,7 +253,7 @@ export default class Tracker extends Emitter {
     return this.tag ? this.tag.currentTime : null
   }
 
-  /** 
+  /**
    * Override to return Language of the video. We recommend using locale notation, ie: en_US.
    * {@see https://gist.github.com/jacobbubu/1836273}
    */
@@ -297,16 +302,16 @@ export default class Tracker extends Emitter {
   }
 
   // Only for ads
-  /** 
-   * Override to return Quartile of the ad. 0 before first, 1 after first quartile, 2 after 
-   * midpoint, 3 after third quartile, 4 when completed. 
+  /**
+   * Override to return Quartile of the ad. 0 before first, 1 after first quartile, 2 after
+   * midpoint, 3 after third quartile, 4 when completed.
    */
   getAdQuartile () {
     return null
   }
 
-  /** 
-   * Override to return The position of the ad. Use {@link nrvideo.Constants.AdPositions} enum 
+  /**
+   * Override to return The position of the ad. Use {@link nrvideo.Constants.AdPositions} enum
    * to fill this data.
    */
   getAdPosition () {
@@ -329,7 +334,7 @@ export default class Tracker extends Emitter {
 
   /**
    * Do NOT override. This function fill all the appropiate attributes for tracked video.
-   * 
+   *
    * @param {object} [att] Collection fo key value attributes
    * @return {object} Filled attributes
    * @final
@@ -497,7 +502,7 @@ export default class Tracker extends Emitter {
    * duplicated events.
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    */
-  sendBuffeStart (att) {
+  sendBufferStart (att) {
     if (this.state.goBufferStart()) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       this.emit(prefix + Tracker.Events.BUFFER_START, this.getAttributes(att))
@@ -551,6 +556,7 @@ export default class Tracker extends Emitter {
    * @param {String} att.state Download requires a string to distinguish different states.
    */
   sendDownload (att) {
+    att = att || {}
     if (!att.state) Log.warn('Called sendDownload without { state: xxxxx }.')
     this.emit(Tracker.Events.DOWNLOAD, this.getAttributes(att))
     this.state.goDownload()
@@ -612,8 +618,8 @@ export default class Tracker extends Emitter {
    */
   sendAdQuartile (att) {
     if (this.isAd()) {
-      if (!att.quartile) Log.warn('Called sendAdQuartile without { quartile: xxxxx }.')
       att = att || {}
+      if (!att.quartile) Log.warn('Called sendAdQuartile without { quartile: xxxxx }.')
       att.timeSinceLastAdQuartile = this.state.timeSinceLastAdQuartile.getDeltaTime()
       this.emit(Tracker.Events.AD_QUARTILE, this.getAttributes(att))
       this.state.goAdQuartile()
@@ -625,10 +631,11 @@ export default class Tracker extends Emitter {
    * duplicated events.
    * @param {Object} [att] Collection fo key:value attributes to send with the request.
    * @param {number} att.url Url of the clicked ad.
-   * 
+   *
    */
   sendAdClick (att) {
     if (this.isAd()) {
+      att = att || {}
       if (!att.url) Log.warn('Called sendAdClick without { url: xxxxx }.')
       this.emit(Tracker.Events.AD_CLICK, this.getAttributes(att))
     }
@@ -663,7 +670,9 @@ export default class Tracker extends Emitter {
 
 /**
  * Enumeration of events fired by this class.
- * 
+ *
+ * @static
+ * @memberof nrvideo.Tracker
  * @enum
  */
 Tracker.Events = {

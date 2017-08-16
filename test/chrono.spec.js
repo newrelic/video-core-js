@@ -1,5 +1,6 @@
-const Chrono = require('../src/chrono.js').Chrono
-const chai = require('chai')
+import Chrono from '../src/chrono.js'
+import chai from 'chai'
+
 const expect = chai.expect
 
 describe('Chrono', () => {
@@ -11,7 +12,7 @@ describe('Chrono', () => {
 
   it('should start', () => {
     chrono.start()
-    expect(chrono.startTime).to.be.greaterThan(-1)
+    expect(chrono.startTime).to.be.greaterThan(0)
     expect(chrono.stopTime).to.equal(0)
   })
 
@@ -22,8 +23,8 @@ describe('Chrono', () => {
   })
 
   it('should not break if stop is called before start', () => {
-    expect(chrono.stop()).to.equal(-1)
-    expect(chrono.getDeltaTime()).to.equal(-1)
+    expect(chrono.stop()).to.be.null
+    expect(chrono.getDeltaTime()).to.be.null
   })
 
   it('should work', (done) => {

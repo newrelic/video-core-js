@@ -7,12 +7,16 @@ export default class TrackerState {
   /** Constructor */
   constructor () {
     this.reset()
+
+    /** Chrono that counts time since this class was instantiated. */
+    this.timeSinceTrackerReady = new Chrono()
+    this.timeSinceTrackerReady.start()
   }
 
   /** Resets all flags and chronos. */
   reset () {
-    /** 
-     * Unique identifier of the view. 
+    /**
+     * Unique identifier of the view.
      * @private
      */
     this._viewId = null
@@ -66,9 +70,6 @@ export default class TrackerState {
 
   /** Resets chronos. */
   resetChronos () {
-    /** Chrono that counts time since this class was instantiated. */
-    this.timeSinceTrackerReady = new Chrono()
-
     /** Chrono that counts time since player init event. */
     this.timeSincePlayerInit = new Chrono()
 
@@ -87,19 +88,19 @@ export default class TrackerState {
     /** Chrono that counts time since last buffering start event. */
     this.timeSinceBufferBegin = new Chrono()
 
-    /** Chrono that counts time since last ad break start event. */    
+    /** Chrono that counts time since last ad break start event. */
     this.timeSinceAdBreakStart = new Chrono()
 
-    /** Chrono that counts time since last download event. */    
+    /** Chrono that counts time since last download event. */
     this.timeSinceLastDownload = new Chrono()
 
-    /** Chrono that counts time since last heartbeat. */    
+    /** Chrono that counts time since last heartbeat. */
     this.timeSinceLastHeartbeat = new Chrono()
 
-    /** Chrono that counts time since last rendition change. */    
+    /** Chrono that counts time since last rendition change. */
     this.timeSinceLastRenditionChange = new Chrono()
 
-    /** Ads only. Chrono that counts time since last ad quartile. */    
+    /** Ads only. Chrono that counts time since last ad quartile. */
     this.timeSinceLastAdQuartile = new Chrono()
 
     /** Content only. Chrono that counts time since last AD_END. */
@@ -132,7 +133,7 @@ export default class TrackerState {
 
   /**
    * Fills given object with state-based attributes.
-   * 
+   *
    * @param {object} att Collection fo key value attributes
    * @return {object} Filled attributes
    */
@@ -163,6 +164,8 @@ export default class TrackerState {
       att.timeSinceLastAd = this.timeSinceLastAd.getDeltaTime()
     }
     att.numberOfErrors = this.numberOfErrors
+
+    return att
   }
 
   /**
@@ -182,14 +185,14 @@ export default class TrackerState {
   /**
    * Checks flags and changes state. If playerInit was not called, trackerReady will be used
    * as a starting point.
-   * @returns {boolean} True if the state changed. 
+   * @returns {boolean} True if the state changed.
    */
   goPlayerReady () {
     if (this.isReadyingPlayer) {
       this.isReadyingPlayer = false
       this.timeSincePlayerInit.stop()
       return true
-    } else if (this.timeSincePlayerInit.startTime > 0) {
+    } else if (this.timeSincePlayerInit.startTime === 0) {
       // If player ready is called but the timer has not been initiated, use time since tracker
       // ready instead.
       this.timeSincePlayerInit.startTime = this.timeSinceTrackerReady.startTime
@@ -395,7 +398,7 @@ export default class TrackerState {
   }
 
   /**
-   * Restarts last ad chrono. 
+   * Restarts last ad chrono.
    */
   goLastAd () {
     this.timeSinceLastAd.start()

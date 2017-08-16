@@ -1,5 +1,6 @@
-var Emitter = require('../src/emitter.js').Emitter
-const chai = require('chai')
+import Emitter from '../src/emitter.js'
+import chai from 'chai'
+
 const expect = chai.expect
 
 describe('Emitter', () => {
