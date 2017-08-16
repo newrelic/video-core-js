@@ -2,9 +2,9 @@
  * This base class implements a basic behavior of listeners and events. Extend this object to have
  * this feature built-in inside your classes.
  *
- * @memberof nrvideo
+ * @class Emitter
  */
-export default class Emitter {
+class Emitter {
   /**
    * Sets a listener to a given event. Use {@link emit} to trigger those events.
    * Pass '*' to listen ALL events.
@@ -67,3 +67,5 @@ export default class Emitter {
     return this
   }
 }
+
+export default Emitter

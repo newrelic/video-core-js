@@ -3,7 +3,7 @@ import Chrono from './chrono'
 /**
  * State machine for a Tracker and its monitored video.
  */
-export default class TrackerState {
+class TrackerState {
   /** Constructor */
   constructor () {
     this.reset()
@@ -404,3 +404,5 @@ export default class TrackerState {
     this.timeSinceLastAd.start()
   }
 }
+
+export default TrackerState

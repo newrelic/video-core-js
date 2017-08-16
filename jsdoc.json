@@ -1,0 +1,38 @@
+{
+  "tags": {
+    "allowUnknownTags": true
+  },
+  "source": {
+    "include": "./src"
+  },
+  "opts": {
+    "readme": "./README.md",
+    "template": "./node_modules/ink-docstrap/template",
+    "recurse": "true"
+  },
+  "plugins": [
+    "plugins/markdown"
+  ],
+  "templates": {
+    "logoFile": "",
+    "cleverLinks": false,
+    "monospaceLinks": false,
+    "dateFormat": "YYYY MMM Do ",
+    "outputSourceFiles": true,
+    "outputSourcePath": true,
+    "systemName": "nrvideo",
+    "footer": "",
+    "copyright": "© New Relic",
+    "navType": "inline",
+    "theme": "spacelab",
+    "linenums": true,
+    "collapseSymbols": false,
+    "inverseNav": true,
+    "protocol": "html://",
+    "methodHeadingReturns": false
+  },
+  "markdown": {
+    "parser": "gfm",
+    "hardwrap": true
+  }
+}

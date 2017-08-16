@@ -3,93 +3,59 @@
  *
  * @class
  * @static
- * @memberof nrvideo
  */
-const Log = {
-  /**
-   * Enum for log levels
-   * @enum
-   */
-  Levels: {
-    /** No console outputs */
-    SILENT: 5,
-    /** Console will show errors */
-    ERROR: 4,
-    /** Console will show warnings */
-    WARNING: 3,
-    /** Console will show notices (ie: life-cyrcle logs) */
-    NOTICE: 2,
-    /** Console will show debug messages. */
-    DEBUG: 1,
-    /** Show all messages. */
-    ALL: 0
-  },
-
-  /**
-   * Only logs of this imporance or higher will be shown.
-   * @default nrvideo.Log.Levels.ERROR
-   * @see {@link nrvideo.Log.Levels}
-   */
-  level: 4, // Error
-
-  /**
-   * If true, logs will be outputed with colors.
-   * @default true
-   */
-  colorful: true,
-
-  /**
-   * If true, logs will include the time mark.
-   * @default true
-   */
-  includeTime: true,
-
-  /**
-   * Prefix included at the start of every log.
-   * @default '[New Relic]'
-   */
-  prefix: '[nrvideo]',
-
-  /**
+class Log {
+   /**
    * Sends an error console log.
-   * @param {any} msg... Message to show
+   * @param {...any} [msg] Message to show
+   * @static
    */
-  error: function () {
-    _report([].slice.call(arguments), Log.Levels.ERROR, 'darkred')
-  },
+  static error (...msg) {
+    _report(msg, Log.Levels.ERROR, 'darkred')
+  }
 
   /**
    * Sends a warning console log.
-   * @param {any} msg... Message to show
+   * @method Log.warn
+   * @static
+   * @param {...any} msg Message to show
    */
-  warn: function () {
-    _report([].slice.call(arguments), Log.Levels.WARNING, 'darkorange')
-  },
+  static warn (...msg) {
+    _report(msg, Log.Levels.WARNING, 'darkorange')
+  }
 
   /**
    * Sends a notice console log.
-   * @param {any} msg... Message to show
+   * @method Log.notice
+   * @static
+   * @param {...any} msg Message to show
    */
-  notice: function () {
+  static notice (...msg) {
     _report([].slice.call(arguments), Log.Levels.NOTICE, 'darkcyan')
-  },
+  }
 
   /**
    * Sends a debug message to console.
-   * @param {any} msg... Message to show
+   * @method Log.debug
+   * @static
+   * @param {...any} msg Message to show
    */
-  debug: function () {
-    _report([].slice.call(arguments), Log.Levels.DEBUG, 'indigo')
-  },
+  static debug (...msg) {
+    _report(msg, Log.Levels.DEBUG, 'indigo')
+  }
 
   /**
    * This utility method will add most of the HTML5 common event listeners to the player sent.
-   * This common events will be listened: 'canplay', 'buffering', 'waiting', 'ended', 'play',
-   * 'playing', 'pause', 'resume', 'error', 'abort', 'seek', 'seeking', 'seeked', 'stalled',
-   * 'dispose', 'loadeddata', 'loadstart', 'loadedmetadata'
-   *
    * Events will be reported as DEBUG level messages.
    *
+   * @example
+   * // Already included events:
+   * ['canplay', 'buffering', 'waiting', 'ended', 'play', 'playing', 'pause', 'resume', 'error',
+   * 'abort', 'seek', 'seeking', 'seeked', 'stalled', 'dispose', 'loadeddata', 'loadstart',
+   * 'loadedmetadata']
+   *
+   * @method Log.debugCommonVideoEvents
+   * @static
    * @param {object|function} o Object to attach the events.
    * @param {array} [extraEvents]
    * An array of extra events to watch. ie:  ['timeupdate', 'progress'].
@@ -97,7 +63,7 @@ const Log = {
    * @param {function} [report] Callback function called to report events.
    * Default calls Log.debug()
    */
-  debugCommonVideoEvents: function (o, extraEvents, report) {
+  static debugCommonVideoEvents (o, extraEvents, report) {
     try {
       if (Log.level <= Log.Levels.DEBUG) {
         report = report || function (e) {
@@ -134,6 +100,56 @@ const Log = {
   }
 }
 
+/**
+ * Enum for log levels
+ * @enum
+ * @static
+ * @var
+ */
+Log.Levels = {
+    /** No console outputs */
+  SILENT: 5,
+    /** Console will show errors */
+  ERROR: 4,
+    /** Console will show warnings */
+  WARNING: 3,
+    /** Console will show notices (ie: life-cyrcle logs) */
+  NOTICE: 2,
+    /** Console will show debug messages. */
+  DEBUG: 1,
+    /** Show all messages. */
+  ALL: 0
+}
+
+  /**
+   * Only logs of this imporance or higher will be shown.
+   * @example Log.level = Log.Levels.ALL
+   * @default Log.Levels.ERROR
+   * @static
+   */
+Log.level = Log.Levels.ERROR
+
+  /**
+   * If true, logs will be outputed with colors.
+   * @default true
+   * @static
+   */
+Log.colorful = true
+
+  /**
+   * If true, logs will include the time mark.
+   * @default true
+   * @static
+   */
+Log.includeTime = true
+
+  /**
+   * Prefix included at the start of every log.
+   * @default '[New Relic]'
+   * @static
+   */
+Log.prefix = '[nrvideo]'
+
 // PRIVATE MEMBERS
 
 /**
@@ -141,10 +157,10 @@ const Log = {
  *
  * @private
  * @param {array} msg Message array, error object or array of messages.
- * @param {nrvideo.Log.Level} [level=nrvideo.Log.Levels.NOTICE] Defines the level of the error sent.
+ * @param {Log.Level} [level=Log.Levels.NOTICE] Defines the level of the error sent.
  * Only errors with higher or equal level than Log.logLevel will be displayed.
  * @param {string} [color='darkgreen'] Color of the header
- * @see {@link nrvideo.Log.level}
+ * @see {@link Log.level}
  */
 function _report (msg, level, color) {
   level = level || Log.Levels.NOTICE
@@ -227,7 +243,7 @@ const _letters = {
  * Transforms a level to a letter to identify every message.
  *
  * @private
- * @param {nrvideo.Log.Level} level Level of the message
+ * @param {sLog.Level} level Level of the message
  */
 function _level2letter (level) {
   return _letters[level]

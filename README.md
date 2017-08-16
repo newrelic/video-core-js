@@ -12,4 +12,4 @@ This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html
 Use eslint to help you maintain code standards:
 ```bash
 npm i -g standard
-````
+```

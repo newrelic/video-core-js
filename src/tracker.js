@@ -7,9 +7,9 @@ import * as pkg from '../package.json'
  * Base Tracker class provides extensible tracking over video elements. Extend this class to create
  * you own tracker, override getter classes and register/unregister listeners for full coverage!
  *
- * @memberof nrvideo
+ * @extends Emitter
  */
-export default class Tracker extends Emitter {
+class Tracker extends Emitter {
   /**
    * Constructor, receives options.
    * @param {Object} [player] Player to track. {@link setPlayer}
@@ -28,7 +28,7 @@ export default class Tracker extends Emitter {
     /**
      * TrackerState instance. Stores the state of the view. Tracker will automatically update the
      * state of its instance, so there's no need to tamper with it manually.
-     * @type nrvideo.TrackerState
+     * @type TrackerState
      */
     this.state = new TrackerState()
 
@@ -44,14 +44,14 @@ export default class Tracker extends Emitter {
 
     /**
      * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
-     * @type nrvideo.Tracker
+     * @type Tracker
      */
     this.parentTracker = options.parentTracker || null
 
     if (options.adsTracker) {
     /**
      * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
-     * @type nrvideo.Tracker
+     * @type Tracker
      */
       this.setAdsTracker(options.adsTracker)
     }
@@ -105,7 +105,7 @@ export default class Tracker extends Emitter {
    * Use this function to set up a child ad tracker. You will be able to access it using
    * this.adsTracker.
    *
-   * @param {nrvideo.Tracker} tracker Ad tracker to add
+   * @param {Tracker} tracker Ad tracker to add
    */
   setAdsTracker (tracker) {
     this.disposeAdsTracker() // dispose current one
@@ -311,7 +311,7 @@ export default class Tracker extends Emitter {
   }
 
   /**
-   * Override to return The position of the ad. Use {@link nrvideo.Constants.AdPositions} enum
+   * Override to return The position of the ad. Use {@link Constants.AdPositions} enum
    * to fill this data.
    */
   getAdPosition () {
@@ -672,7 +672,7 @@ export default class Tracker extends Emitter {
  * Enumeration of events fired by this class.
  *
  * @static
- * @memberof nrvideo.Tracker
+ * @memberof Tracker
  * @enum
  */
 Tracker.Events = {
@@ -706,3 +706,5 @@ Tracker.Events = {
 function funnelAdEvents (e) {
   this.emit(e.type, e.data)
 }
+
+export default Tracker

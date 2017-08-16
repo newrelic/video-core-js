@@ -1,10 +1,10 @@
 /**
  * This class calculates time lapses between two points on time.
- *
- * @memberof nrvideo
  */
-export default class Chrono {
-  /** Constructor */
+class Chrono {
+  /**
+   * Constructor
+   */
   constructor () {
     this.reset()
   }
@@ -17,7 +17,18 @@ export default class Chrono {
     /** Stop time */
     this.stopTime = 0
 
-    /** Offset to be added to deltaTime and stop. in ms. */
+    /**
+     * If you set an offset in a chrono, its value will be added getDeltaTime and stop.
+     *
+     * @example
+     * let chrono = new Chrono()
+     * chrono.offset = 500
+     * chrono.start()
+     * process.sleep(500)
+     * chrono.stop() // Will return 1000
+     *
+     * @type {number}
+     */
     this.offset = 0
   }
 
@@ -44,7 +55,7 @@ export default class Chrono {
 
   /**
    * Stops the timer and returns delta time.
-   * @return {number} Returns the delta time
+   * @return {(number|null)} Returns the delta time
    */
   stop () {
     this.stopTime = new Date().getTime()
@@ -53,6 +64,7 @@ export default class Chrono {
 
   /**
    * Creates a copy of the chrono.
+   * @returns {Chrono} Cloned chrono
    */
   clone () {
     var chrono = new Chrono()
@@ -62,3 +74,5 @@ export default class Chrono {
     return chrono
   }
 }
+
+export default Chrono

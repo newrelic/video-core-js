@@ -15,6 +15,7 @@ dist/
 coverage/
 .nyc_output
 manifest.json
+doc/
 
 # logs
 *.log

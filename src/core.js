@@ -2,14 +2,15 @@ import Log from './log'
 
 /**
  * Static class that sums up core functionalities of the library.
+ * @static
  */
-const Core = {
+class Core {
   /**
    * Add a tracker to the system. Trackers added will start reporting its events to NR's backend.
    *
    * @param {(Emitter|Tracker)} tracker
    */
-  addTracker: function (tracker) {
+  static addTracker (tracker) {
     if (tracker.on && tracker.emit) {
       trackers.push(tracker)
       tracker.on('*', eventHandler)
@@ -17,35 +18,35 @@ const Core = {
     } else {
       Log.error('Tried to load a non-tracker.', tracker)
     }
-  },
+  }
 
   /**
    * Disposes and remove given tracker. Removes its listeners.
    *
    * @param {Tracker} tracker Tracker to remove.
    */
-  removeTracker: function (tracker) {
+  static removeTracker (tracker) {
     tracker.off('*', eventHandler)
     tracker.dispose()
     let index = trackers.indexOf(tracker)
     if (index !== -1) trackers.splice(index, 1)
-  },
+  }
 
   /**
    * Returns the array of trackers.
    *
    * @returns {Tracker[]} Array of trackers.
    */
-  getTrackers: function () {
+  static getTrackers () {
     return trackers
-  },
+  }
 
   /**
    * Sends given event. Uses newrelic Browser Agent.
    * @param {String} event Event to send.
    * @param {Object} data Data associated to the event.
    */
-  send: function (event, data) {
+  static send (event, data) {
     if (typeof newrelic !== 'undefined' && newrelic.addPageAction) {
       newrelic.addPageAction(event, data)
     } else {
@@ -57,7 +58,7 @@ const Core = {
         isErrorShown = true
       }
     }
-  },
+  }
 
   /**
    * Sends an error event. This may be used for external errors launched by the app, the network or
@@ -66,7 +67,7 @@ const Core = {
    *
    * @param {object} att attributes to be sent along the error.
    */
-  sendError (att) {
+  static sendError (att) {
     Core.send('ERROR', att)
   }
 }
