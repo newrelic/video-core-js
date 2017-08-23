@@ -5,7 +5,7 @@ import * as pkg from '../package.json'
 
 /**
  * Base Tracker class provides extensible tracking over video elements. Extend this class to create
- * you own tracker, override getter classes and register/unregister listeners for full coverage!
+ * your own tracker, override getter classes and register/unregister listeners for full coverage!
  *
  * @extends Emitter
  */
@@ -27,14 +27,14 @@ class Tracker extends Emitter {
 
     /**
      * TrackerState instance. Stores the state of the view. Tracker will automatically update the
-     * state of its instance, so there's no need to tamper with it manually.
+     * state of its instance, so there's no need to modify/interact with it manually.
      * @type TrackerState
      */
     this.state = new TrackerState()
 
     /**
      * If you add something to this custom dictionary it will be added to every report. If you set
-     * any value, it will always override the values gotten from the getters.
+     * any value, it will always override the values returned by the getters.
      *
      * @example
      * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'.
@@ -171,12 +171,12 @@ class Tracker extends Emitter {
    */
   unregisterListeners () {}
 
-  /** Override this to change of the version of tracker. ie: '1.0.1' */
+  /** Override to change of the Version of tracker. ie: '1.0.1' */
   getTrackerVersion () {
     return pkg.version
   }
 
-  /** Override this to change of the name of the tracker. ie: 'custom-html5' */
+  /** Override to change of the Name of the tracker. ie: 'custom-html5' */
   getTrackerName () {
     return 'base-tracker'
   }
@@ -184,7 +184,7 @@ class Tracker extends Emitter {
   /**
    * Trackers will generate unique id's for every new video iteration. If you have your own unique
    * view value, you can override this method to return it.
-   * If the trackes has a parentTracker defined, parent viewId will be used.
+   * If the tracker has a parentTracker defined, parent viewId will be used.
    */
   getViewId () {
     if (this.parentTracker) {
@@ -228,17 +228,17 @@ class Tracker extends Emitter {
     return null
   }
 
-  /** Override to return Target bitrate of the rendition. */
+  /** Override to return Target Bitrate of the rendition. */
   getRenditionBitrate () {
     return null
   }
 
-  /** Override to return Rendition height (before re-scaling). */
+  /** Override to return renidtion actual Height (before re-scaling). */
   getRenditionHeight () {
     return this.tag ? this.tag.videoHeight : null
   }
 
-  /** Override to return Rendition width (before re-scaling). */
+  /** Override to return rendition actual Width (before re-scaling). */
   getRenditionWidth () {
     return this.tag ? this.tag.videoWidth : null
   }
@@ -281,22 +281,22 @@ class Tracker extends Emitter {
     return null
   }
 
-  /** Override to return the CDN serving the content */
+  /** Override to return the CDN serving the content. */
   getCdn () {
     return null
   }
 
-  /** Override to return the name of the player. */
+  /** Override to return the Name of the player. */
   getPlayerName () {
     return this.getTrackerName()
   }
 
-  /** Override to return the version of the player. */
+  /** Override to return the Version of the player. */
   getPlayerVersion () {
     return null
   }
 
-  /** Override this to return current fps. */
+  /** Override to return current FPS (Frames per second). */
   getFps () {
     return null
   }
@@ -311,7 +311,7 @@ class Tracker extends Emitter {
   }
 
   /**
-   * Override to return The position of the ad. Use {@link Constants.AdPositions} enum
+   * Override to return the position of the ad. Use {@link Constants.AdPositions} enum
    * to fill this data.
    */
   getAdPosition () {
@@ -333,9 +333,9 @@ class Tracker extends Emitter {
   }
 
   /**
-   * Do NOT override. This function fill all the appropiate attributes for tracked video.
+   * Do NOT override. This method fills all the appropiate attributes for tracked video.
    *
-   * @param {object} [att] Collection fo key value attributes
+   * @param {object} [att] Collection of key value attributes
    * @return {object} Filled attributes
    * @final
    */
@@ -406,9 +406,10 @@ class Tracker extends Emitter {
   }
 
   /**
+   * Sends that the player starts loading.
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendPlayerInit (att) {
     if (this.state.goPlayerInit()) {
@@ -418,8 +419,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendPlayerReady (att) {
     if (this.state.goPlayerReady()) {
@@ -431,8 +432,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events. Calls {@link startHeartbeat}.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners. Calls {@link startHeartbeat}.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendRequest (att) {
     if (this.state.goRequest()) {
@@ -444,8 +445,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendStart (att) {
     if (this.state.goStart()) {
@@ -456,16 +457,23 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events. Calls {@link stopHeartbeat}.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners. Calls {@link stopHeartbeat}.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendEnd (att) {
     if (this.state.goEnd()) {
       att = att || {}
-      att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
-      att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
+      let prefix
+      if (this.isAd()) {
+        prefix = 'AD_'
+        att.timeSinceAdRequested = this.state.timeSinceRequested.getDeltaTime()
+        att.timeSinceAdStarted = this.state.timeSinceStarted.getDeltaTime()
+      } else {
+        prefix = 'CONTENT_'
+        att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
+        att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
+      }
       this.stopHeartbeat()
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       this.emit(prefix + Tracker.Events.END, this.getAttributes(att))
       if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
     }
@@ -473,8 +481,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendPause (att) {
     if (this.state.goPause()) {
@@ -485,22 +493,28 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendResume (att) {
     if (this.state.goResume()) {
       att = att || {}
-      att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
+      let prefix
+      if (this.isAd()) {
+        prefix = 'AD_'
+        att.timeSinceAdPaused = this.state.timeSincePaused.getDeltaTime()
+      } else {
+        prefix = 'CONTENT_'
+        att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
+      }
       this.emit(prefix + Tracker.Events.RESUME, this.getAttributes(att))
     }
   }
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendBufferStart (att) {
     if (this.state.goBufferStart()) {
@@ -511,22 +525,28 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendBufferEnd (att) {
     if (this.state.goBufferEnd()) {
       att = att || {}
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
+      let prefix
+      if (this.isAd()) {
+        prefix = 'AD_'
+        att.timeSinceAdBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
+      } else {
+        prefix = 'CONTENT_'
+        att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
+      }
       this.emit(prefix + Tracker.Events.BUFFER_END, this.getAttributes(att))
     }
   }
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendSeekStart (att) {
     if (this.state.goSeekStart()) {
@@ -537,22 +557,28 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendSeekEnd (att) {
     if (this.state.goSeekEnd()) {
       att = att || {}
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      att.timeSinceSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
+      let prefix
+      if (this.isAd()) {
+        prefix = 'AD_'
+        att.timeSinceAdSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
+      } else {
+        prefix = 'CONTENT_'
+        att.timeSinceSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
+      }
       this.emit(prefix + Tracker.Events.SEEK_END, this.getAttributes(att))
     }
   }
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {String} att.state Download requires a string to distinguish different states.
    */
   sendDownload (att) {
@@ -564,8 +590,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendError (att) {
     this.state.goError()
@@ -575,8 +601,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendRenditionChanged (att) {
     att = att || {}
@@ -588,8 +614,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendAdBreakStart (att) {
     if (this.isAd() && this.state.goAdBreakStart()) {
@@ -599,8 +625,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendAdBreakEnd (att) {
     if (this.isAd() && this.state.goAdBreakEnd()) {
@@ -612,8 +638,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {number} att.quartile Number of the quartile.
    */
   sendAdQuartile (att) {
@@ -628,8 +654,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events.
-   * @param {Object} [att] Collection fo key:value attributes to send with the request.
+   * duplicated events. Should be associated to an event using registerListeners.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {number} att.url Url of the clicked ad.
    *
    */
