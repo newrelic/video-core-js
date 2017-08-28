@@ -355,7 +355,6 @@ class Tracker extends Emitter {
 
     if (this.isAd()) { // Ads
       att.adTitle = this.getTitle()
-      att.adIsLive = this.isLive()
       att.adBitrate = this.getBitrate() || this.getWebkitBitrate()
       att.adRenditionName = this.getRenditionName()
       att.adRenditionBitrate = this.getRenditionBitrate()
@@ -365,12 +364,13 @@ class Tracker extends Emitter {
       att.adPlayhead = this.getPlayhead()
       att.adLanguage = this.getLanguage()
       att.adSrc = this.getSrc()
-      att.adPlayrate = this.getPlayrate()
-      att.adIsFullscreen = this.isFullscreen()
-      att.adIsMuted = this.isMuted()
       att.adCdn = this.getCdn()
-      att.adIsAutoplayed = this.isAutoplayed()
-      att.adPreload = this.getPreload()
+      att.adIsMuted = this.isMuted()
+      // att.adPlayrate = this.getPlayrate()
+      // att.adIsLive = this.isLive()
+      // att.adIsFullscreen = this.isFullscreen()
+      // att.adIsAutoplayed = this.isAutoplayed()
+      // att.adPreload = this.getPreload()
       att.adFps = this.getFps()
       // ad exclusives
       att.adQuartile = this.getAdQuartile()

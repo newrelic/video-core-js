@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.1.2] - 2017/08/28
+### Remove
+- Removed `adIsFullscreen`, `adIsAutoplayed`, `adIsLive`, `adPlayrate` and `adPreload` attributes from ad events.
+
 ## [0.1.1] - 2017/08/23
 ### Fix
 - Fixed Tracker#sendXXXXX methods, now they distinguish between ads and no ads for timeSinceXXXX atts.
