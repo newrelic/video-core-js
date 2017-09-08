@@ -432,7 +432,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events. Should be associated to an event using registerListeners. Calls {@link startHeartbeat}.
+   * duplicated events. Should be associated to an event using registerListeners. Calls
+   * {@link startHeartbeat}.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendRequest (att) {
@@ -457,7 +458,8 @@ class Tracker extends Emitter {
 
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events. Should be associated to an event using registerListeners. Calls {@link stopHeartbeat}.
+   * duplicated events. Should be associated to an event using registerListeners. Calls
+   * {@link stopHeartbeat}.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendEnd (att) {
@@ -657,7 +659,6 @@ class Tracker extends Emitter {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {number} att.url Url of the clicked ad.
-   *
    */
   sendAdClick (att) {
     if (this.isAd()) {
@@ -667,6 +668,13 @@ class Tracker extends Emitter {
     }
   }
 
+  /**
+   * Sends associated event and changes view state. Heartbeat will automatically be sent every
+   * 10 seconds. There's no need to call this manually.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
+   * @param {number} att.url Url of the clicked ad.
+   *
+   */
   sendHeartbeat (att) {
     if (this.state.isRequested) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
