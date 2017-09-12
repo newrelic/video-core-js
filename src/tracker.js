@@ -131,6 +131,7 @@ class Tracker extends Emitter {
    * Prepares tracker to dispose. Calls unregisterListener and drops references to player and tag.
    */
   dispose () {
+    this.stopHeartbeat()
     this.disposeAdsTracker()
     this.unregisterListeners()
     this.player = null
@@ -698,7 +699,9 @@ class Tracker extends Emitter {
    * Stops heartbeating. This method is automaticaly called by the tracker.
    */
   stopHeartbeat () {
-    clearInterval(this._heartbeatInterval)
+    if (this._heartbeatInterval) {
+      clearInterval(this._heartbeatInterval)
+    }
   }
 }
 

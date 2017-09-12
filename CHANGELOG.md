@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.1.3] - 2017/09/12
+### Fix
+- Stop heartbeat when disposing.
+
 ## [0.1.2] - 2017/08/28
 ### Remove
 - Removed `adIsFullscreen`, `adIsAutoplayed`, `adIsLive`, `adPlayrate` and `adPreload` attributes from ad events.
