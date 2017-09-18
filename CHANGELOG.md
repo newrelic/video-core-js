@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.2.0] - 2017/09/18
+### Add
+- setOptions for Tracker.
+
 ## [0.1.3] - 2017/09/12
 ### Fix
 - Stop heartbeat when disposing.

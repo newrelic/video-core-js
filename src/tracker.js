@@ -12,14 +12,8 @@ import * as pkg from '../package.json'
 class Tracker extends Emitter {
   /**
    * Constructor, receives options.
-   * @param {Object} [player] Player to track. {@link setPlayer}
-   * @param {Object} [options]
-   * @param {Boolean} [options.isAd] True if the tracker is tracking ads. See {@link setIsAd}.
-   * @param {Object} [options.customData] Set custom data. See {@link customData}.
-   * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
-   * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
-   * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
-   * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
+   * @param {Object} [player] Player to track. See {@link setPlayer}.
+   * @param {Object} [options] Options for the tracker. See {@link setOptions}.
    */
   constructor (player, options) {
     super()
@@ -40,31 +34,51 @@ class Tracker extends Emitter {
      * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'.
      * 'a' will prevail.
      */
-    this.customData = options.customData || {}
+    this.customData = {}
 
     /**
      * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
      * @type Tracker
      */
-    this.parentTracker = options.parentTracker || null
+    this.parentTracker = null
 
-    if (options.adsTracker) {
     /**
-     * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
+     * Another Tracker instance to track ads.
      * @type Tracker
      */
-      this.setAdsTracker(options.adsTracker)
-    }
+    this.adsTracker = null
 
     /**
      * Time between hearbeats, in ms.
      */
-    this.heartbeat = options.heartbeat || 10000
+    this.heartbeat = 10000
 
-    if (typeof options.isAd === 'boolean') this.setIsAd(options.isAd)
+    this.setOptions(options)
+
     if (player) this.setPlayer(player, options.tag)
 
     Log.notice('Tracker ' + this.getTrackerName() + ' v' + this.getTrackerVersion() + ' is ready.')
+  }
+
+  /**
+   * Set options for the Tracker.
+   *
+   * @param {Object} [options] Options for the tracker.
+   * @param {Boolean} [options.isAd] True if the tracker is tracking ads. See {@link setIsAd}.
+   * @param {Object} [options.customData] Set custom data. See {@link customData}.
+   * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
+   * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
+   * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
+   * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
+   */
+  setOptions (options) {
+    if (options) {
+      if (options.customData) this.customData = options.customData
+      if (options.parentTracker) this.parentTracker = options.parentTracker
+      if (options.adsTracker) this.setAdsTracker(options.adsTracker)
+      if (options.heartbeat) this.heartbeat = options.heartbeat
+      if (typeof options.isAd === 'boolean') this.setIsAd(options.isAd)
+    }
   }
 
   /**
