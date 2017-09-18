@@ -4,6 +4,9 @@
 ## Dependencies
 This video monitor solutions works on top of New Relic's **Browser Agent**.
 
+## Contributing
+Check [CONTRIBUTING.md]() for **NPM commands** and **contributing notes**.
+
 ## Usage
 Add **scripts** inside `dist` folder to your page.
 
