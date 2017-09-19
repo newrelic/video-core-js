@@ -230,9 +230,10 @@ class Tracker extends Emitter {
     if (this.tag && this.tag.webkitVideoDecodedByteCount) {
       let bitrate
       if (this._lastWebkitBitrate) {
+        let seconds = (this.heartbeat || 10000) / 1000
         bitrate = this.tag.webkitVideoDecodedByteCount
         let delta = bitrate - this._lastWebkitBitrate
-        bitrate = Math.round((delta / (this.heartbeat / 1000)) * 8)
+        bitrate = Math.round((delta / seconds) * 8)
       }
       this._lastWebkitBitrate = this.tag.webkitVideoDecodedByteCount
       return bitrate || null
