@@ -17,7 +17,6 @@ class Tracker extends Emitter {
    */
   constructor (player, options) {
     super()
-    options = options || {}
 
     /**
      * TrackerState instance. Stores the state of the view. Tracker will automatically update the
@@ -50,11 +49,12 @@ class Tracker extends Emitter {
 
     /**
      * Time between hearbeats, in ms.
+     * @default 10000
      */
-    this.heartbeat = 10000
+    this.heartbeat = null
 
+    options = options || {}
     this.setOptions(options)
-
     if (player) this.setPlayer(player, options.tag)
 
     Log.notice('Tracker ' + this.getTrackerName() + ' v' + this.getTrackerVersion() + ' is ready.')
@@ -126,6 +126,7 @@ class Tracker extends Emitter {
     if (tracker) {
       this.adsTracker = tracker
       this.adsTracker.setIsAd(true)
+      if (!this.adsTracker.heartbeat) this.adsTracker.heartbeat = this.heartbeat
       this.adsTracker.parentTracker = this
       this.adsTracker.on('*', funnelAdEvents.bind(this))
     }
@@ -700,12 +701,13 @@ class Tracker extends Emitter {
 
   /**
    * Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.
-   * This method is automaticaly called by the tracker.
+   * This method is automaticaly called by the tracker once sendRequest is called.
    */
   startHeartbeat () {
+    let heartbeat = this.heartbeat || 10000
     this._heartbeatInterval = setInterval(
       this.sendHeartbeat.bind(this),
-      Math.max(this.heartbeat, 5000)
+      Math.max(heartbeat, 5000)
     )
   }
 
