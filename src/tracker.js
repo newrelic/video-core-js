@@ -48,8 +48,7 @@ class Tracker extends Emitter {
     this.adsTracker = null
 
     /**
-     * Time between hearbeats, in ms.
-     * @default 10000
+     * Set time between hearbeats, in ms.
      */
     this.heartbeat = null
 
@@ -126,7 +125,6 @@ class Tracker extends Emitter {
     if (tracker) {
       this.adsTracker = tracker
       this.adsTracker.setIsAd(true)
-      if (!this.adsTracker.heartbeat) this.adsTracker.heartbeat = this.heartbeat
       this.adsTracker.parentTracker = this
       this.adsTracker.on('*', funnelAdEvents.bind(this))
     }
@@ -151,6 +149,20 @@ class Tracker extends Emitter {
     this.unregisterListeners()
     this.player = null
     this.tag = null
+  }
+
+  /**
+   * Returns heartbeat time interval. 30.000 if not modified. See {@link setOptions}.
+   * @return {number} Heartbeat interval in ms.
+   */
+  getHeartbeat () {
+    if (this.heartbeat) {
+      return this.heartbeat
+    } else if (this.parentTracker && this.parentTracker.heartbeat) {
+      return this.parentTracker.heartbeat
+    } else {
+      return 30000
+    }
   }
 
   /**
@@ -230,9 +242,9 @@ class Tracker extends Emitter {
     if (this.tag && this.tag.webkitVideoDecodedByteCount) {
       let bitrate
       if (this._lastWebkitBitrate) {
-        let seconds = (this.heartbeat || 10000) / 1000
         bitrate = this.tag.webkitVideoDecodedByteCount
         let delta = bitrate - this._lastWebkitBitrate
+        let seconds = this.getHeartbeat() / 1000
         bitrate = Math.round((delta / seconds) * 8)
       }
       this._lastWebkitBitrate = this.tag.webkitVideoDecodedByteCount
@@ -705,10 +717,9 @@ class Tracker extends Emitter {
    * This method is automaticaly called by the tracker once sendRequest is called.
    */
   startHeartbeat () {
-    let heartbeat = this.heartbeat || 10000
     this._heartbeatInterval = setInterval(
       this.sendHeartbeat.bind(this),
-      Math.max(heartbeat, 5000)
+      Math.max(this.getHeartbeat(), 5000)
     )
   }
 

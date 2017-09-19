@@ -6,13 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.3.0] - 2017/09/19
+### Add
+- Added `getHeartbeat` for `Tracker` class.
+
+### Change
+- Set default hearbeat to 30s.
+
 ## [0.2.1] - 2017/09/19
 ## Change
 - If you do not define a heartbeat for an adsTracker, it will take its parent value.
 
 ## [0.2.0] - 2017/09/18
 ### Add
-- setOptions for Tracker.
+- Added `setOptions` for `Tracker` class.
 
 ## [0.1.3] - 2017/09/12
 ### Fix

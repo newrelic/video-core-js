@@ -54,7 +54,7 @@ describe('Tracker', () => {
       tracker = new Tracker(tag)
       expect(tracker.getWebkitBitrate()).to.be.null
 
-      tag.webkitVideoDecodedByteCount += 1000
+      tag.webkitVideoDecodedByteCount += 3000
       expect(tracker.getWebkitBitrate()).to.equal(800)
     })
   })
