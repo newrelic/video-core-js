@@ -372,15 +372,14 @@ class Tracker extends Emitter {
     att = att || {}
 
     att.viewId = this.getViewId()
-    att.trackerVersion = this.getTrackerVersion()
     att.trackerName = this.getTrackerName()
-    att.playerVersion = this.getPlayerVersion()
+    att.trackerVersion = this.getTrackerVersion()
+    att.coreVersion = pkg.version
     att.playerName = this.getPlayerName()
+    att.playerVersion = this.getPlayerVersion()
     try {
       att.pageUrl = window.location.href
     } catch (err) { /* skip */ }
-
-    att.isAd = this.isAd()
 
     if (this.isAd()) { // Ads
       att.adTitle = this.getTitle()
@@ -395,11 +394,6 @@ class Tracker extends Emitter {
       att.adSrc = this.getSrc()
       att.adCdn = this.getCdn()
       att.adIsMuted = this.isMuted()
-      // att.adPlayrate = this.getPlayrate()
-      // att.adIsLive = this.isLive()
-      // att.adIsFullscreen = this.isFullscreen()
-      // att.adIsAutoplayed = this.isAutoplayed()
-      // att.adPreload = this.getPreload()
       att.adFps = this.getFps()
       // ad exclusives
       att.adQuartile = this.getAdQuartile()

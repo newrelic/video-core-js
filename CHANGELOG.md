@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.3.1] - 2017/09/20
+### Add
+- Added `coreVersion` as attribute for all events.
+
 ## [0.3.0] - 2017/09/19
 ### Add
 - Added `getHeartbeat` for `Tracker` class.
