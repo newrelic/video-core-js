@@ -8,9 +8,11 @@ class VideoTrackerState {
   constructor () {
     this.reset()
 
-    /** Chrono that counts time since this class was instantiated. */
-    this.timeSinceTrackerReady = new Chrono()
-    this.timeSinceTrackerReady.start()
+    /**
+     * Time when the VideoTrackerState was initializated.
+     * @private
+     */
+    this._createdAt = Date.now()
   }
 
   /** Resets all flags and chronos. */
@@ -140,7 +142,6 @@ class VideoTrackerState {
   getStateAttributes (att) {
     att = att || {}
 
-    att.timeSinceTrackerReady = this.timeSinceTrackerReady.getDeltaTime()
     if (this.isAd()) {
       if (this.isRequested) {
         att.timeSinceAdRequested = this.timeSinceRequested.getDeltaTime()
@@ -195,7 +196,7 @@ class VideoTrackerState {
     } else if (this.timeSincePlayerInit.startTime === 0) {
       // If player ready is called but the timer has not been initiated, use time since tracker
       // ready instead.
-      this.timeSincePlayerInit.startTime = this.timeSinceTrackerReady.startTime
+      this.timeSincePlayerInit.startTime = this._createdAt
       this.timeSincePlayerInit.stop()
       return true
     } else {

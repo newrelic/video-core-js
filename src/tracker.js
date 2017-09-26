@@ -1,5 +1,6 @@
 import * as pkg from '../package.json'
 import Emitter from './emitter'
+import Chrono from './chrono'
 
 /**
  * Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.
@@ -32,6 +33,13 @@ class Tracker extends Emitter {
      * 'a' will prevail.
      */
     this.customData = {}
+
+    /**
+     * Chrono that counts time since this class was instantiated.
+     * @private
+     */
+    this._trackerReadyChrono = new Chrono()
+    this._trackerReadyChrono.start()
 
     options = options || {}
     this.setOptions(options)
@@ -114,6 +122,7 @@ class Tracker extends Emitter {
     att.trackerName = this.getTrackerName()
     att.trackerVersion = this.getTrackerVersion()
     att.coreVersion = pkg.version
+    att.timeSinceTrackerReady = this._trackerReadyChrono.getDeltaTime()
     return att
   }
 
