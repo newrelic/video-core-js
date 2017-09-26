@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Change
 - Changed `timeSinceTrackerReady` behaviour.
 
+### Fix
+- TrackerState class not found.
+
 ## [0.4.1] - 2017/09/26
 ### Change
 - Moved `getTrackerName` and `getTrackerVersion` from `VideoTracker` to `Tracker` class.
