@@ -1,4 +1,4 @@
-import Tracker from '../src/tracker'
+import Tracker from '../src/videotracker'
 import Log from '../src/log'
 import chai from 'chai'
 import sinon from 'sinon'
@@ -6,7 +6,7 @@ import sinon from 'sinon'
 const expect = chai.expect
 const assert = chai.assert
 
-describe('Tracker', () => {
+describe('VideoTracker', () => {
   let tracker
 
   // Mute console

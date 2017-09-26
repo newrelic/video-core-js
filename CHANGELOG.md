@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.4.0] - 2017/09/26
+### *Breaking* Change
+- Renamed `Tracker` to `VideoTracker` and `TrackerState` to `VideoTrackerState`.
+- Created a new `Tracker` intermediate class between `Emitter` and `VideoTracker` to provide support for non-video platforms.
+
 ## [0.3.1] - 2017/09/20
 ### Add
 - Added `coreVersion` as attribute for all events.

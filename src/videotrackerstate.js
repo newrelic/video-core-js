@@ -1,9 +1,9 @@
 import Chrono from './chrono'
 
 /**
- * State machine for a Tracker and its monitored video.
+ * State machine for a VideoTracker and its monitored video.
  */
-class TrackerState {
+class VideoTrackerState {
   /** Constructor */
   constructor () {
     this.reset()
@@ -405,4 +405,4 @@ class TrackerState {
   }
 }
 
-export default TrackerState
+export default VideoTrackerState

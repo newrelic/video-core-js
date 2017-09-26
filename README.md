@@ -5,7 +5,7 @@
 This video monitor solutions works on top of New Relic's **Browser Agent**.
 
 ## Contributing
-Check [CONTRIBUTING.md]() for **NPM commands** and **contributing notes**.
+Check [CONTRIBUTING.md](CONTRIBUTING.md) for **NPM commands** and **contributing notes**.
 
 ## Usage
 Add **scripts** inside `dist` folder to your page.
@@ -13,19 +13,19 @@ Add **scripts** inside `dist` folder to your page.
 > If you want to know how to generate `dist` folder, refer to **npm commands** section.
 
 ### Registering Trackers
-`nrvideo` provides a class called `Tracker` that will serve as an interface with *Browser Agent*,
-allowing you to manage and send events to New Relic.
+`nrvideo` provides a class called `VideoTracker` that will serve as an interface with 
+*Browser Agent*, allowing you to manage and send events to New Relic.
 
 First of all, you have to add a tracker in the core class:
 ```javascript
 // var nrvideo = require('newrelic-video-core')
-var tracker = new nrvideo.Tracker()
+var tracker = new nrvideo.VideoTracker()
 nrvideo.Core.addTracker(tracker)
 ```
 
 From this point, any event emitted by said tracker will be reported to New Relic:
 ```javascript
-tracker.emit('EVENT', { data: 1 })
+tracker.send('EVENT', { data: 1 })
 ```
 
 Of course, you may want to use built-in events for video. Luckily for you, this core library

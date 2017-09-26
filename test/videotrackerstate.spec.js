@@ -1,9 +1,9 @@
-import TrackerState from '../src/trackerstate.js'
+import TrackerState from '../src/videotrackerstate.js'
 import chai from 'chai'
 
 const expect = chai.expect
 
-describe('TrackerState', () => {
+describe('VideoTrackerState', () => {
   let state
 
   beforeEach(() => {
