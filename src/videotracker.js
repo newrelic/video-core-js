@@ -1,7 +1,6 @@
 import Log from './log'
 import Tracker from './tracker'
 import TrackerState from './videotrackerstate'
-import * as pkg from '../package.json'
 
 /**
  * Base video tracker class provides extensible tracking over video elements. See {@link Tracker}.
@@ -208,16 +207,6 @@ class VideoTracker extends Tracker {
    */
   unregisterListeners () {}
 
-  /** Override to change of the Version of tracker. ie: '1.0.1' */
-  getTrackerVersion () {
-    return pkg.version
-  }
-
-  /** Override to change of the Name of the tracker. ie: 'custom-html5' */
-  getTrackerName () {
-    return 'base-tracker'
-  }
-
   /**
    * Trackers will generate unique id's for every new video iteration. If you have your own unique
    * view value, you can override this method to return it.
@@ -378,12 +367,9 @@ class VideoTracker extends Tracker {
    * @final
    */
   getAttributes (att) {
-    att = att || {}
+    att = Tracker.prototype.getAttributes.call(this, arguments)
 
     att.viewId = this.getViewId()
-    att.trackerName = this.getTrackerName()
-    att.trackerVersion = this.getTrackerVersion()
-    att.coreVersion = pkg.version
     att.playerName = this.getPlayerName()
     att.playerVersion = this.getPlayerVersion()
     try {

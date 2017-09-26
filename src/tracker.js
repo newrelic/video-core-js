@@ -1,3 +1,4 @@
+import * as pkg from '../package.json'
 import Emitter from './emitter'
 
 /**
@@ -109,7 +110,21 @@ class Tracker extends Emitter {
    * @final
    */
   getAttributes (att) {
-    return att || {}
+    att = att || {}
+    att.trackerName = this.getTrackerName()
+    att.trackerVersion = this.getTrackerVersion()
+    att.coreVersion = pkg.version
+    return att
+  }
+
+  /** Override to change of the Version of tracker. ie: '1.0.1' */
+  getTrackerVersion () {
+    return pkg.version
+  }
+
+  /** Override to change of the Name of the tracker. ie: 'custom-html5' */
+  getTrackerName () {
+    return 'base-tracker'
   }
 
   /**
