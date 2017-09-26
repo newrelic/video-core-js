@@ -16,8 +16,7 @@ import Chrono from './chrono'
  */
 class Tracker extends Emitter {
   /**
-   * Constructor, receives options.
-   * Lifecycle goes like this: constructor > {@link setOptions} > {@link registerListeners}.
+   * Constructor, receives options. You should call {@see registerListeners} after this.
    *
    * @param {Object} [options] Options for the tracker. See {@link setOptions}.
    */

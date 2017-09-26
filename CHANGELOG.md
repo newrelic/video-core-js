@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.4.3] - 2017/09/26
+### Add
+- Expose `Chrono` class.
+
 ## [0.4.2] - 2017/09/26
 ### Change
 - Changed `timeSinceTrackerReady` behaviour.
