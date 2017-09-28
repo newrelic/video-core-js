@@ -21,10 +21,13 @@ class VideoTrackerState {
      * Unique identifier of the view.
      * @private
      */
-    this._viewId = null
+    this._viewSession = null
 
-    /** Number of views seen. */
-    this.viewCount = 0
+    /**
+     * Number of views seen.
+     * @private
+     */
+    this._viewCount = 0
 
     /**
      * True if it is tracking ads.
@@ -119,18 +122,26 @@ class VideoTrackerState {
     this._isAd = isAd
   }
 
-  /**
-   * Returns a random-generated view ID, useful to sort by views.
+    /**
+   * Returns a random-generated view Session ID, useful to sort by views.
    */
-  getViewId () {
-    if (!this._viewId) {
+  getViewSession () {
+    if (!this._viewSession) {
       let time = new Date().getTime()
       let random = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
 
-      this._viewId = time + '-' + random
+      this._viewSession = time + '-' + random
     }
 
-    return this._viewId + '-' + this.viewCount
+    return this._viewSession
+  }
+
+  /**
+   * Returns a random-generated view Session ID, plus a view count, allowing you to distinguish
+   * between two videos played in the same session.
+   */
+  getViewId () {
+    return this.getViewSession() + '-' + this._viewCount
   }
 
   /**
@@ -167,6 +178,13 @@ class VideoTrackerState {
     att.numberOfErrors = this.numberOfErrors
 
     return att
+  }
+
+  /**
+   * Augments view count. This will be called with each *_START and *_END.
+   */
+  goViewCountUp () {
+    this._viewCount++
   }
 
   /**
@@ -210,7 +228,6 @@ class VideoTrackerState {
    */
   goRequest () {
     if (!this.isRequested) {
-      this.viewCount++
       this.isRequested = true
       this.timeSinceRequested.start()
       return true
@@ -240,7 +257,6 @@ class VideoTrackerState {
    */
   goEnd () {
     if (this.isRequested) {
-      this.viewCount++
       this.numberOfErrors = 0
       this.resetFlags()
       this.timeSinceRequested.stop()

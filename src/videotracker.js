@@ -220,6 +220,19 @@ class VideoTracker extends Tracker {
     }
   }
 
+  /**
+   * Trackers will generate unique id's for every new video session. If you have your own unique
+   * view value, you can override this method to return it.
+   * If the tracker has a parentTracker defined, parent viewId will be used.
+   */
+  getViewSession () {
+    if (this.parentTracker) {
+      return this.parentTracker.getViewSession()
+    } else {
+      return this.state.getViewSession()
+    }
+  }
+
   /** Override to return Title of the video. */
   getTitle () {
     return null
@@ -369,9 +382,12 @@ class VideoTracker extends Tracker {
   getAttributes (att) {
     att = Tracker.prototype.getAttributes.apply(this, arguments)
 
+    att.isAd = this.isAd()
+    att.viewSession = this.getViewSession()
     att.viewId = this.getViewId()
     att.playerName = this.getPlayerName()
     att.playerVersion = this.getPlayerVersion()
+
     try {
       att.pageUrl = window.location.href
     } catch (err) { /* skip */ }
@@ -469,6 +485,7 @@ class VideoTracker extends Tracker {
    */
   sendStart (att) {
     if (this.state.goStart()) {
+      this.state.goViewCountUp()
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       this.emit(prefix + Tracker.Events.START, this.getAttributes(att))
     }
@@ -496,6 +513,8 @@ class VideoTracker extends Tracker {
       this.stopHeartbeat()
       this.emit(prefix + Tracker.Events.END, this.getAttributes(att))
       if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
+
+      this.state.goViewCountUp()
     }
   }
 

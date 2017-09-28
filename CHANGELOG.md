@@ -1,14 +1,22 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
-and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
-
 ## Unreleased
+
+## [0.5.0] - 2017/09/28
+### Add
+- `viewSession` attribute.
+- `VideoTrackerState#goViewCountUp` to increment `viewCount`.
+
+### Fix
+- `viewCount` going up BEFORE `CONTENT_END` is sent.
+
+### Remove
+- `VideoTracker#getViewId`.
 
 ## [0.4.4] - 2017/09/28
 ### Fix
-- Fixed `VideoTracker` not reporting user-defined attributes correctly.
+- `VideoTracker` not reporting user-defined attributes correctly.
 
 ## [0.4.3] - 2017/09/26
 ### Add
@@ -19,24 +27,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Changed `timeSinceTrackerReady` behaviour.
 
 ### Fix
-- TrackerState class not found.
+- `TrackerState` class not found error. 
 
 ## [0.4.1] - 2017/09/26
 ### Change
-- Moved `getTrackerName` and `getTrackerVersion` from `VideoTracker` to `Tracker` class.
+- Move `getTrackerName` and `getTrackerVersion` from `VideoTracker` to `Tracker` class.
 
 ## [0.4.0] - 2017/09/26
-### *Breaking* Change
-- Renamed `Tracker` to `VideoTracker` and `TrackerState` to `VideoTrackerState`.
-- Created a new `Tracker` intermediate class between `Emitter` and `VideoTracker` to provide support for non-video platforms.
+### Change
+- Rename `Tracker` to `VideoTracker` and `TrackerState` to `VideoTrackerState`.
+- Create a new `Tracker` intermediate class between `Emitter` and `VideoTracker` to provide support for non-video platforms.
 
 ## [0.3.1] - 2017/09/20
-### Add
-- Added `coreVersion` as attribute for all events.
+### Added
+- Add `coreVersion` as attribute for all events.
 
 ## [0.3.0] - 2017/09/19
-### Add
-- Added `getHeartbeat` for `Tracker` class.
+### Added
+- Add `getHeartbeat` for `Tracker` class.
 
 ### Change
 - Set default hearbeat to 30s.
@@ -47,7 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.2.0] - 2017/09/18
 ### Add
-- Added `setOptions` for `Tracker` class.
+- Add `setOptions` for `Tracker` class.
 
 ## [0.1.3] - 2017/09/12
 ### Fix
@@ -55,14 +63,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.1.2] - 2017/08/28
 ### Remove
-- Removed `adIsFullscreen`, `adIsAutoplayed`, `adIsLive`, `adPlayrate` and `adPreload` attributes from ad events.
+- Remove `adIsFullscreen`, `adIsAutoplayed`, `adIsLive`, `adPlayrate` and `adPreload` attributes from ad events.
 
 ## [0.1.1] - 2017/08/23
 ### Fix
-- Fixed Tracker#sendXXXXX methods, now they distinguish between ads and no ads for timeSinceXXXX atts.
+- `Tracker#sendXXXXX` methods, now they distinguish between ads and no ads for `timeSinceXXXX` attrs.
 
 ### Added
-- `CONTRIBUTING.md` file
+- Add `CONTRIBUTING.md` file
 
 ## [0.1.0] - 2017/08/06
 - First Version
