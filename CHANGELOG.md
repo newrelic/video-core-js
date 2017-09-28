@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [0.4.4] - 2017/09/28
+### Fix
+- Fixed `VideoTracker` not reporting user-defined attributes correctly.
+
 ## [0.4.3] - 2017/09/26
 ### Add
 - Expose `Chrono` class.

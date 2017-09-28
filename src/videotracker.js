@@ -367,7 +367,7 @@ class VideoTracker extends Tracker {
    * @final
    */
   getAttributes (att) {
-    att = Tracker.prototype.getAttributes.call(this, arguments)
+    att = Tracker.prototype.getAttributes.apply(this, arguments)
 
     att.viewId = this.getViewId()
     att.playerName = this.getPlayerName()
