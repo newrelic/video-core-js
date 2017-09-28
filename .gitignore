@@ -19,3 +19,6 @@ doc/
 
 # logs
 *.log
+
+# agent
+samples/agent.js
