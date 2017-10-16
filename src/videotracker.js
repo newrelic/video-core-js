@@ -32,31 +32,10 @@ class VideoTracker extends Tracker {
     this.state = new TrackerState()
 
     /**
-     * If you add something to this custom dictionary it will be added to every report. If you set
-     * any value, it will always override the values returned by the getters.
-     *
-     * @example
-     * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'.
-     * 'a' will prevail.
-     */
-    this.customData = {}
-
-    /**
-     * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
-     * @type Tracker
-     */
-    this.parentTracker = null
-
-    /**
      * Another Tracker instance to track ads.
      * @type Tracker
      */
     this.adsTracker = null
-
-    /**
-     * Set time between hearbeats, in ms.
-     */
-    this.heartbeat = null
 
     options = options || {}
     this.setOptions(options)
@@ -70,19 +49,17 @@ class VideoTracker extends Tracker {
    *
    * @param {Object} [options] Options for the tracker.
    * @param {Boolean} [options.isAd] True if the tracker is tracking ads. See {@link setIsAd}.
+   * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
    * @param {Object} [options.customData] Set custom data. See {@link customData}.
    * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
    * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
-   * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
    * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
    */
   setOptions (options) {
     if (options) {
-      if (options.customData) this.customData = options.customData
-      if (options.parentTracker) this.parentTracker = options.parentTracker
       if (options.adsTracker) this.setAdsTracker(options.adsTracker)
-      if (options.heartbeat) this.heartbeat = options.heartbeat
       if (typeof options.isAd === 'boolean') this.setIsAd(options.isAd)
+      Tracker.prototype.setOptions.apply(this, arguments)
     }
   }
 
@@ -158,22 +135,6 @@ class VideoTracker extends Tracker {
   }
 
   /**
-   * Do not override.
-   * Returns heartbeat time interval. 30.000 if not set. See {@link setOptions}.
-   * @return {number} Heartbeat interval in ms.
-   * @final
-   */
-  getHeartbeat () {
-    if (this.heartbeat) {
-      return this.heartbeat
-    } else if (this.parentTracker && this.parentTracker.heartbeat) {
-      return this.parentTracker.heartbeat
-    } else {
-      return 30000
-    }
-  }
-
-  /**
    * Override this method to register listeners to player/tag.
    * @example
    * class SpecificTracker extends Tracker {
@@ -182,7 +143,7 @@ class VideoTracker extends Tracker {
    *  }
    *
    *  playHandler() {
-   *    this.emit(Tracker.Events.REQUESTED)
+   *    this.emit(VideoTracker.Events.REQUESTED)
    *  }
    * }
    */
@@ -201,7 +162,7 @@ class VideoTracker extends Tracker {
    *  }
    *
    *  playHandler() {
-   *    this.emit(Tracker.Events.REQUESTED)
+   *    this.emit(VideoTracker.Events.REQUESTED)
    *  }
    * }
    */
@@ -447,7 +408,7 @@ class VideoTracker extends Tracker {
    */
   sendPlayerInit (att) {
     if (this.state.goPlayerInit()) {
-      this.emit(Tracker.Events.PLAYER_INIT, this.getAttributes(att))
+      this.emit(VideoTracker.Events.PLAYER_INIT, this.getAttributes(att))
     }
   }
 
@@ -460,7 +421,7 @@ class VideoTracker extends Tracker {
     if (this.state.goPlayerReady()) {
       att = att || {}
       att.timeSincePlayerInit = this.state.timeSincePlayerInit.getDeltaTime()
-      this.emit(Tracker.Events.PLAYER_READY, this.getAttributes(att))
+      this.emit(VideoTracker.Events.PLAYER_READY, this.getAttributes(att))
     }
   }
 
@@ -473,7 +434,7 @@ class VideoTracker extends Tracker {
   sendRequest (att) {
     if (this.state.goRequest()) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + Tracker.Events.REQUEST, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.REQUEST, this.getAttributes(att))
       this.startHeartbeat()
     }
   }
@@ -487,7 +448,7 @@ class VideoTracker extends Tracker {
     if (this.state.goStart()) {
       this.state.goViewCountUp()
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + Tracker.Events.START, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.START, this.getAttributes(att))
     }
   }
 
@@ -511,7 +472,7 @@ class VideoTracker extends Tracker {
         att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
       }
       this.stopHeartbeat()
-      this.emit(prefix + Tracker.Events.END, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.END, this.getAttributes(att))
       if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
 
       this.state.goViewCountUp()
@@ -526,7 +487,7 @@ class VideoTracker extends Tracker {
   sendPause (att) {
     if (this.state.goPause()) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + Tracker.Events.PAUSE, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.PAUSE, this.getAttributes(att))
     }
   }
 
@@ -546,7 +507,7 @@ class VideoTracker extends Tracker {
         prefix = 'CONTENT_'
         att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
       }
-      this.emit(prefix + Tracker.Events.RESUME, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.RESUME, this.getAttributes(att))
     }
   }
 
@@ -558,7 +519,7 @@ class VideoTracker extends Tracker {
   sendBufferStart (att) {
     if (this.state.goBufferStart()) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + Tracker.Events.BUFFER_START, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.BUFFER_START, this.getAttributes(att))
     }
   }
 
@@ -578,7 +539,7 @@ class VideoTracker extends Tracker {
         prefix = 'CONTENT_'
         att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
       }
-      this.emit(prefix + Tracker.Events.BUFFER_END, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.BUFFER_END, this.getAttributes(att))
     }
   }
 
@@ -590,7 +551,7 @@ class VideoTracker extends Tracker {
   sendSeekStart (att) {
     if (this.state.goSeekStart()) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + Tracker.Events.SEEK_START, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.SEEK_START, this.getAttributes(att))
     }
   }
 
@@ -610,7 +571,7 @@ class VideoTracker extends Tracker {
         prefix = 'CONTENT_'
         att.timeSinceSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
       }
-      this.emit(prefix + Tracker.Events.SEEK_END, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.SEEK_END, this.getAttributes(att))
     }
   }
 
@@ -623,7 +584,7 @@ class VideoTracker extends Tracker {
   sendDownload (att) {
     att = att || {}
     if (!att.state) Log.warn('Called sendDownload without { state: xxxxx }.')
-    this.emit(Tracker.Events.DOWNLOAD, this.getAttributes(att))
+    this.emit(VideoTracker.Events.DOWNLOAD, this.getAttributes(att))
     this.state.goDownload()
   }
 
@@ -635,7 +596,7 @@ class VideoTracker extends Tracker {
   sendError (att) {
     this.state.goError()
     let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-    this.emit(prefix + Tracker.Events.ERROR, this.getAttributes(att))
+    this.emit(prefix + VideoTracker.Events.ERROR, this.getAttributes(att))
   }
 
   /**
@@ -647,7 +608,7 @@ class VideoTracker extends Tracker {
     att = att || {}
     att.timeSinceLastRenditionChange = this.state.timeSinceLastRenditionChange.getDeltaTime()
     let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-    this.emit(prefix + Tracker.Events.RENDITION_CHANGE, this.getAttributes(att))
+    this.emit(prefix + VideoTracker.Events.RENDITION_CHANGE, this.getAttributes(att))
     this.state.goRenditionChange()
   }
 
@@ -658,7 +619,7 @@ class VideoTracker extends Tracker {
    */
   sendAdBreakStart (att) {
     if (this.isAd() && this.state.goAdBreakStart()) {
-      this.emit(Tracker.Events.AD_BREAK_START, this.getAttributes(att))
+      this.emit(VideoTracker.Events.AD_BREAK_START, this.getAttributes(att))
     }
   }
 
@@ -671,7 +632,7 @@ class VideoTracker extends Tracker {
     if (this.isAd() && this.state.goAdBreakEnd()) {
       att = att || {}
       att.timeSinceAdBreakBegin = this.state.timeSinceAdBreakStart.getDeltaTime()
-      this.emit(Tracker.Events.AD_BREAK_END, this.getAttributes(att))
+      this.emit(VideoTracker.Events.AD_BREAK_END, this.getAttributes(att))
     }
   }
 
@@ -686,7 +647,7 @@ class VideoTracker extends Tracker {
       att = att || {}
       if (!att.quartile) Log.warn('Called sendAdQuartile without { quartile: xxxxx }.')
       att.timeSinceLastAdQuartile = this.state.timeSinceLastAdQuartile.getDeltaTime()
-      this.emit(Tracker.Events.AD_QUARTILE, this.getAttributes(att))
+      this.emit(VideoTracker.Events.AD_QUARTILE, this.getAttributes(att))
       this.state.goAdQuartile()
     }
   }
@@ -701,7 +662,7 @@ class VideoTracker extends Tracker {
     if (this.isAd()) {
       att = att || {}
       if (!att.url) Log.warn('Called sendAdClick without { url: xxxxx }.')
-      this.emit(Tracker.Events.AD_CLICK, this.getAttributes(att))
+      this.emit(VideoTracker.Events.AD_CLICK, this.getAttributes(att))
     }
   }
 
@@ -715,28 +676,8 @@ class VideoTracker extends Tracker {
   sendHeartbeat (att) {
     if (this.state.isRequested) {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + Tracker.Events.HEARTBEAT, this.getAttributes(att))
+      this.emit(prefix + VideoTracker.Events.HEARTBEAT, this.getAttributes(att))
       this.state.goHeartbeat()
-    }
-  }
-
-  /**
-   * Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.
-   * This method is automaticaly called by the tracker once sendRequest is called.
-   */
-  startHeartbeat () {
-    this._heartbeatInterval = setInterval(
-      this.sendHeartbeat.bind(this),
-      Math.max(this.getHeartbeat(), 5000)
-    )
-  }
-
-  /**
-   * Stops heartbeating. This method is automaticaly called by the tracker.
-   */
-  stopHeartbeat () {
-    if (this._heartbeatInterval) {
-      clearInterval(this._heartbeatInterval)
     }
   }
 }
@@ -745,10 +686,10 @@ class VideoTracker extends Tracker {
  * Enumeration of events fired by this class.
  *
  * @static
- * @memberof Tracker
+ * @memberof VideoTracker
  * @enum
  */
-Tracker.Events = {
+VideoTracker.Events = {
   // Player
   PLAYER_INIT: 'PLAYER_INIT',
   PLAYER_READY: 'PLAYER_READY',

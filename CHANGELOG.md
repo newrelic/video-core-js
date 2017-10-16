@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## [0.6.0] - 2017/10/16
+### Change
+- Move `heartbeat` support from `VideoTracker` to `Tracker`.
+
+### Fix
+- Fix minnor bug with `Tracker` class not reporting `customData`.
+
 ## [0.5.0] - 2017/09/28
 ### Add
 - `viewSession` attribute.

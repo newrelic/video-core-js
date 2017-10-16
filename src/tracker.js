@@ -34,6 +34,17 @@ class Tracker extends Emitter {
     this.customData = {}
 
     /**
+     * Set time between hearbeats, in ms.
+     */
+    this.heartbeat = null
+
+    /**
+     * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
+     * @type Tracker
+     */
+    this.parentTracker = null
+
+    /**
      * Chrono that counts time since this class was instantiated.
      * @private
      */
@@ -48,11 +59,15 @@ class Tracker extends Emitter {
    * Set options for the Tracker.
    *
    * @param {Object} [options] Options for the tracker.
+   * @param {number} [options.heartbeat] Set time between heartbeats. See {@link heartbeat}.
    * @param {Object} [options.customData] Set custom data. See {@link customData}.
+   * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
    */
   setOptions (options) {
     if (options) {
+      if (options.parentTracker) this.parentTracker = options.parentTracker
       if (options.customData) this.customData = options.customData
+      if (options.heartbeat) this.heartbeat = options.heartbeat
     }
   }
 
@@ -101,6 +116,64 @@ class Tracker extends Emitter {
   unregisterListeners () {}
 
   /**
+   * Returns heartbeat time interval. 30000 (30s) if not set. See {@link setOptions}.
+   * @return {number} Heartbeat interval in ms.
+   * @final
+   */
+  getHeartbeat () {
+    if (this.heartbeat) {
+      return this.heartbeat
+    } else if (this.parentTracker && this.parentTracker.heartbeat) {
+      return this.parentTracker.heartbeat
+    } else {
+      return 30000
+    }
+  }
+
+  /**
+   * Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.
+   * This method is automaticaly called by the tracker once sendRequest is called.
+   */
+  startHeartbeat () {
+    this._heartbeatInterval = setInterval(
+      this.sendHeartbeat.bind(this),
+      Math.max(this.getHeartbeat(), 5000)
+    )
+  }
+
+  /**
+   * Stops heartbeating. This method is automaticaly called by the tracker.
+   */
+  stopHeartbeat () {
+    if (this._heartbeatInterval) {
+      clearInterval(this._heartbeatInterval)
+    }
+  }
+
+  /**
+   * Heartbeating allows you to call this function each X milliseconds, defined by
+   * {@link getHeartbeat}. This is useful to send regular events to track changes.
+   *
+   * By default it will send {@link Tracker.Events.HEARTBEAT}.
+   * To start heartbeating use {@link startHeartbeat} and to stop them use {@link stopHeartbeat}.
+   *
+   * @example
+   * Override this method to define your own Heartbeat reporting.
+   *
+   * class TrackerChild extends Tracker {
+   *  sendHeartbeat (att) {
+   *    this.send('MY_HEARBEAT_EVENT')
+   *  }
+   * }
+   *
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
+   *
+   */
+  sendHeartbeat (att) {
+    this.send(Tracker.Events.HEARTBEAT)
+  }
+
+  /**
    * Override this method to return attributes for actions.
    *
    * @example
@@ -122,6 +195,11 @@ class Tracker extends Emitter {
     att.trackerVersion = this.getTrackerVersion()
     att.coreVersion = pkg.version
     att.timeSinceTrackerReady = this._trackerReadyChrono.getDeltaTime()
+
+    for (let key in this.customData) {
+      att[key] = this.customData[key]
+    }
+
     return att
   }
 
@@ -148,6 +226,17 @@ class Tracker extends Emitter {
   send (event, att) {
     this.emit(event, this.getAttributes(att))
   }
+}
+
+/**
+ * Enumeration of events fired by this class.
+ *
+ * @static
+ * @memberof Tracker
+ * @enum
+ */
+Tracker.Events = {
+  HEARTBEAT: 'HEARTBEAT'
 }
 
 export default Tracker
