@@ -91,6 +91,10 @@ class Log {
             o.on(playerEvents[i], report)
           } else if (o.addEventListener) {
             o.addEventListener(playerEvents[i], report)
+          } else if (o.addEventHandler) {
+            o.addEventHandler(playerEvents[i], report)
+          } else {
+            Log.warn('debugCommonVideoEvents: No common listener function found for ', o)
           }
         }
       }
