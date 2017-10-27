@@ -1,8 +1,6 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## Unreleased
-
 ## [0.6.1] - 2017/10/17
 ### Add
 - Add `addEventHandler` to `Log.debugCommonVideoEvents`.
