@@ -2,11 +2,11 @@ import newrelic.jenkins.extensions
 
 use(extensions) {
   def project = 'video'
-  def _repo = 'video/core'
+  def _repo = 'video/core-js'
   def _email = 'jaguilargorina@newrelic.com'
   def slackChannel = 'video-monitoring-bot'
-  def viewName = 'core'
-  def viewDescription = 'Jobs for building/testing Video Core'
+  def viewName = 'core-js'
+  def viewDescription = 'Jobs for building/testing Video Core JS'
 
   baseJob("${project}-reseed") {
     repo _repo
