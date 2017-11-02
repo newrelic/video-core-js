@@ -433,6 +433,7 @@ class VideoTracker extends Tracker {
    */
   sendRequest (att) {
     if (this.state.goRequest()) {
+      this.state.goViewCountUp()
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       this.emit(prefix + VideoTracker.Events.REQUEST, this.getAttributes(att))
       this.startHeartbeat()
@@ -446,7 +447,6 @@ class VideoTracker extends Tracker {
    */
   sendStart (att) {
     if (this.state.goStart()) {
-      this.state.goViewCountUp()
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       this.emit(prefix + VideoTracker.Events.START, this.getAttributes(att))
     }

@@ -45,6 +45,11 @@ class VideoTrackerState {
      */
     this.numberOfAds = 0
 
+    /**
+     * Number of videos played.
+     */
+    this.numberOfVideos = 0
+
     this.resetFlags()
     this.resetChronos()
   }
@@ -174,6 +179,7 @@ class VideoTrackerState {
       if (this.isBuffering) att.timeSinceBufferBegin = this.timeSinceBufferBegin.getDeltaTime()
       if (this.isSeeking) att.timeSinceSeekBegin = this.timeSinceSeekBegin.getDeltaTime()
       att.timeSinceLastAd = this.timeSinceLastAd.getDeltaTime()
+      att.numberOfVideos = this.numberOfVideos
     }
     att.numberOfErrors = this.numberOfErrors
 
@@ -242,7 +248,11 @@ class VideoTrackerState {
    */
   goStart () {
     if (this.isRequested && !this.isStarted) {
-      if (this.isAd()) this.numberOfAds++
+      if (this.isAd()) {
+        this.numberOfAds++
+      } else {
+        this.numberOfVideos++
+      }
       this.isStarted = true
       this.timeSinceStarted.start()
       return true

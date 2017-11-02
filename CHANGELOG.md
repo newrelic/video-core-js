@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2017/11/02
+### Add
+- Add `numberOfVideos` attribute, it shows the amount of videos reproduced.
+
+### Fix
+- Fix a bug with `viewId` being incremented ad `CONTENT_START` instead on on `CONTENT_REQUEST`.
+
 ## [0.6.1] - 2017/10/17
 ### Add
 - Add `addEventHandler` to `Log.debugCommonVideoEvents`.
