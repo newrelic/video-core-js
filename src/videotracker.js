@@ -194,6 +194,11 @@ class VideoTracker extends Tracker {
     }
   }
 
+  /** Override to return the Id of the video. */
+  getVideoId () {
+    return null
+  }
+
   /** Override to return Title of the video. */
   getTitle () {
     return null
@@ -302,6 +307,20 @@ class VideoTracker extends Tracker {
     return null
   }
 
+  /**
+   * Override to return if the player was autoplayed. By default: this.tag.autoplay
+   */
+  isAutoplayed () {
+    return this.tag ? this.tag.autoplay : null
+  }
+
+  /**
+   * Override to return the player preload attribute. By default: this.tag.preload
+   */
+  getPreload () {
+    return this.tag ? this.tag.preload : null
+  }
+
   // Only for ads
   /**
    * Override to return Quartile of the ad. 0 before first, 1 after first quartile, 2 after
@@ -320,17 +339,17 @@ class VideoTracker extends Tracker {
   }
 
   /**
-   * Override to return if the player was autoplayed. By default: this.tag.autoplay
+   * Override to return the ad partner. ie: ima, freewheel...
    */
-  isAutoplayed () {
-    return this.tag ? this.tag.autoplay : null
+  getAdPartner () {
+    return null
   }
 
   /**
-   * Override to return the player preload attribute. By default: this.tag.preload
+   * Override to return the creative id of the ad.
    */
-  getPreload () {
-    return this.tag ? this.tag.preload : null
+  getAdCreativeId () {
+    return null
   }
 
   /**
@@ -354,6 +373,7 @@ class VideoTracker extends Tracker {
     } catch (err) { /* skip */ }
 
     if (this.isAd()) { // Ads
+      att.adId = this.getVideoId()
       att.adTitle = this.getTitle()
       att.adBitrate = this.getBitrate() || this.getWebkitBitrate()
       att.adRenditionName = this.getRenditionName()
@@ -370,7 +390,10 @@ class VideoTracker extends Tracker {
       // ad exclusives
       att.adQuartile = this.getAdQuartile()
       att.adPosition = this.getAdPosition()
+      att.adCreativeId = this.getAdCreativeId()
+      att.adPartner = this.getAdPartner()
     } else { // no ads
+      att.contentId = this.getVideoId()
       att.contentTitle = this.getTitle()
       att.contentIsLive = this.isLive()
       att.contentBitrate = this.getBitrate() || this.getWebkitBitrate()

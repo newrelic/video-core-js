@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2017/11/03
+### Add
+- Add `adCreativeId`, `adPartner` and `contentId/adId` attributes.
+
 ## [0.7.0] - 2017/11/02
 ### Add
 - Add `numberOfVideos` attribute, it shows the amount of videos reproduced.
