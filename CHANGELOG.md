@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+### Change
+- First `HEARTBEAT` will now contain `timeSinceLastHeartbeat` counting since it was started.
+
 ## [0.8.0] - 2017/11/03
 ### Add
 - Add `adCreativeId`, `adPartner` and `contentId/adId` attributes.

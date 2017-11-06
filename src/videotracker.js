@@ -460,6 +460,7 @@ class VideoTracker extends Tracker {
       let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
       this.emit(prefix + VideoTracker.Events.REQUEST, this.getAttributes(att))
       this.startHeartbeat()
+      this.state.goHeartbeat()
     }
   }
 
