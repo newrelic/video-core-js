@@ -239,6 +239,33 @@ class VideoTracker extends Tracker {
     return null
   }
 
+  /** This method will return 'up', 'down' or null depending on if the bitrate of the rendition
+   * have changed from the last time it was called.
+   */
+  getRenditionShift () {
+    let current = this.getRenditionBitrate()
+    let last
+    if (this.isAd()) {
+      last = this._lastAdRendition
+      this._lastAdRendition = current
+    } else {
+      last = this._lastRendition
+      this._lastRendition = current
+    }
+
+    if (!current || !last) {
+      return null
+    } else {
+      if (current > last) {
+        return 'up'
+      } else if (current < last) {
+        return 'down'
+      } else {
+        return null
+      }
+    }
+  }
+
   /** Override to return renidtion actual Height (before re-scaling). */
   getRenditionHeight () {
     return this.tag ? this.tag.videoHeight : null
@@ -444,8 +471,8 @@ class VideoTracker extends Tracker {
   sendRequest (att) {
     if (this.state.goRequest()) {
       this.state.goViewCountUp()
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + VideoTracker.Events.REQUEST, this.getAttributes(att))
+      let ev = this.isAd() ? VideoTracker.Events.AD_REQUEST : VideoTracker.Events.CONTENT_REQUEST
+      this.emit(ev, this.getAttributes(att))
       this.startHeartbeat()
       this.state.goHeartbeat()
     }
@@ -458,8 +485,8 @@ class VideoTracker extends Tracker {
    */
   sendStart (att) {
     if (this.state.goStart()) {
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + VideoTracker.Events.START, this.getAttributes(att))
+      let ev = this.isAd() ? VideoTracker.Events.AD_START : VideoTracker.Events.CONTENT_START
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -472,18 +499,18 @@ class VideoTracker extends Tracker {
   sendEnd (att) {
     if (this.state.goEnd()) {
       att = att || {}
-      let prefix
+      let ev
       if (this.isAd()) {
-        prefix = 'AD_'
+        ev = VideoTracker.Events.AD_END
         att.timeSinceAdRequested = this.state.timeSinceRequested.getDeltaTime()
         att.timeSinceAdStarted = this.state.timeSinceStarted.getDeltaTime()
       } else {
-        prefix = 'CONTENT_'
+        ev = VideoTracker.Events.CONTENT_END
         att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
         att.timeSinceStarted = this.state.timeSinceStarted.getDeltaTime()
       }
       this.stopHeartbeat()
-      this.emit(prefix + VideoTracker.Events.END, this.getAttributes(att))
+      this.emit(ev, this.getAttributes(att))
       if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
 
       this.state.goViewCountUp()
@@ -497,8 +524,8 @@ class VideoTracker extends Tracker {
    */
   sendPause (att) {
     if (this.state.goPause()) {
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + VideoTracker.Events.PAUSE, this.getAttributes(att))
+      let ev = this.isAd() ? VideoTracker.Events.AD_PAUSE : VideoTracker.Events.CONTENT_PAUSE
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -510,15 +537,15 @@ class VideoTracker extends Tracker {
   sendResume (att) {
     if (this.state.goResume()) {
       att = att || {}
-      let prefix
+      let ev
       if (this.isAd()) {
-        prefix = 'AD_'
+        ev = VideoTracker.Events.AD_RESUME
         att.timeSinceAdPaused = this.state.timeSincePaused.getDeltaTime()
       } else {
-        prefix = 'CONTENT_'
+        ev = VideoTracker.Events.CONTENT_RESUME
         att.timeSincePaused = this.state.timeSincePaused.getDeltaTime()
       }
-      this.emit(prefix + VideoTracker.Events.RESUME, this.getAttributes(att))
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -529,8 +556,13 @@ class VideoTracker extends Tracker {
    */
   sendBufferStart (att) {
     if (this.state.goBufferStart()) {
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + VideoTracker.Events.BUFFER_START, this.getAttributes(att))
+      let ev
+      if (this.isAd()) {
+        ev = VideoTracker.Events.AD_BUFFER_START
+      } else {
+        ev = VideoTracker.Events.CONTENT_BUFFER_START
+      }
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -542,15 +574,15 @@ class VideoTracker extends Tracker {
   sendBufferEnd (att) {
     if (this.state.goBufferEnd()) {
       att = att || {}
-      let prefix
+      let ev
       if (this.isAd()) {
-        prefix = 'AD_'
+        ev = VideoTracker.Events.AD_BUFFER_END
         att.timeSinceAdBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
       } else {
-        prefix = 'CONTENT_'
+        ev = VideoTracker.Events.CONTENT_BUFFER_END
         att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
       }
-      this.emit(prefix + VideoTracker.Events.BUFFER_END, this.getAttributes(att))
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -561,8 +593,13 @@ class VideoTracker extends Tracker {
    */
   sendSeekStart (att) {
     if (this.state.goSeekStart()) {
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + VideoTracker.Events.SEEK_START, this.getAttributes(att))
+      let ev
+      if (this.isAd()) {
+        ev = VideoTracker.Events.AD_SEEK_START
+      } else {
+        ev = VideoTracker.Events.CONTENT_SEEK_START
+      }
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -574,15 +611,15 @@ class VideoTracker extends Tracker {
   sendSeekEnd (att) {
     if (this.state.goSeekEnd()) {
       att = att || {}
-      let prefix
+      let ev
       if (this.isAd()) {
-        prefix = 'AD_'
+        ev = VideoTracker.Events.AD_SEEK_END
         att.timeSinceAdSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
       } else {
-        prefix = 'CONTENT_'
+        ev = VideoTracker.Events.CONTENT_SEEK_END
         att.timeSinceSeekBegin = this.state.timeSinceSeekBegin.getDeltaTime()
       }
-      this.emit(prefix + VideoTracker.Events.SEEK_END, this.getAttributes(att))
+      this.emit(ev, this.getAttributes(att))
     }
   }
 
@@ -606,8 +643,8 @@ class VideoTracker extends Tracker {
    */
   sendError (att) {
     this.state.goError()
-    let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-    this.emit(prefix + VideoTracker.Events.ERROR, this.getAttributes(att))
+    let ev = this.isAd() ? VideoTracker.Events.AD_ERROR : VideoTracker.Events.CONTENT_ERROR
+    this.emit(ev, this.getAttributes(att))
   }
 
   /**
@@ -618,11 +655,38 @@ class VideoTracker extends Tracker {
   sendRenditionChanged (att) {
     att = att || {}
     att.timeSinceLastRenditionChange = this.state.timeSinceLastRenditionChange.getDeltaTime()
-    let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-    this.emit(prefix + VideoTracker.Events.RENDITION_CHANGE, this.getAttributes(att))
+    att.shift = this.getRenditionShift()
+    let ev
+    if (this.isAd()) {
+      ev = VideoTracker.Events.AD_RENDITION_CHANGE
+    } else {
+      ev = VideoTracker.Events.CONTENT_RENDITION_CHANGE
+    }
+    this.emit(ev, this.getAttributes(att))
     this.state.goRenditionChange()
   }
 
+  /**
+   * Sends associated event and changes view state. Heartbeat will automatically be sent every
+   * 10 seconds. There's no need to call this manually.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
+   * @param {number} att.url Url of the clicked ad.
+   *
+   */
+  sendHeartbeat (att) {
+    if (this.state.isRequested) {
+      let ev
+      if (this.isAd()) {
+        ev = VideoTracker.Events.AD_HEARTBEAT
+      } else {
+        ev = VideoTracker.Events.CONTENT_HEARTBEAT
+      }
+      this.emit(ev, this.getAttributes(att))
+      this.state.goHeartbeat()
+    }
+  }
+
+  // Only ads
   /**
    * Sends associated event and changes view state. An internal state machine will prevent
    * duplicated events. Should be associated to an event using registerListeners.
@@ -676,21 +740,6 @@ class VideoTracker extends Tracker {
       this.emit(VideoTracker.Events.AD_CLICK, this.getAttributes(att))
     }
   }
-
-  /**
-   * Sends associated event and changes view state. Heartbeat will automatically be sent every
-   * 10 seconds. There's no need to call this manually.
-   * @param {Object} [att] Collection of key:value attributes to send with the request.
-   * @param {number} att.url Url of the clicked ad.
-   *
-   */
-  sendHeartbeat (att) {
-    if (this.state.isRequested) {
-      let prefix = this.isAd() ? 'AD_' : 'CONTENT_'
-      this.emit(prefix + VideoTracker.Events.HEARTBEAT, this.getAttributes(att))
-      this.state.goHeartbeat()
-    }
-  }
 }
 
 /**
@@ -704,22 +753,35 @@ VideoTracker.Events = {
   // Player
   PLAYER_READY: 'PLAYER_READY',
   DOWNLOAD: 'DOWNLOAD',
-
-  // Video
-  REQUEST: 'REQUEST',
-  START: 'START',
-  END: 'END',
-  PAUSE: 'PAUSE',
-  RESUME: 'RESUME',
-  SEEK_START: 'SEEK_START',
-  SEEK_END: 'SEEK_END',
-  BUFFER_START: 'BUFFER_START',
-  BUFFER_END: 'BUFFER_END',
-  HEARTBEAT: 'HEARTBEAT',
-  RENDITION_CHANGE: 'RENDITION_CHANGE',
   ERROR: 'ERROR',
 
+  // Video
+  CONTENT_REQUEST: 'CONTENT_REQUEST',
+  CONTENT_START: 'CONTENT_START',
+  CONTENT_END: 'CONTENT_END',
+  CONTENT_PAUSE: 'CONTENT_PAUSE',
+  CONTENT_RESUME: 'CONTENT_RESUME',
+  CONTENT_SEEK_START: 'CONTENT_SEEK_START',
+  CONTENT_SEEK_END: 'CONTENT_SEEK_END',
+  CONTENT_BUFFER_START: 'CONTENT_BUFFER_START',
+  CONTENT_BUFFER_END: 'CONTENT_BUFFER_END',
+  CONTENT_HEARTBEAT: 'CONTENT_HEARTBEAT',
+  CONTENT_RENDITION_CHANGE: 'CONTENT_RENDITION_CHANGE',
+  CONTENT_ERROR: 'CONTENT_ERROR',
+
   // Ads only
+  AD_REQUEST: 'AD_REQUEST',
+  AD_START: 'AD_START',
+  AD_END: 'AD_END',
+  AD_PAUSE: 'AD_PAUSE',
+  AD_RESUME: 'AD_RESUME',
+  AD_SEEK_START: 'AD_SEEK_START',
+  AD_SEEK_END: 'AD_SEEK_END',
+  AD_BUFFER_START: 'AD_BUFFER_START',
+  AD_BUFFER_END: 'AD_BUFFER_END',
+  AD_HEARTBEAT: 'AD_HEARTBEAT',
+  AD_RENDITION_CHANGE: 'AD_RENDITION_CHANGE',
+  AD_ERROR: 'AD_ERROR',
   AD_BREAK_START: 'AD_BREAK_START',
   AD_BREAK_END: 'AD_BREAK_END',
   AD_QUARTILE: 'AD_QUARTILE',
