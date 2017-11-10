@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 ## [0.9.0] - 2017/11/10
 ### Add
 - Add `isPlayerReady` to `VideoTrackerState`.
+- Add `shift` in `*_RENDITION_CHANGE` events. Will report `up` or `down` depending on the change of rendition bitrate since last change.
 
 ### Remove
 - Remove `TRACKER_READY` and `PLAYER_INIT` events.
@@ -13,6 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ### Change
 - First `HEARTBEAT` will now contain `timeSinceLastHeartbeat` counting since it was started.
+- Extend events of `VideoTracker` to cover all posibilities: from `END` to `CONTENT_END` and `AD_END`.
 
 ## [0.8.0] - 2017/11/03
 ### Add
