@@ -147,7 +147,7 @@ class VideoTracker extends Tracker {
    *  }
    * }
    */
-  registerListeners () {}
+  registerListeners () { }
 
   /**
    * Override this method to unregister listeners to player/tag created in registerListeners
@@ -166,7 +166,7 @@ class VideoTracker extends Tracker {
    *  }
    * }
    */
-  unregisterListeners () {}
+  unregisterListeners () { }
 
   /**
    * Trackers will generate unique id's for every new video iteration. If you have your own unique
@@ -424,18 +424,6 @@ class VideoTracker extends Tracker {
   }
 
   /**
-   * Sends that the player starts loading.
-   * Sends associated event and changes view state. An internal state machine will prevent
-   * duplicated events. Should be associated to an event using registerListeners.
-   * @param {Object} [att] Collection of key:value attributes to send with the request.
-   */
-  sendPlayerInit (att) {
-    if (this.state.goPlayerInit()) {
-      this.emit(VideoTracker.Events.PLAYER_INIT, this.getAttributes(att))
-    }
-  }
-
-  /**
    * Sends associated event and changes view state. An internal state machine will prevent
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
@@ -443,7 +431,6 @@ class VideoTracker extends Tracker {
   sendPlayerReady (att) {
     if (this.state.goPlayerReady()) {
       att = att || {}
-      att.timeSincePlayerInit = this.state.timeSincePlayerInit.getDeltaTime()
       this.emit(VideoTracker.Events.PLAYER_READY, this.getAttributes(att))
     }
   }
@@ -715,7 +702,6 @@ class VideoTracker extends Tracker {
  */
 VideoTracker.Events = {
   // Player
-  PLAYER_INIT: 'PLAYER_INIT',
   PLAYER_READY: 'PLAYER_READY',
   DOWNLOAD: 'DOWNLOAD',
 

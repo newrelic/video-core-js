@@ -1,7 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## [0.9.0] - 2017/11/10
+### Add
+- Add `isPlayerReady` to `VideoTrackerState`.
+
+### Remove
+- Remove `TRACKER_READY` and `PLAYER_INIT` events.
+- Remove `sendPlayerInit` from `VideoTracker`.
+- Remove `timeSincePlayerInit` from `VideoTrackerState`. Use `timeSinceLoad`.
+- Remove `goPlayerInit` and `isPlayerReadying` from `VideoTrackerState`.
+
 ### Change
 - First `HEARTBEAT` will now contain `timeSinceLastHeartbeat` counting since it was started.
 

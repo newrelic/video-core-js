@@ -56,8 +56,8 @@ class VideoTrackerState {
 
   /** Resets flags. */
   resetFlags () {
-    /** True whilst the player is redying. ie: from player_init to player_ready. */
-    this.isReadyingPlayer = false
+    /** True once the player has finished loading. */
+    this.isPlayerReady = false
 
     /** True if the video has been user-requested to play. ie: user cicks play. */
     this.isRequested = false
@@ -80,9 +80,6 @@ class VideoTrackerState {
 
   /** Resets chronos. */
   resetChronos () {
-    /** Chrono that counts time since player init event. */
-    this.timeSincePlayerInit = new Chrono()
-
     /** Chrono that counts time since last requested event. */
     this.timeSinceRequested = new Chrono()
 
@@ -127,9 +124,9 @@ class VideoTrackerState {
     this._isAd = isAd
   }
 
-    /**
-   * Returns a random-generated view Session ID, useful to sort by views.
-   */
+  /**
+ * Returns a random-generated view Session ID, useful to sort by views.
+ */
   getViewSession () {
     if (!this._viewSession) {
       let time = new Date().getTime()
@@ -194,34 +191,12 @@ class VideoTrackerState {
   }
 
   /**
-   * Checks flags and changes state
-   * @returns {boolean} True if the state changed.
-   */
-  goPlayerInit () {
-    if (!this.isReadyingPlayer) {
-      this.isReadyingPlayer = true
-      this.timeSincePlayerInit.start()
-      return true
-    } else {
-      return false
-    }
-  }
-
-  /**
-   * Checks flags and changes state. If playerInit was not called, trackerReady will be used
-   * as a starting point.
+   * Checks flags and changes state.
    * @returns {boolean} True if the state changed.
    */
   goPlayerReady () {
-    if (this.isReadyingPlayer) {
-      this.isReadyingPlayer = false
-      this.timeSincePlayerInit.stop()
-      return true
-    } else if (this.timeSincePlayerInit.startTime === 0) {
-      // If player ready is called but the timer has not been initiated, use time since tracker
-      // ready instead.
-      this.timeSincePlayerInit.startTime = this._createdAt
-      this.timeSincePlayerInit.stop()
+    if (!this.isPlayerReady) {
+      this.isPlayerReady = true
       return true
     } else {
       return false

@@ -14,7 +14,6 @@ class Core {
     if (tracker.on && tracker.emit) {
       trackers.push(tracker)
       tracker.on('*', eventHandler)
-      tracker.send('TRACKER_READY')
     } else {
       Log.error('Tried to load a non-tracker.', tracker)
     }
