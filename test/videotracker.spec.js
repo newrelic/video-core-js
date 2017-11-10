@@ -25,7 +25,7 @@ describe('VideoVideoTracker', () => {
       expect(tracker.player).to.equal(1)
       expect(tracker.tag).to.equal(2)
 
-      global.document = {getElementById: function () {}}
+      global.document = { getElementById: function () { } }
       let spy = sinon.spy(document, 'getElementById')
       tracker.setPlayer('player', 'tag')
       assert(spy.calledTwice)
@@ -33,20 +33,21 @@ describe('VideoVideoTracker', () => {
 
     it('should send custom data', (done) => {
       tracker = new VideoTracker(null, { customData: { a: 1 } })
-      tracker.on(VideoTracker.Events.PLAYER_INIT, (e) => {
+      tracker.on(VideoTracker.Events.PLAYER_READY, (e) => {
         expect(e.data.a).to.equal(1)
         done()
       })
-      tracker.sendPlayerInit()
+      tracker.sendPlayerReady()
     })
 
     it('should set adsTracker', (done) => {
       tracker = new VideoTracker(null, { adsTracker: new VideoTracker() })
-      tracker.adsTracker.on('AD_' + VideoTracker.Events.REQUEST, () => {
+      tracker.adsTracker.on(VideoTracker.Events.AD_END, () => {
         tracker.disposeAdsTracker()
         done()
       })
       tracker.adsTracker.sendRequest()
+      tracker.adsTracker.sendEnd()
     })
 
     it('should calculate webkitbitrate', () => {
@@ -59,131 +60,156 @@ describe('VideoVideoTracker', () => {
     })
   })
 
-  describe('EventFiring', () => {
-    beforeEach(() => {
-      tracker = new VideoTracker()
-    })
+  function generateTests (ads) {
+    let type = ads ? 'for ads' : 'for content'
 
-    it('player init', (done) => {
-      tracker.on(VideoTracker.Events.PLAYER_INIT, () => done())
-      tracker.sendPlayerInit()
-    })
+    describe('EventFiring ' + type, () => {
+      beforeEach(() => {
+        tracker = new VideoTracker()
+        tracker.setIsAd(ads)
+      })
 
-    it('player ready', (done) => {
-      tracker.on(VideoTracker.Events.PLAYER_READY, () => done())
-      tracker.sendPlayerInit()
-      tracker.sendPlayerReady()
-    })
+      it('should return correct shift', () => {
+        tracker = new VideoTracker()
+        expect(tracker.getRenditionShift()).to.be.null
+        tracker.getRenditionBitrate = () => { return 1 }
+        expect(tracker.getRenditionShift()).to.be.null
+        tracker.getRenditionBitrate = () => { return 2 }
+        expect(tracker.getRenditionShift()).to.equal('up')
+        tracker.getRenditionBitrate = () => { return 1 }
+        expect(tracker.getRenditionShift()).to.equal('down')
+        expect(tracker.getRenditionShift()).to.be.null
+      })
 
-    it('download', (done) => {
-      tracker.on(VideoTracker.Events.DOWNLOAD, () => done())
-      tracker.sendDownload()
-    })
+      it('player ready', (done) => {
+        tracker.on(VideoTracker.Events.PLAYER_READY, () => done())
+        tracker.sendPlayerReady()
+      })
 
-    // Video
-    it('request', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.REQUEST, () => done())
-      tracker.sendRequest()
-    })
+      it('download', (done) => {
+        tracker.on(VideoTracker.Events.DOWNLOAD, () => done())
+        tracker.sendDownload()
+      })
 
-    it('start', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.START, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-    })
+      // Video
+      it('request', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'REQUEST', () => done())
+        tracker.sendRequest()
+      })
 
-    it('end', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.END, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendEnd()
-    })
+      it('start', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'START', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+      })
 
-    it('pause', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.PAUSE, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendPause()
-    })
+      it('end', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'END', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendEnd()
+      })
 
-    it('resume', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.RESUME, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendPause()
-      tracker.sendResume()
-    })
+      it('pause', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'PAUSE', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendPause()
+      })
 
-    it('seek start', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.SEEK_START, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendSeekStart()
-    })
+      it('resume', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'RESUME', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendPause()
+        tracker.sendResume()
+      })
 
-    it('seek end', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.SEEK_END, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendSeekStart()
-      tracker.sendSeekEnd()
-    })
+      it('seek start', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'SEEK_START', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendSeekStart()
+      })
 
-    it('buffer start', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.BUFFER_START, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendBufferStart()
-    })
+      it('seek end', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'SEEK_END', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendSeekStart()
+        tracker.sendSeekEnd()
+      })
 
-    it('buffer end', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.BUFFER_END, () => done())
-      tracker.sendRequest()
-      tracker.sendStart()
-      tracker.sendBufferStart()
-      tracker.sendBufferEnd()
-    })
+      it('buffer start', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'BUFFER_START', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendBufferStart()
+      })
 
-    it('heartbeat', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.HEARTBEAT, () => done())
-      tracker.sendRequest()
-      tracker.sendHeartbeat()
-    })
+      it('buffer end', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'BUFFER_END', () => done())
+        tracker.sendRequest()
+        tracker.sendStart()
+        tracker.sendBufferStart()
+        tracker.sendBufferEnd()
+      })
 
-    it('rendition change', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.RENDITION_CHANGE, () => done())
-      tracker.sendRenditionChanged()
-    })
+      it('heartbeat', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'HEARTBEAT', () => done())
+        tracker.sendRequest()
+        tracker.sendHeartbeat()
+      })
 
-    it('error', (done) => {
-      tracker.on('CONTENT_' + VideoTracker.Events.ERROR, () => done())
-      tracker.sendError()
-    })
+      it('rendition change', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'RENDITION_CHANGE', () => done())
+        tracker.sendRenditionChanged()
+      })
 
-    // Ads only
-    it('ad break start', (done) => {
-      tracker.setIsAd(true)
-      tracker.on(VideoTracker.Events.AD_BREAK_START, () => done())
-      tracker.sendAdBreakStart()
-    })
+      it('error', (done) => {
+        let prefix = ads ? 'AD_' : 'CONTENT_'
+        tracker.on(prefix + 'ERROR', () => done())
+        tracker.sendError()
+      })
 
-    it('ad break end', (done) => {
-      tracker.setIsAd(true)
-      tracker.on(VideoTracker.Events.AD_BREAK_END, () => done())
-      tracker.sendAdBreakStart()
-      tracker.sendAdBreakEnd()
-    })
+      // Ads only
+      if (ads) {
+        it('ad break start', (done) => {
+          tracker.on(VideoTracker.Events.AD_BREAK_START, () => done())
+          tracker.sendAdBreakStart()
+        })
 
-    it('ad quartile', (done) => {
-      tracker.setIsAd(true)
-      tracker.on(VideoTracker.Events.AD_QUARTILE, () => done())
-      tracker.sendAdQuartile()
-    })
+        it('ad break end', (done) => {
+          tracker.on(VideoTracker.Events.AD_BREAK_END, () => done())
+          tracker.sendAdBreakStart()
+          tracker.sendAdBreakEnd()
+        })
 
-    it('ad click', (done) => {
-      tracker.setIsAd(true)
-      tracker.on(VideoTracker.Events.AD_CLICK, () => done())
-      tracker.sendAdClick()
+        it('ad quartile', (done) => {
+          tracker.on(VideoTracker.Events.AD_QUARTILE, () => done())
+          tracker.sendAdQuartile()
+        })
+
+        it('ad click', (done) => {
+          tracker.on(VideoTracker.Events.AD_CLICK, () => done())
+          tracker.sendAdClick()
+        })
+      }
     })
-  })
+  }
+
+  generateTests(false)
+  generateTests(true)
 })
+

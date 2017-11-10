@@ -35,20 +35,10 @@ describe('VideoTrackerState', () => {
     expect(typeof state.getStateAttributes()).to.be.equal('object')
   })
 
-  it('should playerInit', () => {
-    expect(state.isReadyingPlayer).to.be.false
-    expect(state.goPlayerInit()).to.be.true
-    expect(state.goPlayerInit()).to.be.false // do not repeat
-    expect(state.isReadyingPlayer).to.be.true
-    expect(state.timeSincePlayerInit.getDeltaTime()).to.be.greaterThan(-1)
+  it('should playerReady', () => {
     expect(state.goPlayerReady()).to.be.true
     expect(state.goPlayerReady()).to.be.false
-    expect(state.isReadyingPlayer).to.be.false
-  })
-
-  it('should playerReady with no init', () => {
-    expect(state.goPlayerReady()).to.be.true
-    expect(state.timeSincePlayerInit.getDeltaTime()).to.be.greaterThan(-1)
+    expect(state.isPlayerReady).to.be.true
   })
 
   it('should request, start and end', () => {
