@@ -10,15 +10,17 @@
     "watch:dev": "webpack --progress --color --watch",
     "clean": "rm -rf dist coverage doc",
     "test": "nyc --reporter=html --reporter=text mocha --compilers js:babel-core/register",
-    "doc": "jsdoc -c jsdoc.json -d doc"
+    "doc": "jsdoc -c jsdoc.json -d doc",
+    "deploy": "node jenkins/scripts/deploy.js"
   },
   "repository": {
     "type": "git",
-    "url": "git@source.datanerd.us:video/core-js.git"
+    "url": "https://github.com/newrelic/video-core-js"
   },
   "author": "Jordi Aguilar",
   "license": "MIT",
   "devDependencies": {
+    "aws-sdk": "^2.141.0",
     "babel-core": "^6.25.0",
     "babel-loader": "^7.1.1",
     "babel-preset-env": "^1.6.0",
@@ -30,5 +32,6 @@
     "nyc": "^11.1.0",
     "sinon": "^2.4.1",
     "webpack": "^3.4.1"
-  }
+  },
+  "dependencies": {}
 }
