@@ -1,4 +1,4 @@
-const pkg = require('../../package.json')
+const pkg = require('../package.json')
 const AWS = require('aws-sdk')
 const fs = require('fs')
 const path = require('path')
@@ -18,11 +18,11 @@ const s3 = new AWS.S3({
 
 // upload files
 const baseDir = 'trackers/js/' + pkg.name + '/' + version + '/'
-uploadFolder(path.join(__dirname, '../../dist'), baseDir + 'dist/')
-uploadFolder(path.join(__dirname, '../../samples'), baseDir + 'samples/')
-uploadFile('CHANGELOG.md', path.join(__dirname, '../..'), baseDir)
-uploadFile('README.md', path.join(__dirname, '../..'), baseDir)
-uploadFile('package.json', path.join(__dirname, '../..'), baseDir)
+uploadFolder(path.join(__dirname, '../dist'), baseDir + 'dist/')
+uploadFolder(path.join(__dirname, '../samples'), baseDir + 'samples/')
+uploadFile('CHANGELOG.md', path.join(__dirname, '..'), baseDir)
+uploadFile('README.md', path.join(__dirname, '..'), baseDir)
+uploadFile('package.json', path.join(__dirname, '..'), baseDir)
 
 // upload folders
 function uploadFolder (originPath, targetPath) {
