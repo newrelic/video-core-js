@@ -9,6 +9,7 @@ const s3BucketName = 'nr-video-samples'
 const awsId = process.env['AWS-ACCESS-KEY-ID']
 const awsSecret = process.env['AWS-ACCESS-KEY-SECRET']
 
+//
 // initialize S3 client
 const s3 = new AWS.S3({
   signatureVersion: 'v4',
