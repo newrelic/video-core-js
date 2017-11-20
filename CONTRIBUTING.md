@@ -27,3 +27,5 @@ Use ```npm run test``` to run tests and coverage.
 Use ```npm run doc``` to generate documentation page.
 
 Use ```npm run clean``` to clear any generated files.
+
+Use ```npm run deploy``` to deploy the repo to aws bucket.
