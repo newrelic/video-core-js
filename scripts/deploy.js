@@ -29,8 +29,13 @@ const s3BucketName = process.env['AWS-BUCKET-NAME']
 const awsId = process.env['AWS-ACCESS-KEY-ID']
 const awsSecret = process.env['AWS-ACCESS-KEY-SECRET']
 
-if (!s3BucketName || !awsId || !awsSecret) {
-  console.error('Error: Env variables to publish are missing. Please define `AWS-BUCKET-NAME`, `AWS-ACCESS-KEY-ID` and `AWS-ACCESS-KEY-SECRET`.')
+// missing var error
+let missing = []
+if (!s3BucketName) missing.push('AWS-BUCKET-NAME')
+if (!awsId) missing.push('AWS-ACCESS-KEY-ID')
+if (!awsSecret) missing.push('AWS-ACCESS-KEY-SECRET')
+if (missing.length > 0) {
+  console.error('Error: Env variables to publish are missing. Please define:', missing)
   process.exit(1)
 }
 
