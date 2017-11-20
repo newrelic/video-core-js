@@ -1,15 +1,39 @@
+#!/bin/env node
+
+/**
+ * @name deploy.js
+ * This script deploys final files to amazon s3. Designed to be used through 'npm run deploy'.
+ *
+ * @arg version
+ * You can pass an argument, defining the subfolder it will be uploaded to:
+ *
+ * (empty): <npm run deploy>
+ * Will use 'lastbuild', ie: 'js/core/lastbuild/'
+ *
+ * 'version': <npm run deploy version>
+ * Will use the current version specified in 'package.json', ie: js/core/0.1/
+ *
+ * (string): <npm run deploy beta>
+ * Will use the said string, ie: js/core/beta/
+ */
+
 const pkg = require('../package.json')
 const AWS = require('aws-sdk')
 const fs = require('fs')
 const path = require('path')
 
 // config
-const version = process.argv[2] || pkg.version
-const s3BucketName = 'nr-video-samples'
+let version = process.argv[2] || 'lastbuild'
+if (version === 'version') version = pkg.version
+const s3BucketName = process.env['AWS-BUCKET-NAME']
 const awsId = process.env['AWS-ACCESS-KEY-ID']
 const awsSecret = process.env['AWS-ACCESS-KEY-SECRET']
 
-//
+if (!s3BucketName || !awsId || !awsSecret) {
+  console.error('Error: Env variables to publish are missing. Please define `AWS-BUCKET-NAME`, `AWS-ACCESS-KEY-ID` and `AWS-ACCESS-KEY-SECRET`.')
+  process.exit(1)
+}
+
 // initialize S3 client
 const s3 = new AWS.S3({
   signatureVersion: 'v4',
