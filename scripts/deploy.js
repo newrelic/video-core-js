@@ -25,15 +25,15 @@ const path = require('path')
 // config
 let version = process.argv[2] || 'lastbuild'
 if (version === 'version') version = pkg.version
-const s3BucketName = process.env['AWS-BUCKET-NAME']
-const awsId = process.env['AWS-ACCESS-KEY-ID']
-const awsSecret = process.env['AWS-ACCESS-KEY-SECRET']
+const s3BucketName = process.env['AWS_BUCKET_NAME']
+const awsId = process.env['AWS_ACCESS_KEY_ID']
+const awsSecret = process.env['AWS_ACCESS_KEY_SECRET']
 
 // missing var error
 let missing = []
-if (!s3BucketName) missing.push('AWS-BUCKET-NAME')
-if (!awsId) missing.push('AWS-ACCESS-KEY-ID')
-if (!awsSecret) missing.push('AWS-ACCESS-KEY-SECRET')
+if (!s3BucketName) missing.push('AWS_BUCKET_NAME')
+if (!awsId) missing.push('AWS_ACCESS_KEY_ID')
+if (!awsSecret) missing.push('AWS_ACCESS_KEY_SECRET')
 if (missing.length > 0) {
   console.error('Error: Env variables to publish are missing. Please define:', missing)
   process.exit(1)
