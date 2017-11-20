@@ -4,5 +4,5 @@ npm install --verbose
 npm test --verbose
 if [ $? -eq 0 ]; then
 npm run build
-npm run deploy version
+npm run deploy $1
 fi
