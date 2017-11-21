@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] - 2017/11/21
+### Fix
+- Fix `Tracker#sendHeartbeat` not pasing attributes.
+
+### Change
+- `sendXXXXX` methods from `VideoTracker` will now use `send` internally instead of `emit`.
+- Added a boolean as a parameter in `VideoTracker#getRenditionShift(bool)`. If true, it will store the new rendition. This way you can call `getRenditionShift()` without disrupting `RENDITION_CHANGE` events.
+
+
 ## [0.9.0] - 2017/11/10
 ### Add
 - Add `isPlayerReady` to `VideoTrackerState`.

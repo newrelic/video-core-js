@@ -660,7 +660,7 @@ class VideoTracker extends Tracker {
   sendRenditionChanged (att) {
     att = att || {}
     att.timeSinceLastRenditionChange = this.state.timeSinceLastRenditionChange.getDeltaTime()
-    att.shift = this.getRenditionShift()
+    att.shift = this.getRenditionShift(true)
     let ev
     if (this.isAd()) {
       ev = VideoTracker.Events.AD_RENDITION_CHANGE
