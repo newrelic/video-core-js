@@ -167,10 +167,9 @@ class Tracker extends Emitter {
    * }
    *
    * @param {Object} [att] Collection of key:value attributes to send with the request.
-   *
    */
   sendHeartbeat (att) {
-    this.send(Tracker.Events.HEARTBEAT)
+    this.send(Tracker.Events.HEARTBEAT, att)
   }
 
   /**
