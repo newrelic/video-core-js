@@ -71,14 +71,15 @@ describe('VideoVideoTracker', () => {
 
       it('should return correct shift', () => {
         tracker = new VideoTracker()
-        expect(tracker.getRenditionShift()).to.be.null
+        expect(tracker.getRenditionShift(true)).to.be.null
         tracker.getRenditionBitrate = () => { return 1 }
-        expect(tracker.getRenditionShift()).to.be.null
+        expect(tracker.getRenditionShift(true)).to.be.null
         tracker.getRenditionBitrate = () => { return 2 }
         expect(tracker.getRenditionShift()).to.equal('up')
+        expect(tracker.getRenditionShift(true)).to.equal('up')
         tracker.getRenditionBitrate = () => { return 1 }
-        expect(tracker.getRenditionShift()).to.equal('down')
-        expect(tracker.getRenditionShift()).to.be.null
+        expect(tracker.getRenditionShift(true)).to.equal('down')
+        expect(tracker.getRenditionShift(true)).to.be.null
       })
 
       it('player ready', (done) => {
@@ -212,4 +213,3 @@ describe('VideoVideoTracker', () => {
   generateTests(false)
   generateTests(true)
 })
-
