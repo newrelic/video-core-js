@@ -54,6 +54,19 @@ uploadFile('CHANGELOG.md', path.join(__dirname, '..'), baseDir)
 uploadFile('README.md', path.join(__dirname, '..'), baseDir)
 uploadFile('package.json', path.join(__dirname, '..'), baseDir)
 
+// copy agent.js
+s3.copyObject({
+  Bucket: 'nr-video-samples',
+  CopySource: 'nr-video-samples/agent.js',
+  Key: baseDir + 'samples/agent.js'
+}, function (err, data) {
+  if (err) {
+    console.log(err, err.stack)
+  } else {
+    console.log(`Successfuly copied 'agent.js' to '${baseDir}samples/agent.js'.`)
+  }
+})
+
 // upload folders
 function uploadFolder (originPath, targetPath) {
   fs.readdir(originPath, (err, files) => {
@@ -63,8 +76,7 @@ function uploadFolder (originPath, targetPath) {
     if (targetPath[targetPath.length - 1] !== '/') targetPath += '/'
 
     if (!files || files.length === 0) {
-      console.log(`provided folder '${originPath}' is empty or does not exist.`)
-      console.log('Make sure your project was compiled!')
+      console.log(`Provided folder '${originPath}' is empty or does not exist.`)
       return
     }
 
@@ -82,16 +94,20 @@ function uploadFile (fileName, originPath, targetPath) {
 
   let isHtml = fileName.endsWith('.html')
 
-    // recurse if directory
+  // Add trailing '/'
+  if (targetPath[targetPath.length - 1] !== '/') targetPath += '/'
+  if (originPath[originPath.length - 1] !== '/') originPath += '/'
+
+  // recurse if directory
   if (fs.lstatSync(filePath).isDirectory()) {
-    uploadFolder(originPath, targetPath)
+    uploadFolder(originPath + fileName, targetPath + fileName)
   } else {
-  // read file contents
+    // read file contents
     fs.readFile(filePath, (error, fileContent) => {
-    // if unable to read file contents, throw exception
+      // if unable to read file contents, throw exception
       if (error) { throw error }
 
-    // upload file to S3
+      // upload file to S3
       s3.putObject({
         ACL: 'public-read',
         Bucket: s3BucketName,
