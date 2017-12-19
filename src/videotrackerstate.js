@@ -125,8 +125,8 @@ class VideoTrackerState {
   }
 
   /**
- * Returns a random-generated view Session ID, useful to sort by views.
- */
+   * Returns a random-generated view Session ID, useful to sort by views.
+   */
   getViewSession () {
     if (!this._viewSession) {
       let time = new Date().getTime()
@@ -210,6 +210,7 @@ class VideoTrackerState {
   goRequest () {
     if (!this.isRequested) {
       this.isRequested = true
+      this.timeSinceLastAd.reset()
       this.timeSinceRequested.start()
       return true
     } else {
