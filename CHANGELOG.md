@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] - 2017/12/19
+### Fix
+- Reset `timeSinceAdStart` at `CONTENT_REQUEST`.
+
 ## [0.9.1] - 2017/11/21
 ### Fix
 - Fix `Tracker#sendHeartbeat` not pasing attributes.
