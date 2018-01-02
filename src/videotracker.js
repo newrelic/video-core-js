@@ -394,7 +394,7 @@ class VideoTracker extends Tracker {
   getAttributes (att) {
     att = Tracker.prototype.getAttributes.apply(this, arguments)
 
-    att.isAd = this.isAd()
+    if (typeof att.isAd === 'undefined') att.isAd = this.isAd()
     att.viewSession = this.getViewSession()
     att.viewId = this.getViewId()
     att.playerName = this.getPlayerName()
@@ -647,6 +647,8 @@ class VideoTracker extends Tracker {
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendError (att) {
+    att = att || {}
+    att.isAd = true
     this.state.goError()
     let ev = this.isAd() ? VideoTracker.Events.AD_ERROR : VideoTracker.Events.CONTENT_ERROR
     this.send(ev, att)
