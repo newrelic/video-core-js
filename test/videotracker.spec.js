@@ -6,7 +6,7 @@ import sinon from 'sinon'
 const expect = chai.expect
 const assert = chai.assert
 
-describe('VideoVideoTracker', () => {
+describe('VideoTracker', () => {
   let tracker
 
   // Mute console

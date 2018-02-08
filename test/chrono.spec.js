@@ -30,10 +30,10 @@ describe('Chrono', () => {
   it('should work', (done) => {
     chrono.start()
     setTimeout(() => {
-      expect(chrono.stop()).to.be.closeTo(1000, 10)
-      expect(chrono.getDeltaTime()).to.be.closeTo(1000, 10)
+      expect(chrono.stop()).to.be.closeTo(100, 10)
+      expect(chrono.getDeltaTime()).to.be.closeTo(100, 10)
       done()
-    }, 1000)
+    }, 100)
   })
 
   it('should clone propperly', () => {

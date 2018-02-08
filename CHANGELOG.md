@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2018/02/08
+### Add
+- Add `playtimeSinceLastEvent` and `totalPlaytime` as attributes.
+
 ## [0.9.3] - 2018/01/02
 ### Fix
 - Fix `isAd` not being correctly reported.
@@ -11,7 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.9.1] - 2017/11/21
 ### Fix
-- Fix `Tracker#sendHeartbeat` not pasing attributes.
+- Fix `Tracker#sendHeartbeat` not passing attributes.
 
 ### Change
 - `sendXXXXX` methods from `VideoTracker` will now use `send` internally instead of `emit`.

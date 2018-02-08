@@ -50,6 +50,11 @@ class VideoTrackerState {
      */
     this.numberOfVideos = 0
 
+    /**
+     * The amount of ms the user has been watching content (not paused, not buffering, not ads...)
+     */
+    this.totalPlaytime = 0
+
     this.resetFlags()
     this.resetChronos()
   }
@@ -76,6 +81,9 @@ class VideoTrackerState {
 
     /** True if you are in the middle of an ad break. */
     this.isAdBreak = false
+
+    /** True if the video is currently playing (not buffering, not paused...) */
+    this.isPlaying = false
   }
 
   /** Resets chronos. */
@@ -112,6 +120,9 @@ class VideoTrackerState {
 
     /** Content only. Chrono that counts time since last AD_END. */
     this.timeSinceLastAd = new Chrono()
+
+    /** Chrono that counts the ammount of time the video have been playing since the last event. */
+    this.playtimeSinceLastEvent = new Chrono()
   }
 
   /** Returns true if the tracker is currently on ads. */
@@ -155,7 +166,7 @@ class VideoTrackerState {
   getStateAttributes (att) {
     att = att || {}
 
-    if (this.isAd()) {
+    if (this.isAd()) { // Ads only
       if (this.isRequested) {
         att.timeSinceAdRequested = this.timeSinceRequested.getDeltaTime()
         att.timeSinceLastAdHeartbeat = this.timeSinceLastHeartbeat.getDeltaTime()
@@ -166,7 +177,7 @@ class VideoTrackerState {
       if (this.isSeeking) att.timeSinceAdSeekBegin = this.timeSinceSeekBegin.getDeltaTime()
       if (this.isAdBreak) att.timeSinceAdBreakBegin = this.timeSinceAdBreakStart.getDeltaTime()
       att.numberOfAds = this.numberOfAds
-    } else {
+    } else { // Content only
       if (this.isRequested) {
         att.timeSinceRequested = this.timeSinceRequested.getDeltaTime()
         att.timeSinceLastHeartbeat = this.timeSinceLastHeartbeat.getDeltaTime()
@@ -179,6 +190,22 @@ class VideoTrackerState {
       att.numberOfVideos = this.numberOfVideos
     }
     att.numberOfErrors = this.numberOfErrors
+
+    // Playtime
+    if (!this.isAd()) { // Content only
+      if (this.playtimeSinceLastEvent.startTime > 0) {
+        att.playtimeSinceLastEvent = this.playtimeSinceLastEvent.getDeltaTime()
+      } else {
+        att.playtimeSinceLastEvent = 0
+      }
+      if (this.isPlaying) {
+        this.playtimeSinceLastEvent.start()
+      } else {
+        this.playtimeSinceLastEvent.reset()
+      }
+      this.totalPlaytime += att.playtimeSinceLastEvent
+      att.totalPlaytime = this.totalPlaytime
+    }
 
     return att
   }
@@ -230,7 +257,9 @@ class VideoTrackerState {
         this.numberOfVideos++
       }
       this.isStarted = true
+      this.isPlaying = true
       this.timeSinceStarted.start()
+      this.playtimeSinceLastEvent.start()
       return true
     } else {
       return false
@@ -244,9 +273,11 @@ class VideoTrackerState {
   goEnd () {
     if (this.isRequested) {
       this.numberOfErrors = 0
+      this.isPlaying = false
       this.resetFlags()
       this.timeSinceRequested.stop()
       this.timeSinceStarted.stop()
+      this.playtimeSinceLastEvent.stop()
       return true
     } else {
       return false
@@ -260,7 +291,9 @@ class VideoTrackerState {
   goPause () {
     if (this.isStarted && !this.isPaused) {
       this.isPaused = true
+      this.isPlaying = false
       this.timeSincePaused.start()
+      this.playtimeSinceLastEvent.stop()
       return true
     } else {
       return false
@@ -274,6 +307,7 @@ class VideoTrackerState {
   goResume () {
     if (this.isStarted && this.isPaused) {
       this.isPaused = false
+      this.isPlaying = true
       this.timeSincePaused.stop()
       return true
     } else {
@@ -288,6 +322,7 @@ class VideoTrackerState {
   goBufferStart () {
     if (this.isStarted && !this.isBuffering) {
       this.isBuffering = true
+      this.isPlaying = false
       this.timeSinceBufferBegin.start()
       return true
     } else {
@@ -302,6 +337,7 @@ class VideoTrackerState {
   goBufferEnd () {
     if (this.isStarted && this.isBuffering) {
       this.isBuffering = false
+      this.isPlaying = true
       this.timeSinceBufferBegin.stop()
       return true
     } else {
@@ -316,6 +352,7 @@ class VideoTrackerState {
   goSeekStart () {
     if (this.isStarted && !this.isSeeking) {
       this.isSeeking = true
+      this.isPlaying = false
       this.timeSinceSeekBegin.start()
       return true
     } else {
@@ -330,6 +367,7 @@ class VideoTrackerState {
   goSeekEnd () {
     if (this.isStarted && this.isSeeking) {
       this.isSeeking = false
+      this.isPlaying = true
       this.timeSinceSeekBegin.stop()
       return true
     } else {

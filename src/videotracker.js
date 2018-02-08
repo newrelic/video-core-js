@@ -490,7 +490,13 @@ class VideoTracker extends Tracker {
    */
   sendStart (att) {
     if (this.state.goStart()) {
-      let ev = this.isAd() ? VideoTracker.Events.AD_START : VideoTracker.Events.CONTENT_START
+      let ev
+      if (this.isAd()) {
+        ev = VideoTracker.Events.AD_START
+        if (this.parentTracker) this.parentTracker.state.isPlaying = false
+      } else {
+        ev = VideoTracker.Events.CONTENT_START
+      }
       this.send(ev, att)
     }
   }
@@ -509,6 +515,7 @@ class VideoTracker extends Tracker {
         ev = VideoTracker.Events.AD_END
         att.timeSinceAdRequested = this.state.timeSinceRequested.getDeltaTime()
         att.timeSinceAdStarted = this.state.timeSinceStarted.getDeltaTime()
+        if (this.parentTracker) this.parentTracker.state.isPlaying = true
       } else {
         ev = VideoTracker.Events.CONTENT_END
         att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime()
