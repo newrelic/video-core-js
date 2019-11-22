@@ -64,7 +64,6 @@ class VideoTrackerState {
 
   /** Resets flags. */
   resetFlags () {
-    nrvideo.Log.debug('---------> RESET FLAGS')
     /** True once the player has finished loading. */
     this.isPlayerReady = false
 
