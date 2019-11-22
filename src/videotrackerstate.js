@@ -55,12 +55,16 @@ class VideoTrackerState {
      */
     this.totalPlaytime = 0
 
+    /** True if you are in the middle of an ad break. */
+    this.isAdBreak = false
+
     this.resetFlags()
     this.resetChronos()
   }
 
   /** Resets flags. */
   resetFlags () {
+    nrvideo.Log.debug('---------> RESET FLAGS')
     /** True once the player has finished loading. */
     this.isPlayerReady = false
 
@@ -78,9 +82,6 @@ class VideoTrackerState {
 
     /** True if the video is currently buffering. */
     this.isBuffering = false
-
-    /** True if you are in the middle of an ad break. */
-    this.isAdBreak = false
 
     /** True if the video is currently playing (not buffering, not paused...) */
     this.isPlaying = false
@@ -395,6 +396,7 @@ class VideoTrackerState {
    */
   goAdBreakEnd () {
     if (this.isAdBreak) {
+      this.isRequested = false
       this.isAdBreak = false
       this.timeSinceAdBreakStart.stop()
       return true

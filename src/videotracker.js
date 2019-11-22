@@ -489,6 +489,7 @@ class VideoTracker extends Tracker {
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendStart (att) {
+    nrvideo.Log.debug('---------> SEND START')
     if (this.state.goStart()) {
       let ev
       if (this.isAd()) {
@@ -708,6 +709,7 @@ class VideoTracker extends Tracker {
    */
   sendAdBreakStart (att) {
     if (this.isAd() && this.state.goAdBreakStart()) {
+      if (this.parentTracker) this.parentTracker.state.isPlaying = false
       this.send(VideoTracker.Events.AD_BREAK_START, att)
     }
   }
@@ -718,10 +720,17 @@ class VideoTracker extends Tracker {
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
   sendAdBreakEnd (att) {
+    nrvideo.Log.debug('---------> SEND AD BREAK END')
     if (this.isAd() && this.state.goAdBreakEnd()) {
+      nrvideo.Log.debug('---------> DO AD BREAK END')
       att = att || {}
       att.timeSinceAdBreakBegin = this.state.timeSinceAdBreakStart.getDeltaTime()
       this.send(VideoTracker.Events.AD_BREAK_END, att)
+      // Just in case AD_END not arriving, because of an AD_ERROR
+      nrvideo.Log.debug('---------> PARENT TRACKER = ', this.parentTracker)
+      if (this.parentTracker) this.parentTracker.state.isPlaying = true
+      this.stopHeartbeat()
+      if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
     }
   }
 
