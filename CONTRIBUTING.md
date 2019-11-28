@@ -1,31 +1,30 @@
-# CONTRIBUTING
+# Contributing
 
-## Code Standards
-This project follows [Standard Javascript](https://standardjs.com/) specifications.
+Contributions are always welcome. Before contributing please read the
+[code of conduct](./CODE_OF_CONDUCT.md) and [search the issue tracker](issues); your issue may have already been discussed or fixed in `master`. To contribute,
+[fork](https://help.github.com/articles/fork-a-repo/) this repository, commit your changes, and [send a Pull Request](https://help.github.com/articles/using-pull-requests/).
 
-The changelog format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
+Note that our [code of conduct](./CODE_OF_CONDUCT.md) applies to all platforms and venues related to this project; please follow it in all your interactions with the project and its participants.
 
-This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+## Feature Requests
 
-### Eslint & Standard
-Use eslint to help you maintain code standards:
-```bash
-npm i -g standard
-```
+Feature requests should be submitted in the [Issue tracker](../../issues), with a description of the expected behavior & use case, where they’ll remain closed until sufficient interest, [e.g. :+1: reactions](https://help.github.com/articles/about-discussions-in-issues-and-pull-requests/), has been [shown by the community](../../issues?q=label%3A%22votes+needed%22+sort%3Areactions-%2B1-desc).
+Before submitting an Issue, please search for similar ones in the
+[closed issues](../../issues?q=is%3Aissue+is%3Aclosed+label%3Aenhancement).
 
-## NPM Commands
-Remember to run ```npm install``` the first time.
+## Pull Requests
 
-Run ```npm run build``` to build the solution. You can find the output inside ```dist``` folder.
+1. Ensure any install or build dependencies are removed before the end of the layer when doing a build.
+2. Increase the version numbers in any examples files and the README.md to the new version that this Pull Request would represent. The versioning scheme we use is [SemVer](http://semver.org/).
+3. You may merge the Pull Request in once you have the sign-off of two other developers, or if you do not have permission to do that, you may request the second reviewer to merge it for you.
 
-Run ```npm run watch``` to watch the files inside ```src``` and run a build everytime a file is changed.
+## Contributor License Agreement
 
-Use ```build:dev``` and ```watch:dev``` to generate human-readable dist files.
+Keep in mind that when you submit your Pull Request, you'll need to sign the CLA via the click-through using CLA-Assistant. If you'd like to execute our corporate CLA, or if you have any questions, please drop us an email at opensource@newrelic.com.
 
-Use ```npm run test``` to run tests and coverage.
+For more information about CLAs, please check out Alex Russell’s excellent post,
+[“Why Do I Need to Sign This?”](https://infrequently.org/2008/06/why-do-i-need-to-sign-this/).
 
-Use ```npm run doc``` to generate documentation page.
+## Slack
 
-Use ```npm run clean``` to clear any generated files.
-
-Use ```npm run deploy``` to deploy the repo to aws bucket.
+For contributors and maintainers of open source projects hosted by New Relic, we host a public Slack with a channel dedicated to this project. If you are contributing to this project, you're welcome to request access to that  community space.
