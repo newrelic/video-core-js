@@ -58,6 +58,9 @@ class VideoTrackerState {
     /** True if you are in the middle of an ad break. */
     this.isAdBreak = false
 
+    /** True if initial buffering event already happened. */
+    this.initialBufferingHappened = false
+
     this.resetFlags()
     this.resetChronos()
   }
@@ -273,7 +276,6 @@ class VideoTrackerState {
   goEnd () {
     if (this.isRequested) {
       this.numberOfErrors = 0
-      this.isPlaying = false
       this.resetFlags()
       this.timeSinceRequested.stop()
       this.timeSinceStarted.stop()

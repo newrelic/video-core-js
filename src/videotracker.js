@@ -568,11 +568,15 @@ class VideoTracker extends Tracker {
    */
   sendBufferStart (att) {
     if (this.state.goBufferStart()) {
+      att = att || {}
       let ev
       if (this.isAd()) {
         ev = VideoTracker.Events.AD_BUFFER_START
       } else {
         ev = VideoTracker.Events.CONTENT_BUFFER_START
+      }
+      if (!this.state.isStarted) {
+        att.isInitialBuffering = !this.state.initialBufferingHappened
       }
       this.send(ev, att)
     }
@@ -594,7 +598,11 @@ class VideoTracker extends Tracker {
         ev = VideoTracker.Events.CONTENT_BUFFER_END
         att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
       }
+      if (!this.state.isStarted) {
+        att.isInitialBuffering = !this.state.initialBufferingHappened
+      }
       this.send(ev, att)
+      this.state.initialBufferingHappened = true
     }
   }
 
