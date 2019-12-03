@@ -578,6 +578,9 @@ class VideoTracker extends Tracker {
       if (!this.state.isStarted) {
         att.isInitialBuffering = !this.state.initialBufferingHappened
       }
+      else {
+        att.isInitialBuffering = false
+      }
       this.send(ev, att)
     }
   }
@@ -600,6 +603,9 @@ class VideoTracker extends Tracker {
       }
       if (!this.state.isStarted) {
         att.isInitialBuffering = !this.state.initialBufferingHappened
+      }
+      else {
+        att.isInitialBuffering = false
       }
       this.send(ev, att)
       this.state.initialBufferingHappened = true
