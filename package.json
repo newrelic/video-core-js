@@ -18,6 +18,9 @@
     "url": "https://github.com/newrelic/video-core-js"
   },
   "author": "Jordi Aguilar",
+  "contributors": [
+    "Andreu Santarén Llop"
+  ],
   "license": "MIT",
   "devDependencies": {
     "aws-sdk": "^2.150.0",
