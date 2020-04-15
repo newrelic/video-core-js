@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2019/12/03
+### Fix
+- Issue with `isInitialBuffering` attribute.
+
+## [0.12.0] - 2019/12/02
+### Add
+- Add `isInitialBuffering` attribute.
+
+## [0.11.0] - 2019/11/22
+### Fix
+- Fix issue with AD_BREAK_END and recovering CONTENT tracker state.
+
 ## [0.10.0] - 2018/02/08
 ### Add
 - Add `playtimeSinceLastEvent` and `totalPlaytime` as attributes.
