@@ -8,7 +8,7 @@ class Core {
   /**
    * Add a tracker to the system. Trackers added will start reporting its events to NR's backend.
    *
-   * @param {(Emitter|Tracker)} tracker
+   * @param {(Emitter|Tracker)} tracker Tracker instance to add.
    */
   static addTracker (tracker) {
     if (tracker.on && tracker.emit) {

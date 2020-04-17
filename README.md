@@ -30,7 +30,11 @@ provides an easy way of sending video-related content, using `tracker.sendXXXXX`
 tracker.sendRequest() // Will send CONTENT_REQUEST
 ```
 
-Search for `Tracker#sendXXXX` events in the documentation to read more about it. 
+Search for `Tracker#sendXXXX` events in the documentation to read more about it.
+
+## Documentation
+
+All classes are documented using autodocs. The documents, generated with [jsdoc](https://github.com/jsdoc/jsdoc), can be found in the `doc` directory of the current repo.
 
 # Open source license
 

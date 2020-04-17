@@ -780,44 +780,75 @@ class VideoTracker extends Tracker {
  *
  * @static
  * @memberof VideoTracker
- * @enum
+ * @enum {String}
  */
 VideoTracker.Events = {
   // Player
+  /** The player is ready to start sending events. */
   PLAYER_READY: 'PLAYER_READY',
+  /** Downloading data. */
   DOWNLOAD: 'DOWNLOAD',
+  /** An error happened */
   ERROR: 'ERROR',
 
   // Video
+  /** Content video has been requested. */
   CONTENT_REQUEST: 'CONTENT_REQUEST',
+  /** Content video started (first frame shown). */
   CONTENT_START: 'CONTENT_START',
+  /** Content video ended. */
   CONTENT_END: 'CONTENT_END',
+  /** Content video paused. */
   CONTENT_PAUSE: 'CONTENT_PAUSE',
+  /** Content video resumed. */
   CONTENT_RESUME: 'CONTENT_RESUME',
+  /** Content video seek started */
   CONTENT_SEEK_START: 'CONTENT_SEEK_START',
+  /** Content video seek ended. */
   CONTENT_SEEK_END: 'CONTENT_SEEK_END',
+  /** Content video beffering started */
   CONTENT_BUFFER_START: 'CONTENT_BUFFER_START',
+  /** Content video buffering ended */
   CONTENT_BUFFER_END: 'CONTENT_BUFFER_END',
+  /** Content video heartbeat, en event that happens once every 30 seconds while the video is playing. */
   CONTENT_HEARTBEAT: 'CONTENT_HEARTBEAT',
+  /** Content video stream qwuality changed. */
   CONTENT_RENDITION_CHANGE: 'CONTENT_RENDITION_CHANGE',
+  /** Content video error. */
   CONTENT_ERROR: 'CONTENT_ERROR',
 
   // Ads only
+  /** Ad video has been requested. */
   AD_REQUEST: 'AD_REQUEST',
+  /** Ad video started (first frame shown). */
   AD_START: 'AD_START',
+  /** Ad video ended. */
   AD_END: 'AD_END',
+  /** Ad video paused. */
   AD_PAUSE: 'AD_PAUSE',
+  /** Ad video resumed. */
   AD_RESUME: 'AD_RESUME',
+  /** Ad video seek started */
   AD_SEEK_START: 'AD_SEEK_START',
+  /** Ad video seek ended */
   AD_SEEK_END: 'AD_SEEK_END',
+  /** Ad video beffering started */
   AD_BUFFER_START: 'AD_BUFFER_START',
+  /** Ad video beffering ended */
   AD_BUFFER_END: 'AD_BUFFER_END',
+  /** Ad video heartbeat, en event that happens once every 30 seconds while the video is playing. */
   AD_HEARTBEAT: 'AD_HEARTBEAT',
+  /** Ad video stream qwuality changed. */
   AD_RENDITION_CHANGE: 'AD_RENDITION_CHANGE',
+  /** Ad video error. */
   AD_ERROR: 'AD_ERROR',
+  /** Ad break (a block of ads) started. */
   AD_BREAK_START: 'AD_BREAK_START',
+  /** Ad break ended. */
   AD_BREAK_END: 'AD_BREAK_END',
+  /** Ad quartile happened. */
   AD_QUARTILE: 'AD_QUARTILE',
+  /** Ad has been clicked. */
   AD_CLICK: 'AD_CLICK'
 }
 

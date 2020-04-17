@@ -106,7 +106,7 @@ class Log {
 
 /**
  * Enum for log levels
- * @enum
+ * @enum {integer}
  * @static
  * @var
  */

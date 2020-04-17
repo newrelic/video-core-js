@@ -232,9 +232,10 @@ class Tracker extends Emitter {
  *
  * @static
  * @memberof Tracker
- * @enum
+ * @enum {string}
  */
 Tracker.Events = {
+  /** The heartbeat event is sent once every 30 seconds while the video is playing. */
   HEARTBEAT: 'HEARTBEAT'
 }
 
