@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Home</h1>
+
+    
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>New Relic Video Core</h1>
+<p>The New Relic video tracking core library is the base for all video trackers in the browser platform. It contains the classes and core mechanisms used by the player specific trackers.</p>
+<h2>Usage</h2>
+<p>Add <strong>scripts</strong> inside <code>dist</code> folder to your page.</p>
+<blockquote>
+<p>If you want to know how to generate <code>dist</code> folder, refer to <strong>npm commands</strong> section.</p>
+</blockquote>
+<h3>Registering Trackers</h3>
+<p><code>nrvideo</code> provides a class called <code>VideoTracker</code> that will serve as an interface with
+<em>Browser Agent</em>, allowing you to manage and send events to New Relic.</p>
+<p>First of all, you have to add a tracker in the core class:</p>
+<pre class="prettyprint source lang-javascript"><code>// var nrvideo = require('newrelic-video-core')
+var tracker = new nrvideo.VideoTracker()
+nrvideo.Core.addTracker(tracker)
+</code></pre>
+<p>From this point, any event emitted by said tracker will be reported to New Relic:</p>
+<pre class="prettyprint source lang-javascript"><code>tracker.send('EVENT', { data: 1 })
+</code></pre>
+<p>Of course, you may want to use built-in events for video. Luckily for you, this core library
+provides an easy way of sending video-related content, using <code>tracker.sendXXXXX</code> methods.</p>
+<pre class="prettyprint source lang-javascript"><code>tracker.sendRequest() // Will send CONTENT_REQUEST
+</code></pre>
+<p>Search for <code>Tracker#sendXXXX</code> events in the documentation to read more about it.</p>
+<h2>Documentation</h2>
+<p>All classes are documented using autodocs. The documents, generated with <a href="https://github.com/jsdoc/jsdoc">jsdoc</a>, can be found in the <code>doc</code> directory of the current repo.</p>
+<h1>Open source license</h1>
+<p>This project is distributed under the <a href="LICENSE">Apache 2 license</a>.</p>
+<h1>Support</h1>
+<p>New Relic has open-sourced this project. This project is provided AS-IS WITHOUT WARRANTY OR DEDICATED SUPPORT. Issues and contributions should be reported to the project here on GitHub.</p>
+<p>We encourage you to bring your experiences and questions to the <a href="https://discuss.newrelic.com">Explorers Hub</a> where our community members collaborate on solutions and new ideas.</p>
+<h2>Community</h2>
+<blockquote>
+<p>TODO: Work with the Explorer's Hub team to create a tag for your app, then update the link below.</p>
+</blockquote>
+<p>New Relic hosts and moderates an online forum where customers can interact with New Relic employees as well as other customers to get help and share best practices. Like all official New Relic open source projects, there's a related Community topic in the New Relic Explorers Hub. You can find this project's topic/threads here:</p>
+<p>https://discuss.newrelic.com/t/{{ APP_NAME }}
+<em>(Note: This URL is subject to change before GA)</em></p>
+<h2>Issues / enhancement requests</h2>
+<blockquote>
+<p>TODO: Update path</p>
+</blockquote>
+<p>Issues and enhancement requests can be submitted in the <a href="../../issues">Issues tab of this repository</a>. Please search for and review the existing open issues before submitting a new issue.</p>
+<h1>Contributing</h1>
+<blockquote>
+<p>TODO: Work with the Open Source Office to update the email alias below.</p>
+</blockquote>
+<p>Contributions are encouraged! If you submit an enhancement request, we'll invite you to contribute the change yourself. Please review our <a href="CONTRIBUTING.md">Contributors Guide</a>.</p>
+<p>Keep in mind that when you submit your pull request, you'll need to sign the CLA via the click-through using CLA-Assistant. If you'd like to execute our corporate CLA, or if you have any questions, please drop us an email at opensource+{{ APP_NAME }}@newrelic.com.</p></article>
+    </section>
+
+
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Chrono.html">Chrono</a></li><li><a href="Constants.html">Constants</a></li><li><a href="Core.html">Core</a></li><li><a href="Emitter.html">Emitter</a></li><li><a href="Log.html">Log</a></li><li><a href="Tracker.html">Tracker</a></li><li><a href="VideoTracker.html">VideoTracker</a></li><li><a href="VideoTrackerState.html">VideoTrackerState</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Fri Apr 17 2020 14:00:41 GMT+0200 (CEST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
