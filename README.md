@@ -2,6 +2,26 @@
 
 The New Relic video tracking core library is the base for all video trackers in the browser platform. It contains the classes and core mechanisms used by the player specific trackers.
 
+## Build
+
+Install dependencies:
+
+```
+$ npm install
+```
+
+And build:
+
+```
+$ npm run build:dev
+```
+
+Or if you need a production build:
+
+```
+$ npm run build
+```
+
 ## Usage
 Add **scripts** inside `dist` folder to your page.
 
