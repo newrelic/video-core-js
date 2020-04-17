@@ -7,8 +7,8 @@
   },
   "opts": {
     "readme": "./README.md",
-    "template": "./node_modules/ink-docstrap/template",
-    "recurse": "true"
+    "recurse": "true",
+    "destination": "./documentation"
   },
   "plugins": [
     "plugins/markdown"

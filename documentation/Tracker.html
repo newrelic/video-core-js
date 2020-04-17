@@ -30,10 +30,10 @@
     
         <h2><span class="attribs"><span class="type-signature"></span></span>Tracker<span class="signature">(options<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h2>
         
-            <div class="class-description">Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.
-Trackers are designed to listen third party elements (like video tags, banners, etc.) and send
-information over to Browser Agent. Extend this class to create your own tracker, override
-registerListeners and unregisterListeners for full coverage!</div>
+            <div class="class-description"><p>Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.<br>
+Trackers are designed to listen third party elements (like video tags, banners, etc.) and send<br>
+information over to Browser Agent. Extend this class to create your own tracker, override<br>
+registerListeners and unregisterListeners for full coverage!</p></div>
         
     
 </header>
@@ -56,7 +56,7 @@ registerListeners and unregisterListeners for full coverage!</div>
 
 
 <div class="description">
-    Constructor, receives options. You should call {@see registerListeners} after this.
+    <p>Constructor, receives options. You should call {@see registerListeners} after this.</p>
 </div>
 
 
@@ -120,7 +120,7 @@ registerListeners and unregisterListeners for full coverage!</div>
 
             
 
-            <td class="description last">Options for the tracker. See setOptions.</td>
+            <td class="description last"><p>Options for the tracker. See setOptions.</p></td>
         </tr>
 
     
@@ -234,7 +234,7 @@ nrvideo.Core.addTracker(new Tracker())</code></pre>
 
 
 <div class="description">
-    Enumeration of events fired by this class.
+    <p>Enumeration of events fired by this class.</p>
 </div>
 
 
@@ -295,7 +295,7 @@ nrvideo.Core.addTracker(new Tracker())</code></pre>
 
             
 
-            <td class="description last">The heartbeat event is sent once every 30 seconds while the video is playing.</td>
+            <td class="description last"><p>The heartbeat event is sent once every 30 seconds while the video is playing.</p></td>
         </tr>
 
     
@@ -358,8 +358,8 @@ nrvideo.Core.addTracker(new Tracker())</code></pre>
 
 
 <div class="description">
-    If you add something to this custom dictionary it will be added to every action. If you set
-any value, it will always override the values returned by the getters.
+    <p>If you add something to this custom dictionary it will be added to every action. If you set<br>
+any value, it will always override the values returned by the getters.</p>
 </div>
 
 
@@ -427,7 +427,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Set time between hearbeats, in ms.
+    <p>Set time between hearbeats, in ms.</p>
 </div>
 
 
@@ -489,7 +489,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
+    <p>Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.</p>
 </div>
 
 
@@ -573,7 +573,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Prepares tracker to dispose. Calls {@see unregisterListeners} and drops references.
+    <p>Prepares tracker to dispose. Calls {@see unregisterListeners} and drops references.</p>
 </div>
 
 
@@ -661,7 +661,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Emits given event, triggering all the associated callbacks.
+    <p>Emits given event, triggering all the associated callbacks.</p>
 </div>
 
 
@@ -723,7 +723,7 @@ any value, it will always override the values returned by the getters.
 
             
 
-            <td class="description last">Name of the event.</td>
+            <td class="description last"><p>Name of the event.</p></td>
         </tr>
 
     
@@ -756,7 +756,7 @@ any value, it will always override the values returned by the getters.
 
             
 
-            <td class="description last">Custom data to be sent to the callbacks.</td>
+            <td class="description last"><p>Custom data to be sent to the callbacks.</p></td>
         </tr>
 
     
@@ -831,7 +831,7 @@ any value, it will always override the values returned by the getters.
 
         
 <div class="param-desc">
-    this
+    <p>this</p>
 </div>
 
 
@@ -856,7 +856,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Override this method to return attributes for actions.
+    <p>Override this method to return attributes for actions.</p>
 </div>
 
 
@@ -920,7 +920,7 @@ any value, it will always override the values returned by the getters.
 
             
 
-            <td class="description last">Collection of key value attributes</td>
+            <td class="description last"><p>Collection of key value attributes</p></td>
         </tr>
 
     
@@ -990,7 +990,7 @@ any value, it will always override the values returned by the getters.
 
         
 <div class="param-desc">
-    Filled attributes
+    <p>Filled attributes</p>
 </div>
 
 
@@ -1038,7 +1038,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Returns heartbeat time interval. 30000 (30s) if not set. See setOptions.
+    <p>Returns heartbeat time interval. 30000 (30s) if not set. See setOptions.</p>
 </div>
 
 
@@ -1111,7 +1111,7 @@ any value, it will always override the values returned by the getters.
 
         
 <div class="param-desc">
-    Heartbeat interval in ms.
+    <p>Heartbeat interval in ms.</p>
 </div>
 
 
@@ -1148,7 +1148,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Override to change of the Name of the tracker. ie: 'custom-html5'
+    <p>Override to change of the Name of the tracker. ie: 'custom-html5'</p>
 </div>
 
 
@@ -1236,7 +1236,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Override to change of the Version of tracker. ie: '1.0.1'
+    <p>Override to change of the Version of tracker. ie: '1.0.1'</p>
 </div>
 
 
@@ -1324,7 +1324,7 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Removes given callback from the listeners of this object.
+    <p>Removes given callback from the listeners of this object.</p>
 </div>
 
 
@@ -1376,7 +1376,7 @@ any value, it will always override the values returned by the getters.
 
             
 
-            <td class="description last">Name of the event.</td>
+            <td class="description last"><p>Name of the event.</p></td>
         </tr>
 
     
@@ -1399,7 +1399,7 @@ any value, it will always override the values returned by the getters.
 
             
 
-            <td class="description last">Callback of the event.</td>
+            <td class="description last"><p>Callback of the event.</p></td>
         </tr>
 
     
@@ -1474,7 +1474,7 @@ any value, it will always override the values returned by the getters.
 
         
 <div class="param-desc">
-    this
+    <p>this</p>
 </div>
 
 
@@ -1499,8 +1499,8 @@ any value, it will always override the values returned by the getters.
 
 
 <div class="description">
-    Sets a listener to a given event. Use emit to trigger those events.
-Pass '*' to listen ALL events.
+    <p>Sets a listener to a given event. Use emit to trigger those events.<br>
+Pass '*' to listen ALL events.</p>
 </div>
 
 
@@ -1552,7 +1552,7 @@ Pass '*' to listen ALL events.
 
             
 
-            <td class="description last">Name of the event.</td>
+            <td class="description last"><p>Name of the event.</p></td>
         </tr>
 
     
@@ -1575,7 +1575,7 @@ Pass '*' to listen ALL events.
 
             
 
-            <td class="description last">Callback of the event. Receives event and data.</td>
+            <td class="description last"><p>Callback of the event. Receives event and data.</p></td>
         </tr>
 
     
@@ -1650,7 +1650,7 @@ Pass '*' to listen ALL events.
 
         
 <div class="param-desc">
-    this
+    <p>this</p>
 </div>
 
 
@@ -1675,7 +1675,7 @@ Pass '*' to listen ALL events.
 
 
 <div class="description">
-    Override this method to register listeners to third party elements.
+    <p>Override this method to register listeners to third party elements.</p>
 </div>
 
 
@@ -1776,8 +1776,8 @@ Pass '*' to listen ALL events.
 
 
 <div class="description">
-    Send given event. Will automatically call {@see getAttributes} to fill information.
-Internally, this will call {@see Emitter#emit}, so you could listen any event fired.
+    <p>Send given event. Will automatically call {@see getAttributes} to fill information.<br>
+Internally, this will call {@see Emitter#emit}, so you could listen any event fired.</p>
 </div>
 
 
@@ -1839,7 +1839,7 @@ Internally, this will call {@see Emitter#emit}, so you could listen any event fi
 
             
 
-            <td class="description last">Event name</td>
+            <td class="description last"><p>Event name</p></td>
         </tr>
 
     
@@ -1872,7 +1872,7 @@ Internally, this will call {@see Emitter#emit}, so you could listen any event fi
 
             
 
-            <td class="description last">Key:value dictionary filled with attributes.</td>
+            <td class="description last"><p>Key:value dictionary filled with attributes.</p></td>
         </tr>
 
     
@@ -1962,11 +1962,10 @@ Internally, this will call {@see Emitter#emit}, so you could listen any event fi
 
 
 <div class="description">
-    Heartbeating allows you to call this function each X milliseconds, defined by
-getHeartbeat. This is useful to send regular events to track changes.
-
-By default it will send <a href="Tracker.html#.Events#.HEARTBEAT">Tracker.Events.HEARTBEAT</a>.
-To start heartbeating use startHeartbeat and to stop them use stopHeartbeat.
+    <p>Heartbeating allows you to call this function each X milliseconds, defined by<br>
+getHeartbeat. This is useful to send regular events to track changes.</p>
+<p>By default it will send <a href="Tracker.html#.Events#.HEARTBEAT">Tracker.Events.HEARTBEAT</a>.<br>
+To start heartbeating use startHeartbeat and to stop them use stopHeartbeat.</p>
 </div>
 
 
@@ -2030,7 +2029,7 @@ To start heartbeating use startHeartbeat and to stop them use stopHeartbeat.
 
             
 
-            <td class="description last">Collection of key:value attributes to send with the request.</td>
+            <td class="description last"><p>Collection of key:value attributes to send with the request.</p></td>
         </tr>
 
     
@@ -2126,7 +2125,7 @@ class TrackerChild extends Tracker {
 
 
 <div class="description">
-    Set options for the Tracker.
+    <p>Set options for the Tracker.</p>
 </div>
 
 
@@ -2190,7 +2189,7 @@ class TrackerChild extends Tracker {
 
             
 
-            <td class="description last">Options for the tracker.
+            <td class="description last"><p>Options for the tracker.</p>
                 <h6>Properties</h6>
                 
 
@@ -2244,7 +2243,7 @@ class TrackerChild extends Tracker {
 
             
 
-            <td class="description last">Set time between heartbeats. See heartbeat.</td>
+            <td class="description last"><p>Set time between heartbeats. See heartbeat.</p></td>
         </tr>
 
     
@@ -2277,7 +2276,7 @@ class TrackerChild extends Tracker {
 
             
 
-            <td class="description last">Set custom data. See customData.</td>
+            <td class="description last"><p>Set custom data. See customData.</p></td>
         </tr>
 
     
@@ -2310,7 +2309,7 @@ class TrackerChild extends Tracker {
 
             
 
-            <td class="description last">Set parent tracker. See parentTracker.</td>
+            <td class="description last"><p>Set parent tracker. See parentTracker.</p></td>
         </tr>
 
     
@@ -2402,8 +2401,8 @@ class TrackerChild extends Tracker {
 
 
 <div class="description">
-    Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.
-This method is automaticaly called by the tracker once sendRequest is called.
+    <p>Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.<br>
+This method is automaticaly called by the tracker once sendRequest is called.</p>
 </div>
 
 
@@ -2491,7 +2490,7 @@ This method is automaticaly called by the tracker once sendRequest is called.
 
 
 <div class="description">
-    Stops heartbeating. This method is automaticaly called by the tracker.
+    <p>Stops heartbeating. This method is automaticaly called by the tracker.</p>
 </div>
 
 
@@ -2579,8 +2578,8 @@ This method is automaticaly called by the tracker once sendRequest is called.
 
 
 <div class="description">
-    Override this method to unregister listeners to third party elements created with
-{@see registerListeners}.
+    <p>Override this method to unregister listeners to third party elements created with<br>
+{@see registerListeners}.</p>
 </div>
 
 
@@ -2693,7 +2692,7 @@ This method is automaticaly called by the tracker once sendRequest is called.
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Fri Apr 17 2020 14:04:29 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Fri Apr 17 2020 14:14:05 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
