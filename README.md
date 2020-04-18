@@ -79,8 +79,6 @@ https://discuss.newrelic.com/t/{{ APP_NAME }}
 
 ## Issues / enhancement requests
 
-> TODO: Update path
-
 Issues and enhancement requests can be submitted in the [Issues tab of this repository](../../issues). Please search for and review the existing open issues before submitting a new issue.
 
 # Contributing
