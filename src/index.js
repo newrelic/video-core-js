@@ -1,4 +1,5 @@
 import Recorder from './recorder'
+import Backend from './backend'
 import Core from './core'
 import Constants from './constants'
 import Chrono from './chrono'
@@ -19,5 +20,6 @@ export {
   VideoTrackerState,
   Core,
   Recorder,
+  Backend,
   version
 }

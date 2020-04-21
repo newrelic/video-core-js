@@ -1,4 +1,5 @@
 import Log from './log'
+import Backend from './backend'
 
 /**
  * Static class that is used to record events. It supports multiple backends. The default one is the New Relic Browser Agent.
@@ -13,7 +14,7 @@ import Log from './log'
      * @param {Object} data Data associated to the event.
      */
     static send(event, data) {
-        if (Recorder.getBackend() == undefined) {
+        if (Recorder.getBackend() == undefined || !(Recorder.getBackend() instanceof Backend)) {
             // Use the default backend (NR Agent)
             if (typeof newrelic !== 'undefined' && newrelic.addPageAction) {
                 newrelic.addPageAction(event, data)
@@ -29,7 +30,7 @@ import Log from './log'
         }
         else {
             // Use the user-defined backend
-            Log.debug("TODO: use the user-defined backend")
+            Recorder.getBackend().send(event, data)
         }
     }
 
