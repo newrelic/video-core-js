@@ -1,4 +1,5 @@
 import Log from './log'
+import Recorder from './recorder'
 
 /**
  * Static class that sums up core functionalities of the library.
@@ -41,22 +42,12 @@ class Core {
   }
 
   /**
-   * Sends given event. Uses newrelic Browser Agent.
+   * Sends given event.
    * @param {String} event Event to send.
    * @param {Object} data Data associated to the event.
    */
   static send (event, data) {
-    if (typeof newrelic !== 'undefined' && newrelic.addPageAction) {
-      newrelic.addPageAction(event, data)
-    } else {
-      if (!isErrorShown) {
-        Log.error(
-          'newrelic.addPageAction() is not available.',
-          'In order to use NewRelic Video you will need New Relic Browser Agent.'
-        )
-        isErrorShown = true
-      }
-    }
+    Recorder.send(event, data)
   }
 
   /**
@@ -72,7 +63,6 @@ class Core {
 }
 
 let trackers = []
-let isErrorShown = false
 
 /**
  * Logs and sends given event.
