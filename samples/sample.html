@@ -11,11 +11,12 @@
 
 <body>
   <video id="myPlayer" controls height="315" width="560">
-    <source src="http://video.webmfiles.org/big-buck-bunny_trailer.webm" type='video/mp4'>
+    <source src="http://dl5.webmfiles.org/big-buck-bunny_trailer.webm" type='video/mp4'>
   </video>
     <script>
       nrvideo.Log.level = nrvideo.Log.Levels.ALL
       var myPlayer = document.getElementById('myPlayer')
+      nrvideo.Core.send('SAMPLE_STARTED', {'videoElementId': myPlayer.id, 'videoWidth': myPlayer.width, 'videoHeight': myPlayer.height, 'videoSrc': myPlayer.getElementsByTagName('source')[0].src})
     </script>
 </body>
 
