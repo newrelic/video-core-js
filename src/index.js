@@ -1,4 +1,3 @@
-import Recorder from './recorder'
 import Backend from './backend'
 import NRInsightsBackend from './plugins/nrinsightsbackend'
 import Core from './core'
@@ -20,7 +19,6 @@ export {
   VideoTracker,
   VideoTrackerState,
   Core,
-  Recorder,
   Backend,
   NRInsightsBackend,
   version

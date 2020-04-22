@@ -35,7 +35,7 @@
       let backend = new nrvideo.NRInsightsBackend("ACCOUNT ID", "API KEY")
       // Set a custom attribute
       backend.setAttribute("videoElementId", "myPlayer")
-      nrvideo.Recorder.setBackend(backend)
+      nrvideo.Core.setBackend(backend)
 
       // Init tracker
       nrvideo.Log.level = nrvideo.Log.Levels.ALL
