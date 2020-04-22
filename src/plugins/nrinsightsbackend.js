@@ -42,6 +42,18 @@ class NRInsightsBackend extends Backend {
          */
         this._harvestLocked = false
 
+        /**
+         * Last timestamp.
+         * @private
+         */
+        this._lastTimestamp = 0
+
+        /**
+         * Timestamp offset.
+         * @private
+         */
+        this._timestampOffset = 0
+
         // Define harvest timer handler
         setInterval(() => { this.harvestHandler(NRInsightsBackend.Source.TIMER) }, 10000)
     }
@@ -51,9 +63,16 @@ class NRInsightsBackend extends Backend {
         if (this._eventBuffer.length < 500) {
             data['eventType'] = this._eventType
             data['actionName'] = event
-            //TODO: if 2 evens have the same timestamp, insights doesn't know how to sort them (it uses order of arrival)
-            //TODO: we have to inc timestamp in this case
-            data['timestamp'] = Date.now()
+            // Mechanism to avoid having two events with the same timestamp
+            let timestamp = Date.now()
+            if (timestamp == this._lastTimestamp) {
+                this._timestampOffset ++
+            }
+            else {
+                this._lastTimestamp = timestamp
+                this._timestampOffset = 0
+            }
+            data['timestamp'] = timestamp + this._timestampOffset
             this._eventBuffer.push(data)
         }
     }
