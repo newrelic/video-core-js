@@ -48,12 +48,6 @@ class NRInsightsBackend extends Backend {
          */
         this._lastTimestamp = 0
 
-        /**
-         * Timestamp offset.
-         * @private
-         */
-        this._timestampOffset = 0
-
         // Define harvest timer handler
         setInterval(() => { this.harvestHandler(NRInsightsBackend.Source.TIMER) }, 10000)
     }
@@ -65,14 +59,14 @@ class NRInsightsBackend extends Backend {
             data['actionName'] = event
             // Mechanism to avoid having two events with the same timestamp
             let timestamp = Date.now()
-            if (timestamp == this._lastTimestamp) {
-                this._timestampOffset ++
+            if (timestamp > this._lastTimestamp) {
+                data['timestamp'] = timestamp
+                this._lastTimestamp = timestamp
             }
             else {
-                this._lastTimestamp = timestamp
-                this._timestampOffset = 0
+                this._lastTimestamp ++
+                data['timestamp'] = this._lastTimestamp
             }
-            data['timestamp'] = timestamp + this._timestampOffset
             this._eventBuffer.push(data)
         }
     }
