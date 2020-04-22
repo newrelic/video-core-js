@@ -72,8 +72,6 @@ class NRInsightsBackend extends Backend {
     }
 
     harvestHandler(source) {
-        Log.debug("SOURCE = ", source)
-
         if (source == NRInsightsBackend.Source.TIMER && this._harvestLocked) {
             Log.debug("Harvest still locked, abort")
             return
