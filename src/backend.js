@@ -5,13 +5,38 @@
 
 class Backend {
 
+    constructor() {
+        /**
+         * Custom attributes
+         * @private
+         */
+        this._attributes = {}
+    }
+
     /**
      * Sends given event (to be overwritten by a subclass).
      * @param {String} event Event to send.
      * @param {Object} data Data associated to the event.
      */
     send(event, data) {
-        // The behaviour must be implemented in a subclass.
+        data = Object.assign(data || {}, this._attributes)
+    }
+
+    /**
+     * Store custom attribute.
+     * @param {String} key Attribute name.
+     * @param {Object} value Attribute value.
+     */
+    setAttribute(key, value) {
+        this._attributes[key] = value
+    }
+
+    /**
+     * Store custom attribute list.
+     * @param {Object} attr Attributes.
+     */
+    setAttributes(attr) {
+        this._attributes.append(attr)
     }
 }
 

@@ -1,4 +1,5 @@
 import Backend from '../backend'
+import Log from '../log'
 
 class NRInsightsBackend extends Backend {
     /**
@@ -41,7 +42,7 @@ class NRInsightsBackend extends Backend {
          */
         this._harvestLocked = false
 
-        // Defiome harvest timer handler
+        // Define harvest timer handler
         setInterval(() => { this.harvestHandler(NRInsightsBackend.Source.TIMER) }, 10000)
     }
 
@@ -50,28 +51,30 @@ class NRInsightsBackend extends Backend {
         if (this._eventBuffer.length < 500) {
             data['eventType'] = this._eventType
             data['actionName'] = event
+            //TODO: if 2 evens have the same timestamp, insights doesn't know how to sort them (it uses order of arrival)
+            //TODO: we have to inc timestamp in this case
             data['timestamp'] = Date.now()
             this._eventBuffer.push(data)
         }
     }
 
     harvestHandler(source) {
-        console.log("SOURCE = ", source)
+        Log.debug("SOURCE = ", source)
 
         if (source == NRInsightsBackend.Source.TIMER && this._harvestLocked) {
-            console.log("Harvest still locked, abort")
+            Log.debug("Harvest still locked, abort")
             return
         }
 
-        console.log("Lock harvest")
+        Log.debug("Lock harvest")
         this._harvestLocked = true
 
         if (this._eventBuffer.length > 0) {
-            console.log("Harvest timer. Event buffer = ", this._eventBuffer)
+            Log.debug("Harvest timer. Event buffer = ", this._eventBuffer)
             this.pushEventToInsights(this._eventBuffer.pop())
         }
         else {
-            console.log("Unlock harvest")
+            Log.debug("Unlock harvest")
             this._harvestLocked = false
         }
     }
@@ -81,16 +84,22 @@ class NRInsightsBackend extends Backend {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Insert-Key': this._apiKey },
             body: JSON.stringify(ev)
-        };
+        }
 
         const url = "https://insights-collector.newrelic.com/v1/accounts/" + this._accountId + "/events"
         fetch(url, requestOptions)
             .then(response => response.json())
-            .then(data => this.insightsRequestResponse(data));
+            .then(data => this.insightsRequestResponse(data))
+            .catch((error) => {
+                Log.error('Error:', error, ev);
+                // Put back the event and abort current fetch process
+                this._eventBuffer.push(ev)
+                this._harvestLocked = false
+            });
     }
 
     insightsRequestResponse(data) {
-        console.log("INSIGHTS RESPONSE = ", data)
+        Log.debug("INSIGHTS RESPONSE = ", data)
         // Send next event
         this.harvestHandler(NRInsightsBackend.Source.FETCH)
     }
