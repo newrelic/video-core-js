@@ -1,0 +1,104 @@
+import Backend from '../backend'
+
+class NRInsightsBackend extends Backend {
+    /**
+     * Constructor, receives account ID, API Key and (optionally) an event type.
+     *
+     * @param {String} [accountId] Insights Account ID.
+     * @param {String} [apiKey] Insights API Key.
+     * @param {String} [eventType] Insights event type. Default 'BrowserVideo'.
+     */
+    constructor(accountId, apiKey, eventType = 'BrowserVideo') {
+        super()
+
+        /**
+         * Insights account ID.
+         * @private
+         */
+        this._accountId = accountId
+
+        /**
+         * Insights API Key.
+         * @private
+         */
+        this._apiKey = apiKey
+
+        /**
+         * Insights event type.
+         * @private
+         */
+        this._eventType = eventType
+
+        /**
+         * Buffer to store events.
+         * @private
+         */
+        this._eventBuffer = []
+
+        /**
+         * Harvest timer lock.
+         * @private
+         */
+        this._harvestLocked = false
+
+        // Defiome harvest timer handler
+        setInterval(() => { this.harvestHandler(NRInsightsBackend.Source.TIMER) }, 10000)
+    }
+
+    send(event, data) {
+        super.send(event, data)
+        if (this._eventBuffer.length < 500) {
+            data['eventType'] = this._eventType
+            data['actionName'] = event
+            data['timestamp'] = Date.now()
+            this._eventBuffer.push(data)
+        }
+    }
+
+    harvestHandler(source) {
+        console.log("SOURCE = ", source)
+
+        if (source == NRInsightsBackend.Source.TIMER && this._harvestLocked) {
+            console.log("Harvest still locked, abort")
+            return
+        }
+
+        console.log("Lock harvest")
+        this._harvestLocked = true
+
+        if (this._eventBuffer.length > 0) {
+            console.log("Harvest timer. Event buffer = ", this._eventBuffer)
+            this.pushEventToInsights(this._eventBuffer.pop())
+        }
+        else {
+            console.log("Unlock harvest")
+            this._harvestLocked = false
+        }
+    }
+
+    pushEventToInsights(ev) {
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Insert-Key': this._apiKey },
+            body: JSON.stringify(ev)
+        };
+
+        const url = "https://insights-collector.newrelic.com/v1/accounts/" + this._accountId + "/events"
+        fetch(url, requestOptions)
+            .then(response => response.json())
+            .then(data => this.insightsRequestResponse(data));
+    }
+
+    insightsRequestResponse(data) {
+        console.log("INSIGHTS RESPONSE = ", data)
+        // Send next event
+        this.harvestHandler(NRInsightsBackend.Source.FETCH)
+    }
+}
+
+NRInsightsBackend.Source = {
+    TIMER: "TIMER",
+    FETCH: "FETCH"
+}
+
+export default NRInsightsBackend
