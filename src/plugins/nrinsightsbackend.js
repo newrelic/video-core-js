@@ -75,6 +75,7 @@ class NRInsightsBackend extends Backend {
     generateAttributes(data) {
         data['pageUrl'] = window.location.href
         data['currentUrl'] = window.location.origin + window.location.pathname
+        data['referrerUrl'] = document.referrer
 
         let OSName = "Unknown"
         if (navigator.userAgent.indexOf("Win") != -1) OSName = "Windows"
@@ -101,7 +102,7 @@ class NRInsightsBackend extends Backend {
         else if(navigator.userAgent.match(/Mobile|Windows Phone|Lumia|Android|webOS|iPhone|iPod|Blackberry|PlayBook|BB10|Opera Mini|\bCrMo\/|Opera Mobi/i)) deviceType = "Mobile"
         else deviceType = "Desktop"
         data['deviceType'] = deviceType
-        
+
         return data
     }
 
