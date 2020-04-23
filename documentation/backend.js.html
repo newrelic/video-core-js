@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: constants.js</title>
+    <title>JSDoc: Source: backend.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: constants.js</h1>
+    <h1 class="page-title">Source: backend.js</h1>
 
     
 
@@ -27,28 +27,48 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Constants for the library.
- * @class Constants
- * @static
+ * Backend class provides the basic logic to create event backends.
+ * This class is intended to be subclassed, not directly used.
  */
-class Constants {}
 
-/**
- * Enum for types/positions of ads.
- * @example var type = Constants.AdPositions.PRE
- * @enum {String}
- */
-Constants.AdPositions = {
-  /** For ads shown before the content. */
-  PRE: 'pre',
-  /** For ads shown during the content. */
-  MID: 'mid',
-  /** For ads shown after the content. */
-  POST: 'post'
+class Backend {
+
+    constructor() {
+        /**
+         * Custom attributes
+         * @private
+         */
+        this._attributes = {}
+    }
+
+    /**
+     * Sends given event (to be overwritten by a subclass).
+     * @param {String} event Event to send.
+     * @param {Object} data Data associated to the event.
+     */
+    send(event, data) {
+        data = Object.assign(data || {}, this._attributes)
+    }
+
+    /**
+     * Store custom attribute.
+     * @param {String} key Attribute name.
+     * @param {Object} value Attribute value.
+     */
+    setAttribute(key, value) {
+        this._attributes[key] = value
+    }
+
+    /**
+     * Store custom attribute list.
+     * @param {Object} attr Attributes.
+     */
+    setAttributes(attr) {
+        this._attributes.append(attr)
+    }
 }
 
-export default Constants
-</code></pre>
+export default Backend</code></pre>
         </article>
     </section>
 
