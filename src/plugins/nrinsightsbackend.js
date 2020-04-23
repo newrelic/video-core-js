@@ -81,9 +81,7 @@ class NRInsightsBackend extends Backend {
         if (navigator.userAgent.indexOf("Win") != -1) OSName = "Windows"
         else if (navigator.userAgent.indexOf("Android") != -1) OSName = "Android"
         else if (navigator.userAgent.indexOf("Mac") != -1) OSName = "Mac"
-        else if (navigator.userAgent.indexOf("iPhone") != -1) OSName = "iOS"
-        else if (navigator.userAgent.indexOf("iPod") != -1) OSName = "iOS"
-        else if (navigator.userAgent.indexOf("iPad") != -1) OSName = "iOS"
+        else if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) OSName = "iOS"
         else if (navigator.userAgent.indexOf("Linux") != -1) OSName = "Linux"
         else if (navigator.userAgent.indexOf("X11") != -1) OSName = "UNIX"
         data['userAgentOS'] = OSName
