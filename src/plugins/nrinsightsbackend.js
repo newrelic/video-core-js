@@ -55,6 +55,7 @@ class NRInsightsBackend extends Backend {
     send(event, data) {
         super.send(event, data)
         if (this._eventBuffer.length < 500) {
+            data = this.generateAttributes(data)
             data['eventType'] = this._eventType
             data['actionName'] = event
             // Mechanism to avoid having two events with the same timestamp
@@ -69,6 +70,39 @@ class NRInsightsBackend extends Backend {
             }
             this._eventBuffer.push(data)
         }
+    }
+
+    generateAttributes(data) {
+        data['pageUrl'] = window.location.href
+        data['currentUrl'] = window.location.origin + window.location.pathname
+
+        let OSName = "Unknown"
+        if (navigator.userAgent.indexOf("Win") != -1) OSName = "Windows"
+        else if (navigator.userAgent.indexOf("Android") != -1) OSName = "Android"
+        else if (navigator.userAgent.indexOf("Mac") != -1) OSName = "Mac"
+        else if (navigator.userAgent.indexOf("iPhone") != -1) OSName = "iOS"
+        else if (navigator.userAgent.indexOf("iPod") != -1) OSName = "iOS"
+        else if (navigator.userAgent.indexOf("iPad") != -1) OSName = "iOS"
+        else if (navigator.userAgent.indexOf("Linux") != -1) OSName = "Linux"
+        else if (navigator.userAgent.indexOf("X11") != -1) OSName = "UNIX"
+        data['userAgentOS'] = OSName
+
+        let agentName = "Unknown"
+        if (navigator.userAgent.indexOf("Chrome") != -1 ) agentName = "Chrome"
+        else if (navigator.userAgent.indexOf("Firefox") != -1 ) agentName = "Firefox"
+        else if (navigator.userAgent.indexOf("MSIE") != -1 ) agentName = "IE"
+        else if (navigator.userAgent.indexOf("Edge") != -1 ) agentName = "Microsoft Edge"
+        else if (navigator.userAgent.indexOf("Safari") != -1 ) agentName = "Safari"
+        else if (navigator.userAgent.indexOf("Opera") != -1 ) agentName = "Opera"
+        data['userAgentName'] = agentName
+
+        let deviceType = "Unknown"
+        if (navigator.userAgent.match(/Tablet|iPad/i)) deviceType = "Tablet"
+        else if(navigator.userAgent.match(/Mobile|Windows Phone|Lumia|Android|webOS|iPhone|iPod|Blackberry|PlayBook|BB10|Opera Mini|\bCrMo\/|Opera Mobi/i)) deviceType = "Mobile"
+        else deviceType = "Desktop"
+        data['deviceType'] = deviceType
+        
+        return data
     }
 
     harvestHandler(source) {
