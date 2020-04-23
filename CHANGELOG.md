@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.14.0] - 2020/04/23
+### Add
+- Event backend system.
+
 ## [0.13.0] - 2019/12/03
 ### Fix
 - Issue with `isInitialBuffering` attribute.
