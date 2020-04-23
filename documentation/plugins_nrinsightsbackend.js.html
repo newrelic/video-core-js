@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: plugins/nrinsightsbackend.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: plugins/nrinsightsbackend.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import Backend from '../backend'
+import Log from '../log'
+
+class NRInsightsBackend extends Backend {
+    /**
+     * Constructor, receives account ID, API Key and (optionally) an event type.
+     *
+     * @param {String} [accountId] Insights Account ID.
+     * @param {String} [apiKey] Insights API Key.
+     * @param {String} [eventType] Insights event type. Default 'BrowserVideo'.
+     */
+    constructor(accountId, apiKey, eventType = 'BrowserVideo') {
+        super()
+
+        /**
+         * Insights account ID.
+         * @private
+         */
+        this._accountId = accountId
+
+        /**
+         * Insights API Key.
+         * @private
+         */
+        this._apiKey = apiKey
+
+        /**
+         * Insights event type.
+         * @private
+         */
+        this._eventType = eventType
+
+        /**
+         * Buffer to store events.
+         * @private
+         */
+        this._eventBuffer = []
+
+        /**
+         * Harvest timer lock.
+         * @private
+         */
+        this._harvestLocked = false
+
+        /**
+         * Last timestamp.
+         * @private
+         */
+        this._lastTimestamp = 0
+
+        // Define harvest timer handler
+        setInterval(() => { this.harvestHandler(NRInsightsBackend.Source.TIMER) }, 10000)
+    }
+
+    send(event, data) {
+        super.send(event, data)
+        if (this._eventBuffer.length &lt; 500) {
+            data = this.generateAttributes(data)
+            data['eventType'] = this._eventType
+            data['actionName'] = event
+            // Mechanism to avoid having two events with the same timestamp
+            let timestamp = Date.now()
+            if (timestamp > this._lastTimestamp) {
+                data['timestamp'] = timestamp
+                this._lastTimestamp = timestamp
+            }
+            else {
+                this._lastTimestamp ++
+                data['timestamp'] = this._lastTimestamp
+            }
+            this._eventBuffer.push(data)
+        }
+    }
+
+    generateAttributes(data) {
+        data['pageUrl'] = window.location.href
+        data['currentUrl'] = window.location.origin + window.location.pathname
+        data['referrerUrl'] = document.referrer
+
+        let OSName = "Unknown"
+        if (navigator.userAgent.indexOf("Win") != -1) OSName = "Windows"
+        else if (navigator.userAgent.indexOf("Android") != -1) OSName = "Android"
+        else if (navigator.userAgent.indexOf("Mac") != -1) OSName = "Mac"
+        else if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) OSName = "iOS"
+        else if (navigator.userAgent.indexOf("Linux") != -1) OSName = "Linux"
+        else if (navigator.userAgent.indexOf("X11") != -1) OSName = "UNIX"
+        data['userAgentOS'] = OSName
+
+        let agentName = "Unknown"
+        if (navigator.userAgent.indexOf("Chrome") != -1 ) agentName = "Chrome"
+        else if (navigator.userAgent.indexOf("Firefox") != -1 ) agentName = "Firefox"
+        else if (navigator.userAgent.indexOf("MSIE") != -1 ) agentName = "IE"
+        else if (navigator.userAgent.indexOf("Edge") != -1 ) agentName = "Microsoft Edge"
+        else if (navigator.userAgent.indexOf("Safari") != -1 ) agentName = "Safari"
+        else if (navigator.userAgent.indexOf("Opera") != -1 ) agentName = "Opera"
+        data['userAgentName'] = agentName
+
+        let deviceType = "Unknown"
+        if (navigator.userAgent.match(/Tablet|iPad/i)) deviceType = "Tablet"
+        else if(navigator.userAgent.match(/Mobile|Windows Phone|Lumia|Android|webOS|iPhone|iPod|Blackberry|PlayBook|BB10|Opera Mini|\bCrMo\/|Opera Mobi/i)) deviceType = "Mobile"
+        else deviceType = "Desktop"
+        data['deviceType'] = deviceType
+
+        return data
+    }
+
+    harvestHandler(source) {
+        if (source == NRInsightsBackend.Source.TIMER &amp;&amp; this._harvestLocked) {
+            Log.debug("Harvest still locked, abort")
+            return
+        }
+
+        Log.debug("Lock harvest")
+        this._harvestLocked = true
+
+        if (this._eventBuffer.length > 0) {
+            Log.debug("Harvest timer. Event buffer = ", this._eventBuffer)
+            this.pushEventToInsights(this._eventBuffer.pop())
+        }
+        else {
+            Log.debug("Unlock harvest")
+            this._harvestLocked = false
+        }
+    }
+
+    pushEventToInsights(ev) {
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Insert-Key': this._apiKey },
+            body: JSON.stringify(ev)
+        }
+
+        const url = "https://insights-collector.newrelic.com/v1/accounts/" + this._accountId + "/events"
+        fetch(url, requestOptions)
+            .then(response => response.json())
+            .then(data => this.insightsRequestResponse(data))
+            .catch((error) => {
+                Log.error('Error:', error, ev);
+                // Put back the event and abort current fetch process
+                this._eventBuffer.push(ev)
+                this._harvestLocked = false
+            });
+    }
+
+    insightsRequestResponse(data) {
+        Log.debug("INSIGHTS RESPONSE = ", data)
+        // Send next event
+        this.harvestHandler(NRInsightsBackend.Source.FETCH)
+    }
+}
+
+NRInsightsBackend.Source = {
+    TIMER: "TIMER",
+    FETCH: "FETCH"
+}
+
+export default NRInsightsBackend
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Backend.html">Backend</a></li><li><a href="Chrono.html">Chrono</a></li><li><a href="Constants.html">Constants</a></li><li><a href="Core.html">Core</a></li><li><a href="Emitter.html">Emitter</a></li><li><a href="Log.html">Log</a></li><li><a href="NRInsightsBackend.html">NRInsightsBackend</a></li><li><a href="Tracker.html">Tracker</a></li><li><a href="VideoTracker.html">VideoTracker</a></li><li><a href="VideoTrackerState.html">VideoTrackerState</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Thu Apr 23 2020 14:21:01 GMT+0200 (CEST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
