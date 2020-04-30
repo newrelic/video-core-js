@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2020/04/30
+### Fix
+- Updated dependencies to fix multiple vulnerabilities reported by `npm audit`.
+
 ## [0.14.0] - 2020/04/23
 ### Add
 - Event backend system.
