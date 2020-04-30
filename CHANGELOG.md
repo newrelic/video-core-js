@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2020/04/30
+### Update
+- `diff` package to version 3.5.0.
+
 ## [0.15.0] - 2020/04/30
 ### Fix
 - Updated dependencies to fix multiple vulnerabilities reported by `npm audit`.
