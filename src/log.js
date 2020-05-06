@@ -187,7 +187,12 @@ function _report (msg, level, color) {
       } else if (level === Log.Levels.WARNING && console.warn) {
         logMethod = console.warn
       } else if (level === Log.Levels.DEBUG && console.debug) {
-        logMethod = console.debug
+        // NOTE: for some reason console.debug doesn't work on CAF Receivers.
+        if (window.cast == undefined) {
+          logMethod = console.debug
+        } else {
+          logMethod = console.log
+        }
       } else {
         logMethod = console.log
       }
