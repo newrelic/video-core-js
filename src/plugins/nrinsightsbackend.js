@@ -97,7 +97,8 @@ class NRInsightsBackend extends Backend {
 
         let deviceType = "Unknown"
         if (navigator.userAgent.match(/Tablet|iPad/i)) deviceType = "Tablet"
-        else if(navigator.userAgent.match(/Mobile|Windows Phone|Lumia|Android|webOS|iPhone|iPod|Blackberry|PlayBook|BB10|Opera Mini|\bCrMo\/|Opera Mobi/i)) deviceType = "Mobile"
+        else if (navigator.userAgent.match(/Mobile|Windows Phone|Lumia|Android|webOS|iPhone|iPod|Blackberry|PlayBook|BB10|Opera Mini|\bCrMo\/|Opera Mobi/i)) deviceType = "Mobile"
+        else if (window.cast != undefined) deviceType = "Cast"
         else deviceType = "Desktop"
         data['deviceType'] = deviceType
 
