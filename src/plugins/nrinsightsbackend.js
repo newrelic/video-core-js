@@ -1,6 +1,16 @@
 import Backend from '../backend'
 import Log from '../log'
 
+/**
+ * Implements a New Relic Insights API backend. For a description of what is a Backend, see {@link Backend}.
+ * It must be initialized using a New Relic Account ID and an Insights API insert key.
+ *
+ * @example
+ * let backend = new nrvideo.NRInsightsBackend("ACCOUNT ID", "API KEY")
+ * nrvideo.Core.setBackend(backend)
+ *
+ * @extends Backend
+ */
 class NRInsightsBackend extends Backend {
     /**
      * Constructor, receives account ID, API Key and (optionally) an event type.

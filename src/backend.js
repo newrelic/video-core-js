@@ -1,8 +1,9 @@
 /**
  * Backend class provides the basic logic to create event backends.
  * This class is intended to be subclassed, not directly used.
+ * 
+ * @class Backend
  */
-
 class Backend {
 
     constructor() {
