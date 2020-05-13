@@ -121,15 +121,13 @@ class NRInsightsBackend extends Backend {
             return
         }
 
-        Log.debug("Lock harvest")
         this._harvestLocked = true
 
         if (this._eventBuffer.length > 0) {
-            Log.debug("Harvest timer. Event buffer = ", this._eventBuffer)
+            Log.debug("Push events to Insights = ", this._eventBuffer)
             this.pushEventToInsights(this._eventBuffer.pop())
         }
         else {
-            Log.debug("Unlock harvest")
             this._harvestLocked = false
         }
     }
@@ -154,7 +152,6 @@ class NRInsightsBackend extends Backend {
     }
 
     insightsRequestResponse(data) {
-        Log.debug("INSIGHTS RESPONSE = ", data)
         // Send next event
         this.harvestHandler(NRInsightsBackend.Source.FETCH)
     }
