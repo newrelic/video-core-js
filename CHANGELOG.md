@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.17.0] - 2020/05/13
+### Fix
+- Minor issues on CAF Receiver environment.
+
 ## [0.16.0] - 2020/04/30
 ### Update
 - `diff` package to version 3.5.0.
