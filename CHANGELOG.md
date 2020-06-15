@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.19.0] - 2020/06/15
+### Fix
+- `isInitialBuffering` attribute.
+
 ## [0.18.0] - 2020/06/15
 ### Fix
 - `adPosition`, use state.isStarted from parent tracker (contents tracker) to determine current ad position.
