@@ -580,7 +580,7 @@ class VideoTracker extends Tracker {
       } else {
         ev = VideoTracker.Events.CONTENT_BUFFER_START
       }
-      if (!this.state.isStarted) {
+      if (this.getPlayhead() == 0) {
         att.isInitialBuffering = !this.state.initialBufferingHappened
       }
       else {
@@ -606,7 +606,7 @@ class VideoTracker extends Tracker {
         ev = VideoTracker.Events.CONTENT_BUFFER_END
         att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
       }
-      if (!this.state.isStarted) {
+      if (this.getPlayhead() == 0) {
         att.isInitialBuffering = !this.state.initialBufferingHappened
       }
       else {
