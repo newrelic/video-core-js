@@ -367,7 +367,12 @@ class VideoTracker extends Tracker {
    * to fill this data.
    */
   getAdPosition () {
-    return this.state.isStarted ? 'pre' : 'mid'
+    if (this.parentTracker) {
+      return this.parentTracker.state.isStarted ? 'mid' : 'pre'
+    }
+    else {
+      return null
+    }
   }
 
   /**
