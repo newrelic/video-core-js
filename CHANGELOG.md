@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.18.0] - 2020/06/15
+### Fix
+- `adPosition`, use state.isStarted from parent tracker (contents tracker) to determine current ad position.
+
 ## [0.17.0] - 2020/05/13
 ### Fix
 - Minor issues on CAF Receiver environment.
