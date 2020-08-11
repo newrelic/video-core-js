@@ -580,12 +580,9 @@ class VideoTracker extends Tracker {
       } else {
         ev = VideoTracker.Events.CONTENT_BUFFER_START
       }
-      if (this.getPlayhead() == 0) {
-        att.isInitialBuffering = !this.state.initialBufferingHappened
-      }
-      else {
-        att.isInitialBuffering = false
-      }
+
+      att = this.buildBufferAttributes(att)
+      
       this.send(ev, att)
     }
   }
@@ -606,15 +603,28 @@ class VideoTracker extends Tracker {
         ev = VideoTracker.Events.CONTENT_BUFFER_END
         att.timeSinceBufferBegin = this.state.timeSinceBufferBegin.getDeltaTime()
       }
-      if (this.getPlayhead() == 0) {
-        att.isInitialBuffering = !this.state.initialBufferingHappened
-      }
-      else {
-        att.isInitialBuffering = false
-      }
+
+      att = this.buildBufferAttributes(att)
+
       this.send(ev, att)
       this.state.initialBufferingHappened = true
     }
+  }
+  
+  buildBufferAttributes(att) {
+    if (this.getPlayhead() < 50) {
+      att.isInitialBuffering = !this.state.initialBufferingHappened
+    }
+    else {
+      att.isInitialBuffering = false
+    }
+
+    att.bufferType = this.state.calculateBufferType(att.isInitialBuffering)
+    
+    if (this.state.timeSinceResumed.startTime != 0) {
+      att.timeSinceResumed = this.state.timeSinceResumed.getDeltaTime()
+    }
+    return att
   }
 
   /**

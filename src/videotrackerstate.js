@@ -1,4 +1,5 @@
 import Chrono from './chrono'
+import Log from './log'
 
 /**
  * State machine for a VideoTracker and its monitored video.
@@ -124,6 +125,9 @@ class VideoTrackerState {
     /** Content only. Chrono that counts time since last AD_END. */
     this.timeSinceLastAd = new Chrono()
 
+    /** Chrono that counts time since last *_RESUME. */
+    this.timeSinceResumed = new Chrono()
+
     /** Chrono that counts the ammount of time the video have been playing since the last event. */
     this.playtimeSinceLastEvent = new Chrono()
   }
@@ -211,6 +215,29 @@ class VideoTrackerState {
     }
 
     return att
+  }
+
+  /**
+   * Calculate the bufferType attribute.
+   */
+  calculateBufferType(isInitialBuffering) {
+    let bufferType = ''
+    if (isInitialBuffering) {
+      bufferType = "initial";
+    }
+    else if (this.isSeeking) {
+      bufferType = "seek";
+    }
+    else if (this.isPaused) {
+      bufferType = "pause";
+    }
+    else {
+      // If none of the above is true, it is a connection buffering
+      bufferType = "connection";
+    }
+    Log.debug("Buffer Type = " + bufferType)
+    
+    return bufferType
   }
 
   /**
@@ -311,6 +338,7 @@ class VideoTrackerState {
       this.isPaused = false
       this.isPlaying = true
       this.timeSincePaused.stop()
+      this.timeSinceResumed.start()
       return true
     } else {
       return false

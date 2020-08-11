@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.20.0] - 2020/08/11
+### Add
+- `bufferType` attribute to all BUFFER events.
+- `timeSinceResumed` attribute to all BUFFER events.
+
 ## [0.19.0] - 2020/06/15
 ### Fix
 - `isInitialBuffering` attribute.
