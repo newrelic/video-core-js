@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.21.0] - 2020/08/13
+### Add
+- Call `trackerInit` method when a tracker is added.
+
 ## [0.20.0] - 2020/08/11
 ### Add
 - `bufferType` attribute to all BUFFER events.
