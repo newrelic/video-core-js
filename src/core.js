@@ -15,6 +15,9 @@ class Core {
     if (tracker.on && tracker.emit) {
       trackers.push(tracker)
       tracker.on('*', eventHandler)
+      if (typeof tracker.trackerInit == 'function') { 
+        tracker.trackerInit(); 
+      }
     } else {
       Log.error('Tried to load a non-tracker.', tracker)
     }
