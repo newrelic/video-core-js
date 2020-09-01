@@ -37,6 +37,12 @@ class VideoTracker extends Tracker {
      */
     this.adsTracker = null
 
+    /**
+     * Last bufferType value.
+     * @private
+     */
+    this._lastBufferType = null
+
     options = options || {}
     this.setOptions(options)
     if (player) this.setPlayer(player, options.tag)
@@ -582,6 +588,7 @@ class VideoTracker extends Tracker {
       }
 
       att = this.buildBufferAttributes(att)
+      this._lastBufferType = att.bufferType
       
       this.send(ev, att)
     }
@@ -605,6 +612,10 @@ class VideoTracker extends Tracker {
       }
 
       att = this.buildBufferAttributes(att)
+      // Set the bufferType attribute of the last BUFFER_START
+      if (this._lastBufferType != null) {
+        att.bufferType = this._lastBufferType
+      }
 
       this.send(ev, att)
       this.state.initialBufferingHappened = true
