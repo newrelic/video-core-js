@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.23.0] - 2020/09/29
+### Add
+- Method `sendCustom` to send a custom action with a timeSince attribute.
+
 ## [0.22.0] - 2020/09/01
 ### Fix
 - Use the same `bufferType` value for both BUFFER events.
