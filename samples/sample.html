@@ -41,6 +41,7 @@
       nrvideo.Core.addTracker(myTracker)
 
       // Send a sample event
+      myTracker.sendCustom('CUSTOM_WITH_ATT', 'timeSinceCustom')
       myTracker.send('SAMPLE_STARTED', {'videoElementId': myPlayer.id})
     </script>
 </body>

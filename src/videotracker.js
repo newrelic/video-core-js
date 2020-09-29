@@ -467,6 +467,18 @@ class VideoTracker extends Tracker {
   }
 
   /**
+   * Sends custom event and registers a timeSince attribute.
+   * @param {Object} [actionName] Custom action name.
+   * @param {Object} [timeSinceAttName] Custom timeSince attribute name.
+   * @param {Object} [att] Collection of key:value attributes to send with the request.
+   */
+  sendCustom (actionName, timeSinceAttName, att) {
+    att = att || {}
+    this.send(actionName, att)
+    this.state.setTimeSinceAttribute(timeSinceAttName)
+  }
+
+  /**
    * Sends associated event and changes view state. An internal state machine will prevent
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.

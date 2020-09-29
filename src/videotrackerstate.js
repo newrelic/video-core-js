@@ -130,6 +130,9 @@ class VideoTrackerState {
 
     /** Chrono that counts the ammount of time the video have been playing since the last event. */
     this.playtimeSinceLastEvent = new Chrono()
+
+    /** A dictionary containing the custom timeSince attributes. */
+    this.customTimeSinceAttributes = {}
   }
 
   /** Returns true if the tracker is currently on ads. */
@@ -140,6 +143,12 @@ class VideoTrackerState {
   /** Sets if the tracker is currenlty tracking ads */
   setIsAd (isAd) {
     this._isAd = isAd
+  }
+
+  /** Set the Chrono for the custom attribute */
+  setTimeSinceAttribute (name) {
+    this.customTimeSinceAttributes[name] = new Chrono()
+    this.customTimeSinceAttributes[name].start()
   }
 
   /**
@@ -212,6 +221,10 @@ class VideoTrackerState {
       }
       this.totalPlaytime += att.playtimeSinceLastEvent
       att.totalPlaytime = this.totalPlaytime
+    }
+
+    for (const [key, value] of Object.entries(this.customTimeSinceAttributes)) {
+      att[key] = value.getDeltaTime()
     }
 
     return att
