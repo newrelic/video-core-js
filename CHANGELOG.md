@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.24.0] - 2020/10/01
+### Fix
+- Report `bufferType` as "pause" when it happens right after a RESUME event.
+
 ## [0.23.0] - 2020/09/29
 ### Add
 - Method `sendCustom` to send a custom action with a timeSince attribute.
