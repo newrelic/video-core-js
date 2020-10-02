@@ -199,6 +199,10 @@ class Tracker extends Emitter {
       att[key] = this.customData[key]
     }
 
+    if (document.hidden != undefined) {
+      att.isBackgroundEvent = document.hidden
+    }
+
     return att
   }
 
