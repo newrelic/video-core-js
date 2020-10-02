@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.25.0] - 2020/10/02
+### Add
+- Attribute `isBackgroundEvent` to indicate when an event happend during the browser tab is in background.
+
 ## [0.24.0] - 2020/10/01
 ### Fix
 - Report `bufferType` as "pause" when it happens right after a RESUME event.
