@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.26.0] - 2020/10/08
+### Fix
+- When buffering happens before START, BUFFER events not being sent.
+
 ## [0.25.0] - 2020/10/02
 ### Add
 - Attribute `isBackgroundEvent` to indicate when an event happend during the browser tab is in background.
