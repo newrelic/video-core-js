@@ -363,7 +363,7 @@ class VideoTrackerState {
    * @returns {boolean} True if the state changed.
    */
   goBufferStart () {
-    if (this.isStarted && !this.isBuffering) {
+    if (this.isRequested && !this.isBuffering) {
       this.isBuffering = true
       this.isPlaying = false
       this.timeSinceBufferBegin.start()
@@ -378,7 +378,7 @@ class VideoTrackerState {
    * @returns {boolean} True if the state changed.
    */
   goBufferEnd () {
-    if (this.isStarted && this.isBuffering) {
+    if (this.isRequested && this.isBuffering) {
       this.isBuffering = false
       this.isPlaying = true
       this.timeSinceBufferBegin.stop()
