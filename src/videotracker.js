@@ -635,7 +635,7 @@ class VideoTracker extends Tracker {
   }
   
   buildBufferAttributes(att) {
-    if (this.getPlayhead() < 50) {
+    if (this.getPlayhead() < 100) {
       att.isInitialBuffering = !this.state.initialBufferingHappened
     }
     else {
