@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.27.0] - 2020/10/20
+### Fix
+- Increment time margin for initial `bufferType`.
+
 ## [0.26.0] - 2020/10/08
 ### Fix
 - When buffering happens before START, BUFFER events not being sent.
