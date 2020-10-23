@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.28.0] - 2020/10/23
+### Fix
+- Initial bufferType when video is a live stream.
+
 ## [0.27.0] - 2020/10/20
 ### Fix
 - Increment time margin for initial `bufferType`.
