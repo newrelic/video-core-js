@@ -635,7 +635,7 @@ class VideoTracker extends Tracker {
   }
   
   buildBufferAttributes(att) {
-    if (this.getPlayhead() < 100) {
+    if (att.timeSinceStarted == undefined || att.timeSinceStarted < 100) {
       att.isInitialBuffering = !this.state.initialBufferingHappened
     }
     else {
