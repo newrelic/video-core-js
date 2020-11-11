@@ -125,8 +125,11 @@ class VideoTrackerState {
     /** Content only. Chrono that counts time since last AD_END. */
     this.timeSinceLastAd = new Chrono()
 
-    /** Chrono that counts time since last *_RESUME. */
+    /** Chrono that counts time since last *_RESUME. Only for buffering events. */
     this.timeSinceResumed = new Chrono()
+
+    /** Chrono that counts time since last *_SEEK_END. Only for buffering events. */
+    this.timeSinceSeekEnd = new Chrono()
 
     /** Chrono that counts the ammount of time the video have been playing since the last event. */
     this.playtimeSinceLastEvent = new Chrono()
@@ -336,6 +339,7 @@ class VideoTrackerState {
       this.isPlaying = false
       this.timeSincePaused.start()
       this.playtimeSinceLastEvent.stop()
+      this.timeSinceResumed.reset()
       return true
     } else {
       return false
@@ -397,6 +401,7 @@ class VideoTrackerState {
       this.isSeeking = true
       this.isPlaying = false
       this.timeSinceSeekBegin.start()
+      this.timeSinceSeekEnd.reset()
       return true
     } else {
       return false
@@ -412,6 +417,7 @@ class VideoTrackerState {
       this.isSeeking = false
       this.isPlaying = true
       this.timeSinceSeekBegin.stop()
+      this.timeSinceSeekEnd.start()
       return true
     } else {
       return false

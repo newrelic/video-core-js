@@ -644,15 +644,8 @@ class VideoTracker extends Tracker {
 
     att.bufferType = this.state.calculateBufferType(att.isInitialBuffering)
     
-    if (this.state.timeSinceResumed.startTime != 0) {
-      att.timeSinceResumed = this.state.timeSinceResumed.getDeltaTime()
-    }
-
-    // NOTE: Sometimes after a RESUME there is buffering event that is caused by the pause block, and it must be reported as bufferType = "pause".
-    //       The time delay is hardcoded and set to be less than 1 second.
-    if (att.timeSinceResumed < 1000 && att.bufferType == "connection") {
-      att.bufferType = "pause"
-    }
+    att.timeSinceResumed = this.state.timeSinceResumed.getDeltaTime()
+    att.timeSinceSeekEnd = this.state.timeSinceSeekEnd.getDeltaTime()
 
     return att
   }
