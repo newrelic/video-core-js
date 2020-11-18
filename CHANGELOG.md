@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.30.0] - 2020/11/18
+### Fix
+- Reset `totalPlaytime` after an END.
+
 ## [0.29.0] - 2020/11/11
 ### Add
 - Attribute `timeSinceSeekEnd` to BUFFER events.

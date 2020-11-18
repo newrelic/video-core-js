@@ -547,8 +547,8 @@ class VideoTracker extends Tracker {
       this.stopHeartbeat()
       this.send(ev, att)
       if (this.parentTracker && this.isAd()) this.parentTracker.state.goLastAd()
-
       this.state.goViewCountUp()
+      this.state.totalPlaytime = 0
     }
   }
 
