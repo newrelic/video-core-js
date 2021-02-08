@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.31.0] - 2021/02/08
+### Add
+- Function `state.removeTimeSinceAttribute(...)`, to remove a custom timeSince attribute.
+
 ## [0.30.0] - 2020/11/18
 ### Fix
 - Reset `totalPlaytime` after an END.

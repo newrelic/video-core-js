@@ -148,10 +148,23 @@ class VideoTrackerState {
     this._isAd = isAd
   }
 
-  /** Set the Chrono for the custom attribute */
+  /**
+   * Set the Chrono for the custom attribute
+   * 
+   * @param {object} name Time since attribute name.
+   */
   setTimeSinceAttribute (name) {
     this.customTimeSinceAttributes[name] = new Chrono()
     this.customTimeSinceAttributes[name].start()
+  }
+
+  /**
+   * Delete a time since attribute
+   * 
+   * @param {object} name Time since attribute name.
+   */
+  removeTimeSinceAttribute (name) {
+    delete this.customTimeSinceAttributes[name]
   }
 
   /**
@@ -235,6 +248,8 @@ class VideoTrackerState {
 
   /**
    * Calculate the bufferType attribute.
+   * 
+   * @param {boolean} isInitialBuffering Is initial buffering event.
    */
   calculateBufferType(isInitialBuffering) {
     let bufferType = ''
