@@ -243,9 +243,6 @@ class VideoTrackerState {
       this.totalPlaytime += att.playtimeSinceLastEvent
       att.totalPlaytime = this.totalPlaytime
     }
-    if (this.totalAdPlaytime > 0) {
-      att.totalAdPlaytime = this.totalAdPlaytime
-    }
 
     for (const [key, value] of Object.entries(this.customTimeSinceAttributes)) {
       att[key] = value.getDeltaTime()

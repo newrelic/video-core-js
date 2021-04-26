@@ -520,7 +520,8 @@ class VideoTracker extends Tracker {
       } else {
         ev = VideoTracker.Events.CONTENT_START
         if (this.adsTracker != null) {
-          this.state.totalAdPlaytime = this.adsTracker.state.totalAdPlaytime;
+          att = att || {}
+          att.totalAdPlaytime = this.adsTracker.state.totalAdPlaytime;
         }
       }
       this.send(ev, att)
