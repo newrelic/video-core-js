@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.32.0] - 2021/04/26
+### Add
+- Attribute `totalAdPlaytime`.
+
 ## [0.31.0] - 2021/02/08
 ### Add
 - Function `state.removeTimeSinceAttribute(...)`, to remove a custom timeSince attribute.
