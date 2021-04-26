@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.32.1] - 2021/04/26
+### Fix
+Only put `totalAdPlaytime` on START.
+
 ## [0.32.0] - 2021/04/26
 ### Add
 - Attribute `totalAdPlaytime`.
