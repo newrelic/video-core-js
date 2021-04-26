@@ -56,6 +56,11 @@ class VideoTrackerState {
      */
     this.totalPlaytime = 0
 
+    /**
+     * The amount of ms the user has been watching ads during an ad break.
+     */
+     this.totalAdPlaytime = 0
+
     /** True if you are in the middle of an ad break. */
     this.isAdBreak = false
 
@@ -237,6 +242,9 @@ class VideoTrackerState {
       }
       this.totalPlaytime += att.playtimeSinceLastEvent
       att.totalPlaytime = this.totalPlaytime
+    }
+    if (this.totalAdPlaytime > 0) {
+      att.totalAdPlaytime = this.totalAdPlaytime
     }
 
     for (const [key, value] of Object.entries(this.customTimeSinceAttributes)) {
@@ -461,6 +469,7 @@ class VideoTrackerState {
     if (this.isAdBreak) {
       this.isRequested = false
       this.isAdBreak = false
+      this.totalAdPlaytime = this.timeSinceAdBreakStart.getDeltaTime()
       this.timeSinceAdBreakStart.stop()
       return true
     } else {

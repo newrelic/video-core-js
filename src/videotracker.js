@@ -519,6 +519,9 @@ class VideoTracker extends Tracker {
         if (this.parentTracker) this.parentTracker.state.isPlaying = false
       } else {
         ev = VideoTracker.Events.CONTENT_START
+        if (this.adsTracker != null) {
+          this.state.totalAdPlaytime = this.adsTracker.state.totalAdPlaytime;
+        }
       }
       this.send(ev, att)
     }
@@ -760,6 +763,7 @@ class VideoTracker extends Tracker {
    */
   sendAdBreakStart (att) {
     if (this.isAd() && this.state.goAdBreakStart()) {
+      this.state.totalAdPlaytime = 0;
       if (this.parentTracker) this.parentTracker.state.isPlaying = false
       this.send(VideoTracker.Events.AD_BREAK_START, att)
     }

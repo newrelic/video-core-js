@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!-- newrelic browser agent. REMEMBER TO REPLACE THIS SCRIPT WITH YOUR OWN BROWSER AGENT -->
+  <script type="text/javascript" src="agent.js"></script>
+
+  <!-- newrelic video core -->
+  <script src="../dist/newrelic-video-core.min.js"></script>
+</head>
+
+<body>
+  <video id="myPlayer" controls height="315" width="560">
+    <source src="http://dl5.webmfiles.org/big-buck-bunny_trailer.webm" type='video/mp4'>
+  </video>
+    <script>
+
+      // A toy video tracker
+      class MyTracker extends nrvideo.VideoTracker {
+        getTrackerName() {
+          return "MyTracker"
+        }
+
+        getRenditionWidth () {
+          return this.player.width
+        }
+
+        getRenditionHeight () {
+          return this.player.height
+        }
+
+        getSrc () {
+          return this.player.getElementsByTagName('source')[0].src
+        }
+      }
+
+      class MyAdsTracker extends nrvideo.VideoTracker {
+        getTrackerName() {
+          return "MyAdsTracker"
+        }
+      }
+
+      // Init tracker
+      nrvideo.Log.level = nrvideo.Log.Levels.ALL
+      var myPlayer = document.getElementById('myPlayer')
+
+      let myTracker = new MyTracker(myPlayer)
+      let myAdsTracker = new MyAdsTracker()
+      myTracker.setAdsTracker(myAdsTracker)
+      nrvideo.Core.addTracker(myTracker)
+
+      // Send a sample event
+      myTracker.sendCustom('CUSTOM_WITH_ATT', 'timeSinceCustom')
+      myTracker.send('SAMPLE_STARTED', {'videoElementId': myPlayer.id})
+    </script>
+</body>
+
+</html>
