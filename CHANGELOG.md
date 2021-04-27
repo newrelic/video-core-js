@@ -1,5 +1,10 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
+
+## [0.32.2] - 2021/04/27
+### Update
+Improve `totalAdPlaytime`.
 
 ## [0.32.1] - 2021/04/26
 ### Fix
