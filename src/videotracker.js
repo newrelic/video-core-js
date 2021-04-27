@@ -455,6 +455,9 @@ class VideoTracker extends Tracker {
       att.contentIsAutoplayed = this.isAutoplayed()
       att.contentPreload = this.getPreload()
       att.contentFps = this.getFps()
+      if (this.adsTracker != null && this.adsTracker.state.totalAdPlaytime > 0) {
+        att.totalAdPlaytime = this.adsTracker.state.totalAdPlaytime;
+      }
     }
 
     this.state.getStateAttributes(att)
@@ -519,10 +522,6 @@ class VideoTracker extends Tracker {
         if (this.parentTracker) this.parentTracker.state.isPlaying = false
       } else {
         ev = VideoTracker.Events.CONTENT_START
-        if (this.adsTracker != null) {
-          att = att || {}
-          att.totalAdPlaytime = this.adsTracker.state.totalAdPlaytime;
-        }
       }
       this.send(ev, att)
     }
