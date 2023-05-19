@@ -18,6 +18,22 @@ describe('VideoTracker', () => {
     Log.level = Log.Levels.ERROR
   })
 
+  describe('viewId', () => {
+    let tracker, adTracker
+  
+    it('should be incremented after sendEnd', () => {
+      tracker = new VideoTracker(1)
+  
+      tracker.sendCustom('test')
+      expect(tracker.getViewId().slice(-1)).to.be.equal('0')
+      tracker.sendRequest()
+      expect(tracker.getViewId().slice(-1)).to.be.equal('0')
+      tracker.sendStart()
+      tracker.sendEnd()
+      expect(tracker.getViewId().slice(-1)).to.be.equal('1')
+    })
+  })
+
   describe('settings', () => {
     it('should set options', () => {
       tracker = new VideoTracker(1, { isAd: true, tag: 2 })

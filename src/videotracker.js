@@ -501,7 +501,6 @@ class VideoTracker extends Tracker {
    */
   sendRequest (att) {
     if (this.state.goRequest()) {
-      this.state.goViewCountUp()
       let ev = this.isAd() ? VideoTracker.Events.AD_REQUEST : VideoTracker.Events.CONTENT_REQUEST
       this.send(ev, att)
       this.startHeartbeat()
