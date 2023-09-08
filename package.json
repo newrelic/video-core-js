@@ -1,6 +1,6 @@
 {
   "name": "newrelic-video-core",
-  "version": "0.32.2",
+  "version": "0.32.3",
   "description": "New Relic video tracking core library",
   "main": "src/index.js",
   "scripts": {

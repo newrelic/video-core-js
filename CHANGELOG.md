@@ -2,13 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.3] - 2023/09/08
+### Fix
+- Fix issue in `tracker.customData.deviceType`.
+
+
 ## [0.32.2] - 2021/04/27
 ### Update
-Improve `totalAdPlaytime`.
+- Improve `totalAdPlaytime`.
 
 ## [0.32.1] - 2021/04/26
 ### Fix
-Only put `totalAdPlaytime` on START.
+- Only put `totalAdPlaytime` on START.
 
 ## [0.32.0] - 2021/04/26
 ### Add
