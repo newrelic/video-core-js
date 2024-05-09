@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.4] - 2024/05/08
+### Fix
+- Fix `isAd` attribute value in `sendError`.
+
 ## [0.32.3] - 2023/09/08
 ### Fix
 - Fix issue in `tracker.customData.deviceType`.

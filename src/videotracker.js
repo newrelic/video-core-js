@@ -709,7 +709,7 @@ class VideoTracker extends Tracker {
    */
   sendError (att) {
     att = att || {}
-    att.isAd = true
+    att.isAd = this.isAd()
     this.state.goError()
     let ev = this.isAd() ? VideoTracker.Events.AD_ERROR : VideoTracker.Events.CONTENT_ERROR
     this.send(ev, att)
