@@ -8,6 +8,7 @@ const assert = chai.assert
 
 describe('Tracker', () => {
   let tracker
+  global.document = typeof global.document === "undefined" ? {} : global.document;
 
   // Mute console
   before(() => {
