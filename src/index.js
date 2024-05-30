@@ -8,7 +8,9 @@ import Emitter from './emitter'
 import Tracker from './tracker'
 import VideoTracker from './videotracker'
 import VideoTrackerState from './videotrackerstate'
-import { version } from '../package.json'
+import pkg from '../package.json'
+
+const version = pkg.version
 
 export {
   Constants,
