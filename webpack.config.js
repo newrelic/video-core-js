@@ -8,32 +8,32 @@ var license = '@license ' + pkg.license +
     '\n@author ' + pkg.author
 
 module.exports = {
-  entry: './src/index.js',
+  entry: "./src/index.js",
   output: {
-    path: path.resolve(__dirname, './dist'),
-    filename: pkg.name + '.min.js',
-    library: 'nrvideo',
-    libraryTarget: 'umd'
+    path: path.resolve(__dirname, "./dist"),
+    filename: pkg.name + ".min.js",
+    library: "nrvideo",
+    libraryTarget: "umd",
   },
-  devtool: 'source-map',
+  devtool: "source-map",
   module: {
     rules: [
       {
-        test: /\.js$/,
-        exclude: /(node_modules|bower_components)/,
+        test: /\.(?:js|mjs|cjs)$/,
+        exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
+          loader: "babel-loader",
           options: {
-            presets: ['env']
-          }
-        }
-      }
-    ]
+            presets: [["@babel/preset-env", { targets: "defaults" }]],
+          },
+        },
+      },
+    ],
   },
   plugins: [
     new webpack.BannerPlugin({
       banner: license,
-      entryOnly: true
-    })
-  ]
-}
+      entryOnly: true,
+    }),
+  ],
+};
