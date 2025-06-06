@@ -12,11 +12,11 @@ class Constants {}
  */
 Constants.AdPositions = {
   /** For ads shown before the content. */
-  PRE: 'pre',
+  PRE: "pre",
   /** For ads shown during the content. */
-  MID: 'mid',
+  MID: "mid",
   /** For ads shown after the content. */
-  POST: 'post'
-}
+  POST: "post",
+};
 
-export default Constants
+export default Constants;

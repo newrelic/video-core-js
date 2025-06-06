@@ -13,12 +13,12 @@ class Emitter {
    * @param {function} callback Callback of the event. Receives event and data.
    * @return this
    */
-  on (event, callback) {
-    this._listeners = this._listeners || {}
-    if (typeof callback === 'function') {
-      this._listeners[event] = this._listeners[event] || []
-      this._listeners[event].push(callback)
-      return this
+  on(event, callback) {
+    this._listeners = this._listeners || {};
+    if (typeof callback === "function") {
+      this._listeners[event] = this._listeners[event] || [];
+      this._listeners[event].push(callback);
+      return this;
     }
   }
 
@@ -29,16 +29,16 @@ class Emitter {
    * @param {function} callback Callback of the event.
    * @return this
    */
-  off (event, callback) {
-    this._listeners = this._listeners || {}
+  off(event, callback) {
+    this._listeners = this._listeners || {};
 
     if (this._listeners[event]) {
-      var index = this._listeners[event].indexOf(callback)
+      var index = this._listeners[event].indexOf(callback);
       if (index !== -1) {
-        this._listeners[event].splice(index, 1)
+        this._listeners[event].splice(index, 1);
       }
     }
-    return this
+    return this;
   }
 
   /**
@@ -48,24 +48,34 @@ class Emitter {
    * @param {object} [data] Custom data to be sent to the callbacks.
    * @return this
    */
-  emit (event, data) {
-    this._listeners = this._listeners || {}
-    data = data || {}
+  emit(eventType, event, data) {
+    this._listeners = this._listeners || {};
+    data = data || {};
 
     if (Array.isArray(this._listeners[event])) {
       this._listeners[event].forEach((callback) => {
-        callback.call(this, { type: event, data: data, target: this })
-      })
+        callback.call(this, {
+          eventType,
+          type: event,
+          data: data,
+          target: this,
+        });
+      });
     }
 
-    if (Array.isArray(this._listeners['*'])) {
-      this._listeners['*'].forEach((callback) => {
-        callback.call(this, { type: event, data: data, target: this })
-      })
+    if (Array.isArray(this._listeners["*"])) {
+      this._listeners["*"].forEach((callback) => {
+        callback.call(this, {
+          eventType,
+          type: event,
+          data: data,
+          target: this,
+        });
+      });
     }
 
-    return this
+    return this;
   }
 }
 
-export default Emitter
+export default Emitter;

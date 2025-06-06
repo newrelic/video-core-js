@@ -5,13 +5,13 @@
  * @static
  */
 class Log {
-   /**
+  /**
    * Sends an error console log.
    * @param {...any} [msg] Message to show
    * @static
    */
-  static error (...msg) {
-    _report(msg, Log.Levels.ERROR, 'darkred')
+  static error(...msg) {
+    _report(msg, Log.Levels.ERROR, "darkred");
   }
 
   /**
@@ -20,8 +20,8 @@ class Log {
    * @static
    * @param {...any} msg Message to show
    */
-  static warn (...msg) {
-    _report(msg, Log.Levels.WARNING, 'darkorange')
+  static warn(...msg) {
+    _report(msg, Log.Levels.WARNING, "darkorange");
   }
 
   /**
@@ -30,8 +30,8 @@ class Log {
    * @static
    * @param {...any} msg Message to show
    */
-  static notice (...msg) {
-    _report([].slice.call(arguments), Log.Levels.NOTICE, 'darkcyan')
+  static notice(...msg) {
+    _report([].slice.call(arguments), Log.Levels.NOTICE, "darkcyan");
   }
 
   /**
@@ -40,8 +40,8 @@ class Log {
    * @static
    * @param {...any} msg Message to show
    */
-  static debug (...msg) {
-    _report(msg, Log.Levels.DEBUG, 'indigo')
+  static debug(...msg) {
+    _report(msg, Log.Levels.DEBUG, "indigo");
   }
 
   /**
@@ -63,43 +63,63 @@ class Log {
    * @param {function} [report] Callback function called to report events.
    * Default calls Log.debug()
    */
-  static debugCommonVideoEvents (o, extraEvents, report) {
+  static debugCommonVideoEvents(o, extraEvents, report) {
     try {
       if (Log.level <= Log.Levels.DEBUG) {
-        report = report || function (e) {
-          Log.debug('Event: ' + e.type)
-        }
+        report =
+          report ||
+          function (e) {
+            Log.debug("Event: " + e.type);
+          };
 
         var playerEvents = [
-          'canplay', 'buffering', 'waiting', 'ended', 'play', 'playing',
-          'pause', 'resume', 'error', 'abort', 'seek', 'seeking', 'seeked',
-          'stalled', 'dispose', 'loadeddata', 'loadstart', 'loadedmetadata'
-        ]
+          "canplay",
+          "buffering",
+          "waiting",
+          "ended",
+          "play",
+          "playing",
+          "pause",
+          "resume",
+          "error",
+          "abort",
+          "seek",
+          "seeking",
+          "seeked",
+          "stalled",
+          "dispose",
+          "loadeddata",
+          "loadstart",
+          "loadedmetadata",
+        ];
         if (extraEvents) {
           if (extraEvents[0] === null) {
-            extraEvents.shift()
-            playerEvents = extraEvents
+            extraEvents.shift();
+            playerEvents = extraEvents;
           } else {
-            playerEvents = playerEvents.concat(extraEvents)
+            playerEvents = playerEvents.concat(extraEvents);
           }
         }
 
         for (var i = 0; i < playerEvents.length; i++) {
-          if (typeof o === 'function') {
-            o.call(window, playerEvents[i], report)
+          if (typeof o === "function") {
+            o.call(window, playerEvents[i], report);
           } else if (o.on) {
-            o.on(playerEvents[i], report)
+            o.on(playerEvents[i], report);
           } else if (o.addEventListener) {
-            o.addEventListener(playerEvents[i], report)
+            o.addEventListener(playerEvents[i], report);
           } else if (o.addEventHandler) {
-            o.addEventHandler(playerEvents[i], report)
+            o.addEventHandler(playerEvents[i], report);
           } else {
-            Log.warn('debugCommonVideoEvents: No common listener function found for ', o)
+            Log.warn(
+              "debugCommonVideoEvents: No common listener function found for ",
+              o
+            );
           }
         }
       }
     } catch (err) {
-      Log.warn(err)
+      Log.warn(err);
     }
   }
 }
@@ -111,48 +131,48 @@ class Log {
  * @var
  */
 Log.Levels = {
-    /** No console outputs */
+  /** No console outputs */
   SILENT: 5,
-    /** Console will show errors */
+  /** Console will show errors */
   ERROR: 4,
-    /** Console will show warnings */
+  /** Console will show warnings */
   WARNING: 3,
-    /** Console will show notices (ie: life-cyrcle logs) */
+  /** Console will show notices (ie: life-cyrcle logs) */
   NOTICE: 2,
-    /** Console will show debug messages. */
+  /** Console will show debug messages. */
   DEBUG: 1,
-    /** Show all messages. */
-  ALL: 0
-}
+  /** Show all messages. */
+  ALL: 0,
+};
 
-  /**
-   * Only logs of this imporance or higher will be shown.
-   * @example Log.level = Log.Levels.ALL
-   * @default Log.Levels.ERROR
-   * @static
-   */
-Log.level = Log.Levels.ERROR
+/**
+ * Only logs of this imporance or higher will be shown.
+ * @example Log.level = Log.Levels.ALL
+ * @default Log.Levels.ERROR
+ * @static
+ */
+Log.level = Log.Levels.ERROR;
 
-  /**
-   * If true, logs will be outputed with colors.
-   * @default true
-   * @static
-   */
-Log.colorful = true
+/**
+ * If true, logs will be outputed with colors.
+ * @default true
+ * @static
+ */
+Log.colorful = true;
 
-  /**
-   * If true, logs will include the time mark.
-   * @default true
-   * @static
-   */
-Log.includeTime = true
+/**
+ * If true, logs will include the time mark.
+ * @default true
+ * @static
+ */
+Log.includeTime = true;
 
-  /**
-   * Prefix included at the start of every log.
-   * @default '[New Relic]'
-   * @static
-   */
-Log.prefix = '[nrvideo]'
+/**
+ * Prefix included at the start of every log.
+ * @default '[New Relic]'
+ * @static
+ */
+Log.prefix = "[nrvideo]";
 
 // PRIVATE MEMBERS
 
@@ -166,41 +186,44 @@ Log.prefix = '[nrvideo]'
  * @param {string} [color='darkgreen'] Color of the header
  * @see {@link Log.level}
  */
-function _report (msg, level, color) {
-  level = level || Log.Levels.NOTICE
-  color = color || 'darkcyan'
+function _report(msg, level, color) {
+  level = level || Log.Levels.NOTICE;
+  color = color || "darkcyan";
 
-  var prefix = Log.prefix
-  if (Log.includeTime) prefix += _getCurrentTime() + ' '
-  prefix += _level2letter(level) + ':'
+  var prefix = Log.prefix;
+  if (Log.includeTime) prefix += _getCurrentTime() + " ";
+  prefix += _level2letter(level) + ":";
 
   // Show messages in actual console if level is enought
   if (Log.level <= level && level !== Log.Levels.SILENT) {
-    if (!Log.colorful || (typeof document !== 'undefined' && document.documentMode)) {
+    if (
+      !Log.colorful ||
+      (typeof document !== "undefined" && document.documentMode)
+    ) {
       // document.documentMode exits only in IE
-      _plainReport(msg, prefix)
+      _plainReport(msg, prefix);
     } else {
       // choose log method
-      var logMethod
+      var logMethod;
       if (level === Log.Levels.ERROR && console.error) {
-        logMethod = console.error
+        logMethod = console.error;
       } else if (level === Log.Levels.WARNING && console.warn) {
-        logMethod = console.warn
+        logMethod = console.warn;
       } else if (level === Log.Levels.DEBUG && console.debug) {
         // NOTE: for some reason console.debug doesn't work on CAF Receivers.
         if (window.cast == undefined) {
-          logMethod = console.debug
+          logMethod = console.debug;
         } else {
-          logMethod = console.log
+          logMethod = console.log;
         }
       } else {
-        logMethod = console.log
+        logMethod = console.log;
       }
 
       // print message
-      prefix = '%c' + prefix
-      msg.splice(0, 0, prefix, 'color: ' + color)
-      logMethod.apply(console, msg)
+      prefix = "%c" + prefix;
+      msg.splice(0, 0, prefix, "color: " + color);
+      logMethod.apply(console, msg);
     }
   }
 }
@@ -210,13 +233,13 @@ function _report (msg, level, color) {
  * @private
  * @return {string} Current time.
  */
-function _getCurrentTime () {
-  var d = new Date()
-  var hh = ('0' + d.getDate()).slice(-2)
-  var mm = ('0' + d.getMinutes()).slice(-2)
-  var ss = ('0' + d.getSeconds()).slice(-2)
-  var mmm = ('00' + d.getMilliseconds()).slice(-3)
-  return '[' + hh + ':' + mm + ':' + ss + '.' + mmm + ']'
+function _getCurrentTime() {
+  var d = new Date();
+  var hh = ("0" + d.getDate()).slice(-2);
+  var mm = ("0" + d.getMinutes()).slice(-2);
+  var ss = ("0" + d.getSeconds()).slice(-2);
+  var mmm = ("00" + d.getMilliseconds()).slice(-3);
+  return "[" + hh + ":" + mm + ":" + ss + "." + mmm + "]";
 }
 
 /**
@@ -226,27 +249,27 @@ function _getCurrentTime () {
  * @param {(string|object|array)} msg Message string, object or array of messages.
  * @param {string} prefix Prefix of the message.
  */
-function _plainReport (msg, prefix) {
+function _plainReport(msg, prefix) {
   if (msg instanceof Array) {
     for (var m in msg) {
-      _plainReport(msg[m], prefix)
+      _plainReport(msg[m], prefix);
     }
   } else {
-    if (typeof msg === 'string') {
-      console.log(prefix + ' ' + msg)
+    if (typeof msg === "string") {
+      console.log(prefix + " " + msg);
     } else {
-      console.log(prefix + '↵')
-      console.log(msg)
+      console.log(prefix + "↵");
+      console.log(msg);
     }
   }
 }
 
 const _letters = {
-  4: 'e', // Error
-  3: 'w', // Warning
-  2: 'n', // Notice
-  1: 'd' // Debug
-}
+  4: "e", // Error
+  3: "w", // Warning
+  2: "n", // Notice
+  1: "d", // Debug
+};
 
 /**
  * Transforms a level to a letter to identify every message.
@@ -254,8 +277,8 @@ const _letters = {
  * @private
  * @param {sLog.Level} level Level of the message
  */
-function _level2letter (level) {
-  return _letters[level]
+function _level2letter(level) {
+  return _letters[level];
 }
 
 /**
@@ -272,25 +295,29 @@ function _level2letter (level) {
  *
  * @private
  */
-function _loadLevelFromUrl () {
-  if (typeof window !== 'undefined' && window.location && window.location.search) {
-    var m = /\?.*&*nrvideo-debug=(.+)/i.exec(window.location.search)
+function _loadLevelFromUrl() {
+  if (
+    typeof window !== "undefined" &&
+    window.location &&
+    window.location.search
+  ) {
+    var m = /\?.*&*nrvideo-debug=(.+)/i.exec(window.location.search);
     if (m !== null) {
-      if (m[1] === 'true') {
-        Log.level = Log.Levels.ALL
+      if (m[1] === "true") {
+        Log.level = Log.Levels.ALL;
       } else {
-        Log.level = m[1]
+        Log.level = m[1];
       }
     }
 
-    var m2 = /\?.*&*nrvideo-colors=false/i.exec(window.location.search)
+    var m2 = /\?.*&*nrvideo-colors=false/i.exec(window.location.search);
     if (m2 !== null) {
-      Log.colorful = false
+      Log.colorful = false;
     }
   }
 }
 
 // Execute load level
-_loadLevelFromUrl()
+_loadLevelFromUrl();
 
-export default Log
+export default Log;

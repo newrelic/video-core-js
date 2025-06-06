@@ -1,0 +1,94 @@
+name: Publish and Deploy
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        required: false
+        type: string
+        default: 'lts/*'
+      s3-path:
+        description: 'Path within the S3 bucket'
+        required: false
+        type: string
+      file-to-upload:
+        description: 'Specific file to upload to S3'
+        required: false
+        type: string
+    secrets:
+      NPM_TOKEN:
+        description: 'NPM token for publishing'
+        required: false
+      AWS_ACCESS_KEY_ID:
+        description: 'AWS Access Key ID'
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        description: 'AWS Secret Access Key'
+        required: false
+
+  pull_request:
+    branches:
+      - stable
+    types:
+      - closed
+
+permissions:
+  contents: write
+
+jobs:
+  publish_and_deploy:
+    if: ${{ github.event.pull_request.merged == true || github.event_name == 'workflow_call' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version || 'lts/*' }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Get Package Version
+        id: package-version
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
+      - name: Run security audit
+        run: npm audit --audit-level=critical
+
+      - name: Publish to NPM
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          npm publish
+      - name: Configure AWS Credentials
+        if: ${{ inputs.s3-path != '' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Upload to S3
+        if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+        run: |
+          FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
+          BASE_NAME="${FILE_NAME%.min.js}"
+          VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
+          LATEST_NAME="${BASE_NAME}.latest.min.js"
+          S3_BUCKET="nr-downloads-main"
+          cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
+          cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
+          aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
+          aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"

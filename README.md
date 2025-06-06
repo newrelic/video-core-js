@@ -3,6 +3,7 @@
 # New Relic Video Core - JavaScript
 
 The New Relic video tracking core library is the base for all video trackers in the browser platform. It contains the classes and core mechanisms used by the player specific trackers.
+It segregates the events into different event types based on action, such as video-related events going to `VideoAction`, ad-related events to `VideoAdAction`, errors to `VideoErrorAction`, and custom actions to `VideoCustomAction`.
 
 ## Build
 
@@ -25,34 +26,43 @@ $ npm run build
 ```
 
 ## Usage
+
 Add **scripts** inside `dist` folder to your page.
 
 > If you want to know how to generate `dist` folder, refer to **npm commands** section.
 
 ### Registering Trackers
-`nrvideo` provides a class called `VideoTracker` that will serve as an interface with 
-*Browser Agent*, allowing you to manage and send events to New Relic.
+
+`nrvideo` provides a class called `VideoTracker` that will serve as an interface with
+_Browser Agent_, allowing you to manage and send events to New Relic.
 
 First of all, you have to add a tracker in the core class:
+
 ```javascript
-// var nrvideo = require('newrelic-video-core')
-var tracker = new nrvideo.VideoTracker()
-nrvideo.Core.addTracker(tracker)
+var tracker = new VideoTracker(player);
 ```
 
-From this point, any event emitted by said tracker will be reported to New Relic:
+Once the tracker is added, any event it emits will be sent to New Relic and processed by the following functions:
+
 ```javascript
-tracker.send('EVENT', { data: 1 })
+tracker.sendVideoAction("VideoEvent", { data: 1 });
+tracker.sendVideoAdAction("AdEvent", { data: "test-1" });
+tracker.sendVideoErrorAction("ErrorEvent", { data: "error-test" });
+tracker.sendVideoCustomAction("CustomEvent", { data: "custom-test" });
 ```
 
 Of course, you may want to use built-in events for video. Luckily for you, this core library
 provides an easy way of sending video-related content, using `tracker.sendXXXXX` methods.
 
 ```javascript
-tracker.sendRequest() // Will send CONTENT_REQUEST
+tracker.sendRequest(); // Will send CONTENT_REQUEST
 ```
 
 Search for `Tracker#sendXXXX` events in the documentation to read more about it.
+
+## Data Model
+
+To understand which actions and attributes are captured and emitted by the tracker under different event types, see [DataModel.md](./DATAMODEL.md).
 
 ## Documentation
 
