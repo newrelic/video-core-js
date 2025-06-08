@@ -1,19 +1,58 @@
 import Log from "./log";
 import Backend from "./backend";
+import EventBuffer from "./EventBuffer";
+import Constants from "./constants";
 
+const { trackerEventHarvestInterval, playerEventHarvestInterval } = Constants;
+
+let originTime = null; // Used to calculate the origin time of events.
 /**
  * Static class that sums up core functionalities of the library.
  * @static
  */
 class Core {
+  // seperate instance for tracker and player events
+  static trackerEventBufferInstance = new EventBuffer(
+    trackerEventHarvestInterval
+  );
+  //  static playerEventBufferInstance = new EventBuffer(playerEventHarvestInterval);
+
+  /**
+   * Calculates and returns the "origin time" for the current Browse session.
+   * The origin time is the timestamp (in milliseconds since the Unix epoch)
+   * at which the current document's lifetime began, or approximately when the
+   * page started loading.
+   *
+   * It prioritizes `Date.now() - window.performance.now()` for higher precision,
+   * falling back to `Date.now()` if `window.performance.now()` is not available.
+   *
+   * @returns {number} The origin time in milliseconds.
+   */
+
+  static _getOriginTime() {
+    if (originTime === null) {
+      if (window.performance && typeof Date.now === "function") {
+        originTime = Date.now() - window.performance.now();
+      } else {
+        originTime = Date.now(); // Fallback
+        Log.warn(
+          "Core: window.performance.now() not available for precise originTime. Using Date.now()."
+        );
+      }
+    }
+    return originTime;
+  }
+
   /**
    * Add a tracker to the system. Trackers added will start reporting its events to NR's backend.
    *
    * @param {(Emitter|Tracker)} tracker Tracker instance to add.
    */
+
   static addTracker(tracker) {
     if (tracker.on && tracker.emit) {
       trackers.push(tracker);
+
       tracker.on("*", eventHandler);
       if (typeof tracker.trackerInit == "function") {
         tracker.trackerInit();
@@ -28,6 +67,7 @@ class Core {
    *
    * @param {Tracker} tracker Tracker to remove.
    */
+
   static removeTracker(tracker) {
     tracker.off("*", eventHandler);
     tracker.dispose();
@@ -40,6 +80,7 @@ class Core {
    *
    * @returns {Tracker[]} Array of trackers.
    */
+
   static getTrackers() {
     return trackers;
   }
@@ -49,6 +90,7 @@ class Core {
    *
    * @returns {Backend} The current backend.
    */
+
   static getBackend() {
     return backend;
   }
@@ -62,35 +104,33 @@ class Core {
   }
 
   /**
-   * Sends given event using the appropriate backend.
-   * @param {String} event Event to send.
-   * @param {Object} data Data associated to the event.
+   * Dispatches an event to the appropriate internal buffer for tracking.
+   * If the origin time hasn't been established yet, it calculates and sets it
+   * for both the tracker and player event buffers.
+   * Events with the `actionName` "CONTENT_HEARTBEAT" are routed to the
+   * tracker event buffer, while all other events go to the player event buffer.
+   *
+   * @param {string} eventType The type of event (e.g., "MediaPlayer").
+   * @param {string} actionName The specific action associated with the event (e.g., "play", "pause", "CONTENT_HEARTBEAT").
+   * @param {object} data Additional data to be included with the event.
    */
-  static send(eventType, actionName, data) {
-    if (
-      Core.getBackend() == undefined ||
-      !(Core.getBackend() instanceof Backend)
-    ) {
-      // Use the default backend (NR Agent)
-      if (typeof newrelic !== "undefined" && newrelic.recordCustomEvent) {
-        if (data !== undefined) {
-          data["timeSinceLoad"] = window.performance.now() / 1000;
-        }
 
-        newrelic.recordCustomEvent(eventType, { actionName, ...data });
-      } else {
-        if (!isErrorShown) {
-          Log.error(
-            "newrelic.recordCustomEvent() is not available.",
-            "In order to use NewRelic Video you will need New Relic Browser Agent."
-          );
-          isErrorShown = true;
-        }
-      }
-    } else {
-      // Use the user-defined backend
-      Core.getBackend().send(eventType, actionName, data);
+  static send(eventType, actionName, data) {
+    console.log("actionName", actionName);
+    if (originTime === null) {
+      originTime = Core._getOriginTime();
+      Core.trackerEventBufferInstance.setOriginTime(originTime);
+      // Core.playerEventBufferInstance.setOriginTime(originTime);
     }
+    if (actionName === "CONTENT_HEARTBEAT") {
+      Core.trackerEventBufferInstance.addEvent(eventType, {
+        actionName,
+        ...data,
+      });
+    }
+    // else{
+    //   Core.playerEventBufferInstance.addEvent(eventType, { actionName, ...data });
+    //  }
   }
 
   /**

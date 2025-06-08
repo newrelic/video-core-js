@@ -8,6 +8,8 @@ import Emitter from "./emitter";
 import Tracker from "./tracker";
 import VideoTracker from "./videotracker";
 import VideoTrackerState from "./videotrackerstate";
+import EventBuffer from "./EventBuffer";
+import Harvest from "./harvest";
 import { version } from "../package.json";
 
 const nrvideo = {
@@ -21,6 +23,8 @@ const nrvideo = {
   Core,
   Backend,
   NRInsightsBackend,
+  EventBuffer,
+  Harvest,
   version,
 };
 export default nrvideo;
