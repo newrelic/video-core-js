@@ -98,7 +98,6 @@ class Harvest {
 
     this.callApi(apiEndPoint, batch)
       .then((response) => {
-        console.log("response", response);
         if (response.status === 204) {
           this.batchData = [];
           this.isRetrying = false; // Reset retry state on successful send

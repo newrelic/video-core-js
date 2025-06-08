@@ -31,7 +31,7 @@ class EventBuffer extends Harvest {
     }
 
     this._eventBufferArray.push(payload);
-    console.log("Event added to buffer", this._eventBufferArray);
+
     this.checkHarvestConditions();
     return true;
   }
@@ -125,28 +125,22 @@ class EventBuffer extends Harvest {
     if (this.isTimerRunning) {
       return;
     }
-    console.log("timer attached", this.harvestInterval);
+
     this.clearTimer(); // Inherited from Harvest
     this.isTimerRunning = true;
 
     this.timerId = setTimeout(() => {
-      console.log(
-        "Harvest timer triggered",
-        this._eventBufferArray,
-        this.harvestInterval
-      );
       this.isTimerRunning = false; // Mark timer as completed
 
       if (!this.isEmpty()) {
         const batchToSend = this.getBatch();
-        console.log("Sending batch of size:", batchToSend);
+
         this.sendBatch(batchToSend);
         this.clearBatch();
       } else {
         this.clearBatch();
       }
     }, this.harvestInterval);
-    console.log("Timer ID set to:", this.timerId);
   }
 
   clearTimer() {
