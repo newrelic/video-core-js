@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fix
 
-- Updated actionName for `AD_ERROR` to `VideoErrorAction`
+- Updated event type for `AD_ERROR` to `VideoErrorAction`
 
 ## [3.1.0] - 2025-05-26
 
