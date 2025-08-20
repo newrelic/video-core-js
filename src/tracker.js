@@ -75,6 +75,9 @@ class Tracker extends Emitter {
       if (options.parentTracker) this.parentTracker = options.parentTracker;
       if (options.customData) this.customData = options.customData;
       if (options.heartbeat) this.heartbeat = options.heartbeat;
+       if(options.harvestInterval) {
+         window.NRVIDEO.info.harvestInterval = options.harvestInterval;
+      }
     }
   }
 

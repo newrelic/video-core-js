@@ -1,5 +1,3 @@
-import Backend from "./backend";
-import NRInsightsBackend from "./plugins/nrinsightsbackend";
 import Core from "./core";
 import Constants from "./constants";
 import Chrono from "./chrono";
@@ -8,9 +6,15 @@ import Emitter from "./emitter";
 import Tracker from "./tracker";
 import VideoTracker from "./videotracker";
 import VideoTrackerState from "./videotrackerstate";
+import { NrVideoEventAggregator } from "./eventAggregator";
+import { RetryQueueHandler } from "./retryQueueHandler";
+import { OptimizedHttpClient } from "./optimizedHttpClient";
+import { HarvestScheduler } from "./harvestScheduler";
+import { recordEvent } from "./recordEvent";
 import { version } from "../package.json";
 
 const nrvideo = {
+  // Core components (existing)
   Constants,
   Chrono,
   Log,
@@ -19,8 +23,21 @@ const nrvideo = {
   VideoTracker,
   VideoTrackerState,
   Core,
-  Backend,
-  NRInsightsBackend,
   version,
+
+  // Enhanced video analytics components (new)
+ 
+  NrVideoEventAggregator,
+  RetryQueueHandler,
+  OptimizedHttpClient,
+  HarvestScheduler,
+
+
+
+  // Enhanced event recording
+  recordEvent,
+
+
 };
+
 export default nrvideo;

@@ -1,0 +1,213 @@
+import Log from "./log";
+import Constants from "./constants";  
+import {dataSize} from "./utils"
+
+const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
+
+/**
+ * Enhanced event buffer that manages video events with unified priority handling
+ * and automatic size management. All events are treated with equal priority
+ * unless explicitly specified otherwise.
+ */
+export class NrVideoEventAggregator {
+  constructor() {
+    // Simplified to single priority queue for equal treatment
+    
+    this.buffer = [];
+    this.maxPayloadSize = MAX_PAYLOAD_SIZE
+    this.maxEventsPerBatch = MAX_EVENTS_PER_BATCH 
+    this.currentPayloadSize = 0;
+    this.totalEvents = 0;
+    
+    // Dual threshold system - whichever is reached first triggers harvest
+    // Payload size thresholds
+    this.smartHarvestPayloadThreshold = Math.floor(this.maxPayloadSize * 0.6); // 60% of 1MB = 600KB
+    this.overflowPayloadThreshold = Math.floor(this.maxPayloadSize * 0.9); // 90% of 1MB = 900KB
+    
+    // Event count thresholds  
+    this.smartHarvestEventThreshold = Math.floor(this.maxEventsPerBatch * 0.6); // 60% of 1000 = 600 events
+    this.overflowEventThreshold = Math.floor(this.maxEventsPerBatch * 0.9); // 90% of 1000 = 900 events
+
+    // Callback for triggering harvest
+    this.onSmartHarvestTrigger = null;
+  }
+
+  /**
+   * Adds an event to the unified buffer.
+   * All events are treated equally in FIFO order.
+   * @param {object} eventObject - The event to add
+   */
+  add(eventObject) {
+    try {
+      // Calculate event payload size
+      const eventSize = dataSize(eventObject);
+      
+
+      // Check if we need to make room based on EITHER payload size OR event count limits
+      const wouldExceedPayload = (this.currentPayloadSize + eventSize) >= this.maxPayloadSize;
+      const wouldExceedEventCount = (this.totalEvents + 1) >= this.maxEventsPerBatch;
+
+    
+
+      if (wouldExceedPayload || wouldExceedEventCount) {
+        this.makeRoom();
+      }
+
+      // Add to unified buffer
+      this.buffer.push(eventObject);
+      this.totalEvents++;
+      this.currentPayloadSize += eventSize;
+    
+      // Check if smart harvest should be triggered
+      this.checkSmartHarvestTrigger();
+
+      Log.debug(`Event added to unified buffer`, {
+        eventType: eventObject.eventType,
+        actionName: eventObject.actionName,
+        totalEvents: this.totalEvents,
+        currentPayloadSize: this.currentPayloadSize,
+        eventSize: eventSize
+      });
+
+      return true;
+    } catch (error) {
+      Log.error("Failed to add event to buffer:", error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Checks if smart harvest should be triggered based on dual threshold system.
+   * Triggers when EITHER condition is met first:
+   * - 60% of payload size (600KB) OR 60% of event count (600 events)
+   * - 90% of payload size (900KB) OR 90% of event count (900 events)
+   * @private
+   */
+  checkSmartHarvestTrigger() {
+    const payloadPercentage = (this.currentPayloadSize / this.maxPayloadSize);
+    const eventPercentage = (this.totalEvents / this.maxEventsPerBatch);
+    
+  
+    // Check 90% emergency thresholds first (either payload OR event count)
+    const isPayloadOverflowReached = this.currentPayloadSize >= this.overflowPayloadThreshold;
+    const isEventOverflowReached = this.totalEvents >= this.overflowEventThreshold;
+    
+    if (isPayloadOverflowReached || isEventOverflowReached) {
+      const triggerReason = isPayloadOverflowReached ? 
+        `payload ${this.currentPayloadSize}/${this.maxPayloadSize} bytes (${Math.round(payloadPercentage * 100)}%)` :
+        `events ${this.totalEvents}/${this.maxEventsPerBatch} (${Math.round(eventPercentage * 100)}%)`;
+        
+      Log.warn(`OVERFLOW PREVENTION: ${triggerReason} - Emergency harvest triggered`);
+      
+      if (this.onSmartHarvestTrigger && typeof this.onSmartHarvestTrigger === 'function') {
+        // Trigger immediate emergency harvest
+        this.onSmartHarvestTrigger('overflow', 90);
+      }
+    }
+
+    // Check 60% smart harvest thresholds (either payload OR event count)
+    else {
+      const isPayloadSmartReached = this.currentPayloadSize >= this.smartHarvestPayloadThreshold;
+      const isEventSmartReached = this.totalEvents >= this.smartHarvestEventThreshold;
+      
+      if (isPayloadSmartReached || isEventSmartReached) {
+        const triggerReason = isPayloadSmartReached ? 
+          `payload ${this.currentPayloadSize}/${this.maxPayloadSize} bytes (${Math.round(payloadPercentage * 100)}%)` :
+          `events ${this.totalEvents}/${this.maxEventsPerBatch} (${Math.round(eventPercentage * 100)}%)`;
+          
+        Log.debug(`Smart harvest triggered: ${triggerReason} - Proactive harvest`);
+        
+        if (this.onSmartHarvestTrigger && typeof this.onSmartHarvestTrigger === 'function') {
+          // Trigger proactive harvest
+          this.onSmartHarvestTrigger('smart', 60);
+        }
+      }
+    }
+  }
+
+  /**
+   * Sets the callback function for smart harvest triggers.
+   * @param {Function} callback - Function to call when smart harvest is triggered
+   */
+  setSmartHarvestCallback(callback) {
+    this.onSmartHarvestTrigger = callback;
+  }
+
+  
+  /**
+   * Drains all events from the buffer in FIFO order (first in, first out).
+   * No limits needed since buffer already manages size via makeRoom() and smart harvest triggers.
+   * @returns {Array} Array of events in order they were added
+   */
+  drain() {
+    try {
+      // Store the current payload size before draining (for logging)
+      const drainedSize = this.currentPayloadSize;
+      
+      // Drain ALL events - buffer size is already managed by makeRoom() and smart harvest
+      const events = this.buffer.splice(0);
+      
+
+      // Reset counters since buffer is now empty
+      this.totalEvents = 0;
+      this.currentPayloadSize = 0;
+
+      Log.debug(`Drained all ${events.length} events from buffer`, {
+        drainedSize: drainedSize,
+        bufferNowEmpty: this.buffer.length === 0
+      });
+
+      return events;
+    } catch (error) {
+      Log.error("Failed to drain events from buffer:", error.message);
+      return [];
+    }
+  }
+
+
+  /**
+   * Checks if the buffer is empty.
+   * @returns {boolean} True if all buffers are empty
+   */
+  isEmpty() {
+    return this.totalEvents === 0;
+  }
+
+  /**
+   * Gets the total number of events across all buffers.
+   * @returns {number} Total event count
+   */
+  size() {
+    return this.totalEvents;
+  }
+
+  /**
+   * Clears the entire buffer.
+   */
+  clear() {
+    this.buffer = [];
+    this.totalEvents = 0;
+    
+    Log.debug("Event buffer cleared");
+  }
+
+  /**
+   * Makes room in the buffer by removing the oldest event.
+   * Uses FIFO approach - removes the first (oldest) event.
+   * @private
+   */
+  makeRoom() {
+    if (this.buffer.length > 0) {
+      const removed = this.buffer.shift();
+      this.totalEvents--;
+      
+      Log.debug(`Dropped oldest event to make room`, {
+        droppedEvent: removed.actionName || removed.eventType,
+        bufferSize: this.buffer.length
+      });
+      
+    }
+  }
+}
+
+export default NrVideoEventAggregator;

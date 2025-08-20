@@ -1,5 +1,6 @@
 import Log from "./log";
-import Backend from "./backend";
+import { recordEvent } from "./recordEvent";
+import { setVideoConfig } from "./videoConfiguration";
 
 /**
  * Static class that sums up core functionalities of the library.
@@ -7,11 +8,17 @@ import Backend from "./backend";
  */
 class Core {
   /**
-   * Add a tracker to the system. Trackers added will start reporting its events to NR's backend.
+   * Add a tracker to the system. Trackers added will start reporting its events to the video analytics backend.
    *
    * @param {(Emitter|Tracker)} tracker Tracker instance to add.
+   * @param {object} options Configuration options including video analytics settings.
    */
-  static addTracker(tracker) {
+  static addTracker(tracker, options) {
+    // Set video analytics configuration
+    if (options?.info) {
+      setVideoConfig(options.info);
+    }
+    
     if (tracker.on && tracker.emit) {
       trackers.push(tracker);
       tracker.on("*", eventHandler);
@@ -45,85 +52,79 @@ class Core {
   }
 
   /**
-   * Returns the current backend.
-   *
-   * @returns {Backend} The current backend.
-   */
-  static getBackend() {
-    return backend;
-  }
-
-  /**
-   * Sets the current backend.
-   * @param {Backend} backendInstance Backend instance.
-   */
-  static setBackend(backendInstance) {
-    backend = backendInstance;
-  }
-
-  /**
-   * Sends given event using the appropriate backend.
-   * @param {String} event Event to send.
-   * @param {Object} data Data associated to the event.
+   * Enhanced send method with performance timing.
+   * @param {string} eventType - Type of event
+   * @param {string} actionName - Action name
+   * @param {object} data - Event data
    */
   static send(eventType, actionName, data) {
-    if (
-      Core.getBackend() == undefined ||
-      !(Core.getBackend() instanceof Backend)
-    ) {
-      // Use the default backend (NR Agent)
-      if (typeof newrelic !== "undefined" && newrelic.recordCustomEvent) {
-        if (data !== undefined) {
-          data["timeSinceLoad"] = window.performance.now() / 1000;
-        }
-
-        newrelic.recordCustomEvent(eventType, { actionName, ...data });
-      } else {
-        if (!isErrorShown) {
-          Log.error(
-            "newrelic.recordCustomEvent() is not available.",
-            "In order to use NewRelic Video you will need New Relic Browser Agent."
-          );
-          isErrorShown = true;
-        }
-      }
-    } else {
-      // Use the user-defined backend
-      Core.getBackend().send(eventType, actionName, data);
-    }
+    const enrichedData = {
+      actionName,
+      ...data,
+     
+    };
+    
+    return recordEvent(eventType, enrichedData);
   }
 
   /**
-   * Sends an error event. This may be used for external errors launched by the app, the network or
+   * Sends an error event.
+   * This may be used for external errors launched by the app, the network or
    * any external factor. Note that errors within the player are normally reported with
    * tracker.sendError, so this method should not be used to report those.
    *
    * @param {object} att attributes to be sent along the error.
    */
   static sendError(att) {
-    Core.send("ERROR", att);
+    return recordEvent("VideoErrorAction", {
+      actionName: "ERROR",
+      ...att
+    });
+  }
+
+  
+  
+
+  /**
+   * Forces an immediate harvest of all pending events.
+   * @returns {Promise<object>} Harvest result
+   */
+  static async forceHarvest() {
+    try {
+      const { videoAnalyticsHarvester } = require("./agent"); // lazy loading for dynamic import
+      return await videoAnalyticsHarvester.forceHarvest();
+    } catch (error) {
+      Log.error("Failed to force harvest:", error.message);
+      return { success: false, error: error.message };
+    }
   }
 }
 
 let trackers = [];
-let backend;
 let isErrorShown = false;
 
 /**
- * Logs and sends given event.
+ * Enhanced event handler with error handling and performance monitoring.
  *
  * @private
  * @param {Event} e Event
  */
 function eventHandler(e) {
-  let data = cleanData(e.data);
-  if (Log.level <= Log.Levels.DEBUG) {
-    Log.notice("Sent", e.type, data);
-  } else {
-    Log.notice("Sent", e.type);
-  }
+  try {
+    let data = cleanData(e.data);
+    
+    if (Log.level <= Log.Levels.DEBUG) {
+      Log.notice("Sent", e.type, data);
+    } else {
+      Log.notice("Sent", e.type);
+    }
 
-  Core.send(e.eventType, e.type, data);
+    // Send event without priority discrimination
+    Core.send(e.eventType, e.type, data);
+
+  } catch (error) {
+    Log.error("Error in event handler:", error.message);
+  }
 }
 
 /**
