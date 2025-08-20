@@ -21,12 +21,6 @@ export class OptimizedHttpClient {
   async send(requestOptions, callback) {
     const { url, payload, options = {} } = requestOptions;
 
-    Log.debug('HTTP Client send called', {
-      url,
-      payloadSize: payload ? dataSize(payload) : 0,
-      options
-    });
-
   
     try {
       // Validate input
@@ -41,12 +35,6 @@ export class OptimizedHttpClient {
         options,
         callback,
       };
-
-      Log.debug('Request object created', {
-        url: request.url,
-        size: request.size,
-        timestamp: request.timestamp
-      });
 
       // Execute request immediately
       await this.executeRequest(request);
@@ -65,8 +53,6 @@ export class OptimizedHttpClient {
   async executeRequest(request) {
     const { url, payload, options, callback } = request;
     const startTime = Date.now();
-
-    console.log("executeRequest called", url);
 
     try {
 
@@ -99,7 +85,6 @@ export class OptimizedHttpClient {
       this.handleRequestComplete(request, result, startTime);
 
     } catch (error) {
-      console.log("error", error.message);
       const result = {
         success: false,
         status: 0,
@@ -122,17 +107,13 @@ export class OptimizedHttpClient {
    */
   handleRequestComplete(request, result, startTime) {
     const { callback } = request;
-    const duration = Date.now() - startTime;
-
-  
+   
 
     // Use smart retry logic based on HTTP status codes
     const shouldRetryRequest = !result.success && (
       result.status === 0 || // Network/timeout errors
       shouldRetry(result.status) // Smart status code-based retry
     );
-
-    console.log("shouldRetryRequest", shouldRetryRequest);
 
 
     callback({
@@ -141,12 +122,6 @@ export class OptimizedHttpClient {
       error: result.error
     });
 
-    Log.debug('Request completed', {
-      success: result.success,
-      status: result.status,
-      duration,
-      willRetry: shouldRetryRequest,
-    });
   }
 
   /**

@@ -31,7 +31,6 @@ class VideoAnalyticsAgent {
 
       this.isInitialized = true;
       Log.notice("Video analytics agent initialized successfully");
-      console.log(1);
 
     } catch (error) {
       Log.error("Failed to initialize video analytics agent:", error.message);
@@ -51,7 +50,7 @@ class VideoAnalyticsAgent {
     }
 
     try {
-      console.log(2);
+
       return this.eventBuffer.add(eventObject);
      
     } catch (error) {

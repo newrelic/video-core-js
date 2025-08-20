@@ -44,9 +44,6 @@ export class RetryQueueHandler {
         this.retryQueue.push({ ...event });
       }
 
-      Log.debug(`Added ${eventsArray.length} events to retry queue`, {
-        queueSize: this.retryQueue.length
-      });
 
     } catch (err) {
       Log.error("Failed to add events to retry queue:", err.message);
@@ -94,23 +91,11 @@ export class RetryQueueHandler {
     for (let i = this.retryQueue.length - 1; i >= 0; i--) {
       const event = this.retryQueue[i];
       
-      if (eventCount >= availableEventCount) {
-        Log.debug('Retry event count limit reached', {
-          eventCount,
-          availableEventCount
-        });
-        break;
-      }
+      if (eventCount >= availableEventCount) break;
+      
 
       const eventSize = dataSize(event);
-      if (usedSpace + eventSize > availableSpace) {
-        Log.debug('Retry payload size limit would be exceeded', {
-          usedSpace,
-          eventSize,
-          availableSpace,
-        });
-        break;
-      }
+      if (usedSpace + eventSize > availableSpace) break;
 
       // Add to beginning of retryEvents to maintain chronological order (oldest first)
       retryEvents.unshift(event);
@@ -120,34 +105,11 @@ export class RetryQueueHandler {
       // Remove immediately - safe because we're iterating backwards
       this.retryQueue.splice(i, 1);
 
-      Log.debug(`Added retry event to harvest`, {
-        eventSize,
-        totalUsedSpace: usedSpace
-      });
     }
-
-    Log.debug('Retry events selected for harvest', {
-      eventCount,
-      totalSize: usedSpace,
-      availableSpace,
-      availableEventCount,
-      queueSizeAfterRemoval: this.retryQueue.length
-    });
 
     return retryEvents;
   }
 
-  /**
-   * Handles successful processing of retry events in harvest.
-   * Note: Events are already removed from queue in getRetryEventsToFit()
-   * This method is kept for compatibility but does nothing.
-   * @param {Array} events - Array of successfully processed events
-   */
-  handleRetryEventsSuccess(events) {
-    // Events are already removed from queue in getRetryEventsToFit()
-    // No action needed here
-    Log.debug('Retry events success handled - events already removed from queue');
-  }
 
   /**
    * Gets the current retry queue size.
@@ -162,8 +124,6 @@ export class RetryQueueHandler {
    */
   clear() {
     this.retryQueue = [];
-    
-    Log.debug("Retry queue cleared");
   }
 
 }

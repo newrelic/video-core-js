@@ -61,14 +61,6 @@ export class NrVideoEventAggregator {
       // Check if smart harvest should be triggered
       this.checkSmartHarvestTrigger();
 
-      Log.debug(`Event added to unified buffer`, {
-        eventType: eventObject.eventType,
-        actionName: eventObject.actionName,
-        totalEvents: this.totalEvents,
-        currentPayloadSize: this.currentPayloadSize,
-        eventSize: eventSize
-      });
-
       return true;
     } catch (error) {
       Log.error("Failed to add event to buffer:", error.message);
@@ -111,11 +103,6 @@ export class NrVideoEventAggregator {
       const isEventSmartReached = this.totalEvents >= this.smartHarvestEventThreshold;
       
       if (isPayloadSmartReached || isEventSmartReached) {
-        const triggerReason = isPayloadSmartReached ? 
-          `payload ${this.currentPayloadSize}/${this.maxPayloadSize} bytes (${Math.round(payloadPercentage * 100)}%)` :
-          `events ${this.totalEvents}/${this.maxEventsPerBatch} (${Math.round(eventPercentage * 100)}%)`;
-          
-        Log.debug(`Smart harvest triggered: ${triggerReason} - Proactive harvest`);
         
         if (this.onSmartHarvestTrigger && typeof this.onSmartHarvestTrigger === 'function') {
           // Trigger proactive harvest
@@ -141,9 +128,7 @@ export class NrVideoEventAggregator {
    */
   drain() {
     try {
-      // Store the current payload size before draining (for logging)
-      const drainedSize = this.currentPayloadSize;
-      
+     
       // Drain ALL events - buffer size is already managed by makeRoom() and smart harvest
       const events = this.buffer.splice(0);
       
@@ -151,11 +136,6 @@ export class NrVideoEventAggregator {
       // Reset counters since buffer is now empty
       this.totalEvents = 0;
       this.currentPayloadSize = 0;
-
-      Log.debug(`Drained all ${events.length} events from buffer`, {
-        drainedSize: drainedSize,
-        bufferNowEmpty: this.buffer.length === 0
-      });
 
       return events;
     } catch (error) {
@@ -188,7 +168,6 @@ export class NrVideoEventAggregator {
     this.buffer = [];
     this.totalEvents = 0;
     
-    Log.debug("Event buffer cleared");
   }
 
   /**
@@ -200,11 +179,6 @@ export class NrVideoEventAggregator {
     if (this.buffer.length > 0) {
       const removed = this.buffer.shift();
       this.totalEvents--;
-      
-      Log.debug(`Dropped oldest event to make room`, {
-        droppedEvent: removed.actionName || removed.eventType,
-        bufferSize: this.buffer.length
-      });
       
     }
   }

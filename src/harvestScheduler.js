@@ -85,22 +85,10 @@ export class HarvestScheduler {
     });
 
     // If buffer is empty, abort harvest
-    if (!this.eventBuffer || this.eventBuffer.isEmpty()) {
-      Log.debug(`${type} harvest aborted - buffer became empty`, { 
-        type, 
-        threshold 
-      });
-      return;
-    }
+    if (!this.eventBuffer || this.eventBuffer.isEmpty()) return;
     
     // Clear existing timer to prevent redundant harvests
     if (this.currentTimerId) {
-      Log.debug("Clearing existing timer due to smart harvest trigger", {
-        type,
-        threshold,
-        timerId: this.currentTimerId
-      });
-
       clearTimeout(this.currentTimerId);
       this.currentTimerId = null;
     }
@@ -112,10 +100,6 @@ export class HarvestScheduler {
     } finally {
       // Schedule next harvest after smart harvest completes
       if (this.isStarted) {
-        Log.debug("Rescheduling next harvest after smart harvest completion", {
-          type,
-          threshold
-        });
         this.scheduleNextHarvest();
       }
     }
@@ -126,26 +110,11 @@ export class HarvestScheduler {
    * @private
    */
   scheduleNextHarvest() {
-    if (!this.isStarted) {
-      Log.debug("Cannot schedule harvest - scheduler not started");
-      return;
-    }
-
-    Log.debug("Scheduling next harvest cycle", {
-      currentEventCount: this.eventBuffer ? this.eventBuffer.size() : 0,
-      isStarted: this.isStarted
-    });
-
+    if (!this.isStarted) return;
+         
     const interval = this.harvestCycle;
-
-
     this.currentTimerId = setTimeout(() => this.onHarvestInterval(), interval);
 
-    Log.debug("Next harvest scheduled", {
-      interval,
-      consecutiveFailures: this.consecutiveFailures,
-      timerId: this.currentTimerId
-    });
   }
 
 
@@ -154,32 +123,13 @@ export class HarvestScheduler {
    * @private
    */
   async onHarvestInterval() {
-    Log.debug("Harvest interval triggered", {
-      eventCount: this.eventBuffer ? this.eventBuffer.size() : 0,
-      isHarvesting: this.isHarvesting
-    });
 
     try {
       // Check if there's any data to harvest (buffer or retry queue) before starting the harvest process
       const hasBufferData = this.eventBuffer && !this.eventBuffer.isEmpty();
       const hasRetryData = this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
       
-      if (!hasBufferData && !hasRetryData) {
-        Log.debug("Skipping scheduled harvest - no data in buffer or retry queue", {
-          bufferEmpty: !hasBufferData,
-          retryQueueEmpty: !hasRetryData,
-          retryQueueSize: this.retryQueueHandler ? this.retryQueueHandler.getQueueSize() : 0
-        });
-        return;
-      }
-
-      Log.debug("Starting scheduled harvest", {
-        hasBufferData,
-        hasRetryData,
-        bufferSize: this.eventBuffer ? this.eventBuffer.size() : 0,
-        retryQueueSize: this.retryQueueHandler ? this.retryQueueHandler.getQueueSize() : 0
-      });
-
+      if (!hasBufferData && !hasRetryData) return;
       await this.triggerHarvest({});
     } catch (error) {
       Log.error("Error during scheduled harvest:", error.message);
@@ -197,10 +147,6 @@ export class HarvestScheduler {
    */
   async triggerHarvest(options = {}) {
     if (this.isHarvesting) {
-      Log.debug("Harvest already in progress, skipping", { 
-        currentOptions: options,
-        isHarvesting: this.isHarvesting 
-      });
       return { success: false, reason: "harvest_in_progress" };
     }
 
@@ -216,27 +162,12 @@ export class HarvestScheduler {
         const payloadSize = dataSize(events);
         
         if (payloadSize > maxBeaconSize) {
-          Log.debug("Trimming events to fit beacon size", { 
-            originalEventCount: events.length,
-            originalPayloadSize: payloadSize,
-            maxBeaconSize 
-          });
           
           // Trim events to fit beacon size (keep most recent events)
           events = this.trimEventsToFit(events, maxBeaconSize);
           
-          Log.debug("Events trimmed for beacon", {
-            trimmedEventCount: events.length,
-            trimmedPayloadSize: dataSize(events)
-          });
         }
       }
-
-      Log.debug("Sending harvest payload", { 
-        eventCount: events.length, 
-        payloadSize: dataSize(events),
-        isFinalHarvest: options.isFinalHarvest
-      });
       
       // Send single payload - buffer limits guarantee it fits API constraints
       const result = await this.sendChunk(events, options, true);
@@ -282,16 +213,7 @@ export class HarvestScheduler {
       // Check if adding this event would exceed the limit
       const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] });
       
-      if (testPayloadSize > maxSize) {
-        // Skip this event - it would exceed the limit
-        Log.debug("Skipping event - would exceed beacon size", {
-          eventIndex: i,
-          eventSize,
-          testPayloadSize,
-          maxSize
-        });
-        continue;
-      }
+      if (testPayloadSize > maxSize) continue;
 
       // Add event to the beginning to maintain chronological order
       trimmedEvents.unshift(event);
@@ -323,11 +245,6 @@ export class HarvestScheduler {
     const freshEvents = this.eventBuffer.drain();
     let events = [...freshEvents];
     let currentPayloadSize = dataSize(freshEvents);
-
-    Log.debug('Fresh events drained for harvest', {
-      freshEventCount: freshEvents.length,
-      freshEventsSize: currentPayloadSize
-    });
     
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {
@@ -348,27 +265,9 @@ export class HarvestScheduler {
         if (retryEvents.length > 0) {
           events = [ ...retryEvents, ...events]; // Append retry events before fresh events for maintaining chronoligical order
           
-          Log.debug('Retry events included in harvest', {
-            retryEventCount: retryEvents.length,
-            totalEventCount: events.length,
-            retryQueueRemaining: retryQueueSize - retryEvents.length
-          });
         }
-      } else {
-        Log.debug('No space available for retry events', {
-          availableSpace,
-          availableEventCount,
-          currentPayloadSize,
-          currentEventCount: events.length
-        });
-      }
+      } 
     }
-    
-    Log.debug('Events drained for harvest', {
-      totalEventCount: events.length,
-      estimatedPayloadSize: dataSize(events)
-    });
-    
     return events;
   }
 
@@ -454,26 +353,19 @@ export class HarvestScheduler {
     let finalHarvestTriggered = false;
     
     const triggerFinalHarvest = () => {
-      if (finalHarvestTriggered) {
-        Log.debug("Final harvest already triggered, skipping duplicate");
-        return;
-      }
+      if (finalHarvestTriggered)  return;
       finalHarvestTriggered = true;
-      Log.debug("Triggering final harvest");
+
       this.triggerHarvest({ isFinalHarvest: true, force: true });
     };
 
     // Handle page visibility changes
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        Log.debug("Page became hidden");
-        triggerFinalHarvest();
-      }
+      if (document.hidden)  triggerFinalHarvest();
     });
 
     // Handle page unload
     window.addEventListener("pagehide", () => {
-      Log.debug("Page unloading");
       triggerFinalHarvest();
     });
 

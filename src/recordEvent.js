@@ -30,14 +30,6 @@ export function recordEvent(eventType, attributes = {}) {
 
     // Send to video analytics harvester
     const success = videoAnalyticsHarvester.addEvent(eventObject);
-    
-    if (success) {
-      Log.debug("Event recorded successfully", {
-        eventType,
-        actionName: attributes.actionName
-      });
-    }
-
     return success;
 
   } catch (error) {
