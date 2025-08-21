@@ -2,6 +2,7 @@ import pkg from "../package.json";
 import Emitter from "./emitter";
 import Chrono from "./chrono";
 import Constants from "./constants";
+import {setHearbeatInterval} from "./utils";
 
 /**
  * Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.
@@ -76,7 +77,7 @@ class Tracker extends Emitter {
       if (options.customData) this.customData = options.customData;
       if (options.heartbeat) this.heartbeat = options.heartbeat;
        if(options.harvestInterval) {
-         window.NRVIDEO.info.harvestInterval = options.harvestInterval;
+         setHearbeatInterval(options.harvestInterval);
       }
     }
   }

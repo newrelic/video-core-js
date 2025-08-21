@@ -149,3 +149,12 @@ export async function decompressPayload(compressedData) {
     throw new Error(`Failed to decompress payload: ${error.message}`);
   }
 }
+
+
+export function setHearbeatInterval(interval){
+    if(interval >=1000 && interval <= 300000){
+       window.NRVIDEO.info.harvestInterval = interval;
+    }else{
+        Log.warn("Invalid heartbeat interval. Must be between 1000 and 300000.");
+    }
+}
