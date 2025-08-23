@@ -1,6 +1,5 @@
-
 import pkg from "../package.json";
-
+import Log from "./log";
 
 /**
  * Builds the harvest URL with proper query parameters.
@@ -8,27 +7,34 @@ import pkg from "../package.json";
  */
 
 export function buildUrl(fallbackUrl) {
-    try {
-      if (!window.NRVIDEO || !window.NRVIDEO.info) {
-        throw new Error("NRVIDEO info is not available.");
-      }
-
-      let { beacon, licenseKey, applicationID } = window.NRVIDEO.info;
-
-
-
-      if (!beacon || !licenseKey)
-        throw new Error(
-          "Options object provided by New Relic is not correctly initialized"
-        );
-      
-      const url = `https://${fallbackUrl ? fallbackUrl: beacon}/ins/1/${licenseKey}?a=${applicationID}&v=${pkg.version}&ref=${window.location.href}&ca=VA`;
-      return url;
-    } catch (error) {
-      console.error(error.message);
-      return null; // Return null instead of undefined
+  try {
+    if (!window.NRVIDEO || !window.NRVIDEO.info) {
+      throw new Error("NRVIDEO info is not available.");
     }
+
+    let { beacon, licenseKey, applicationID } = window.NRVIDEO.info;
+
+    if (!beacon || !licenseKey)
+      throw new Error(
+        "Options object provided by New Relic is not correctly initialized"
+      );
+
+    if (applicationID) {
+      return `https://${
+        fallbackUrl ? fallbackUrl : beacon
+      }/ins/1/${licenseKey}?a=${applicationID}&v=${pkg.version}&ref=${
+        window.location.href
+      }&ca=VA`;
+    }
+
+    return `https://${
+      fallbackUrl ? fallbackUrl : beacon
+    }/ins/1/${licenseKey}?&v=${pkg.version}&ref=${window.location.href}&ca=VA`;
+  } catch (error) {
+    console.error(error.message);
+    return null; // Return null instead of undefined
   }
+}
 
 /**
  * Returns a function for use as a replacer parameter in JSON.stringify() to handle circular references.
@@ -54,7 +60,7 @@ const getCircularReplacer = () => {
  * @param {*} val - A value to be converted to a JSON string.
  * @returns {string} A JSON string representation of the value, with circular references handled.
  */
- function stringify(val) {
+function stringify(val) {
   try {
     return JSON.stringify(val, getCircularReplacer()) ?? "";
   } catch (e) {
@@ -63,14 +69,20 @@ const getCircularReplacer = () => {
   }
 }
 
-
 export function dataSize(data) {
   if (typeof data === "string" && data.length) return data.length;
   if (typeof data !== "object") return undefined;
   // eslint-disable-next-line
-  if (typeof ArrayBuffer !== "undefined" && data instanceof ArrayBuffer && data.byteLength) return data.byteLength;
-  if (typeof Blob !== "undefined" && data instanceof Blob && data.size) return data.size;
-  if (typeof FormData !== "undefined" && data instanceof FormData) return undefined;
+  if (
+    typeof ArrayBuffer !== "undefined" &&
+    data instanceof ArrayBuffer &&
+    data.byteLength
+  )
+    return data.byteLength;
+  if (typeof Blob !== "undefined" && data instanceof Blob && data.size)
+    return data.size;
+  if (typeof FormData !== "undefined" && data instanceof FormData)
+    return undefined;
 
   try {
     return stringify(data).length;
@@ -106,14 +118,13 @@ export function shouldRetry(status) {
  * @returns {Promise<Blob>} A Promise that resolves with a Blob of the Gzipped data.
  */
 
-export function compressPayload(payload ){
- const stringifiedPayload = JSON.stringify(payload);
- const stream = new Blob([stringifiedPayload]).stream();
- const compressionStream = new CompressionStream('gzip');
- const compressedStream = stream.pipeThrough(compressionStream);
+export function compressPayload(payload) {
+  const stringifiedPayload = JSON.stringify(payload);
+  const stream = new Blob([stringifiedPayload]).stream();
+  const compressionStream = new CompressionStream("gzip");
+  const compressedStream = stream.pipeThrough(compressionStream);
 
- return new Response(compressedStream).blob();  
-
+  return new Response(compressedStream).blob();
 }
 
 /**
@@ -132,29 +143,20 @@ export async function decompressPayload(compressedData) {
     } else if (compressedData instanceof Uint8Array) {
       stream = new Blob([compressedData]).stream();
     } else {
-      throw new Error('Unsupported compressed data type');
+      throw new Error("Unsupported compressed data type");
     }
 
     // Decompress using DecompressionStream
-    const decompressionStream = new DecompressionStream('gzip');
+    const decompressionStream = new DecompressionStream("gzip");
     const decompressedStream = stream.pipeThrough(decompressionStream);
-    
+
     // Convert back to text
     const response = new Response(decompressedStream);
     const decompressedText = await response.text();
-    
+
     // Parse JSON
     return JSON.parse(decompressedText);
   } catch (error) {
     throw new Error(`Failed to decompress payload: ${error.message}`);
   }
-}
-
-
-export function setHearbeatInterval(interval){
-    if(interval >=1000 && interval <= 300000){
-       window.NRVIDEO.info.harvestInterval = interval;
-    }else{
-        Log.warn("Invalid heartbeat interval. Must be between 1000 and 300000.");
-    }
 }

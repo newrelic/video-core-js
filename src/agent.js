@@ -22,7 +22,6 @@ class VideoAnalyticsAgent {
     }
 
     try {
-     
       this.eventBuffer = new NrVideoEventAggregator();
       this.harvestScheduler = new HarvestScheduler(this.eventBuffer);
 
@@ -31,7 +30,6 @@ class VideoAnalyticsAgent {
 
       this.isInitialized = true;
       Log.notice("Video analytics agent initialized successfully");
-
     } catch (error) {
       Log.error("Failed to initialize video analytics agent:", error.message);
     }
@@ -43,22 +41,18 @@ class VideoAnalyticsAgent {
    * @returns {boolean} True if event was added successfully
    */
   addEvent(eventObject) {
-
     if (!this.isInitialized) {
       Log.warn("Video analytics agent not initialized, initializing now");
       this.initialize();
     }
 
     try {
-
       return this.eventBuffer.add(eventObject);
-     
     } catch (error) {
       Log.error("Failed to add event to harvesting system:", error.message);
       return false;
     }
   }
-
 
   /**
    * Destroys the video analytics agent and cleans up resources.
@@ -76,6 +70,19 @@ class VideoAnalyticsAgent {
 
     Log.notice("Video analytics agent destroyed");
   }
+
+  /**
+   * Sets the harvest interval for the scheduler.
+   * @param {number} interval - The harvest interval in milliseconds.
+   */
+
+  setHarvestInterval(interval) {
+    if (!this.isInitialized) {
+      this.initialize();
+    }
+
+    this.harvestScheduler.updateHarvestInterval(interval);
+  }
 }
 
 // Create singleton instance
@@ -83,4 +90,3 @@ const videoAnalyticsAgent = new VideoAnalyticsAgent();
 
 // Enhanced video analytics harvester
 export const videoAnalyticsHarvester = videoAnalyticsAgent;
-

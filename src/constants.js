@@ -23,26 +23,23 @@ Constants.AdPositions = {
 //bam-cell.nr-data.net
 
 Constants.COLLECTOR = {
-  US: ["bam.nr-data.net","bam-cell.nr-data.net"],
+  US: ["bam.nr-data.net", "bam-cell.nr-data.net"],
   EU: "bam.eu01.nr-data.net",
   Stage: "staging-bam-cell.nr-data.net",
   GOV: "gov-bam.nr-data.net",
 };
 
-
 // ====== VALID EVENT TYPES ======
 Constants.VALID_EVENT_TYPES = [
   "VideoAction",
-  "VideoAdAction", 
+  "VideoAdAction",
   "VideoErrorAction",
   "VideoCustomAction",
 ];
 
 Constants.MAX_PAYLOAD_SIZE = 1048576; // 1MB = 1024 × 1024 bytes
-Constants.MAX_BEACON_SIZE = 61440;    // 60KB = 60 × 1024 bytes
+Constants.MAX_BEACON_SIZE = 61440; // 60KB = 60 × 1024 bytes
 Constants.MAX_EVENTS_PER_BATCH = 1000;
 Constants.INTERVAL = 10000; //10 seconds
-
-
 
 export default Constants;

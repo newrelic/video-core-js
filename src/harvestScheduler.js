@@ -1,7 +1,7 @@
 import { NrVideoEventAggregator } from "./eventAggregator";
 import { RetryQueueHandler } from "./retryQueueHandler";
 import { OptimizedHttpClient } from "./optimizedHttpClient";
-import { buildUrl, dataSize} from "./utils";
+import { buildUrl, dataSize } from "./utils";
 import Constants from "./constants";
 import Log from "./log";
 
@@ -12,7 +12,6 @@ import Log from "./log";
 
 export class HarvestScheduler {
   constructor(eventAggregator) {
-    
     // Core components
     this.eventBuffer = eventAggregator;
     this.retryQueueHandler = new RetryQueueHandler();
@@ -22,13 +21,16 @@ export class HarvestScheduler {
 
     // Set up smart harvest callback
     if (this.eventBuffer instanceof NrVideoEventAggregator) {
-      this.eventBuffer.setSmartHarvestCallback((type, threshold) => this.triggerSmartHarvest(type, threshold));
+      this.eventBuffer.setSmartHarvestCallback((type, threshold) =>
+        this.triggerSmartHarvest(type, threshold)
+      );
     }
 
     // Scheduler state
     this.isStarted = false;
     this.currentTimerId = null;
-    this.harvestCycle =  window.NRVIDEO.info.harvestInterval || Constants.INTERVAL;
+    this.harvestCycle =
+      window.NRVIDEO.info.harvestInterval || Constants.INTERVAL;
     this.isHarvesting = false;
 
     // Page lifecycle handling
@@ -48,7 +50,7 @@ export class HarvestScheduler {
 
     Log.notice("Starting harvest scheduler", {
       harvestCycle: this.harvestCycle,
-      eventBufferSize: this.eventBuffer ? this.eventBuffer.size() : 0
+      eventBufferSize: this.eventBuffer ? this.eventBuffer.size() : 0,
     });
 
     this.scheduleNextHarvest();
@@ -77,22 +79,21 @@ export class HarvestScheduler {
    * @param {string} type - Type of harvest trigger ('smart' or 'overflow')
    * @param {number} threshold - Threshold percentage that triggered the harvest (60 or 90)
    */
-  async triggerSmartHarvest(type,  threshold) {
-
-    Log.notice(`${type} harvest triggered at ${threshold}% threshold`, { 
+  async triggerSmartHarvest(type, threshold) {
+    Log.notice(`${type} harvest triggered at ${threshold}% threshold`, {
       type,
       threshold,
     });
 
     // If buffer is empty, abort harvest
     if (!this.eventBuffer || this.eventBuffer.isEmpty()) return;
-    
+
     // Clear existing timer to prevent redundant harvests
     if (this.currentTimerId) {
       clearTimeout(this.currentTimerId);
       this.currentTimerId = null;
     }
-    
+
     try {
       await this.triggerHarvest({});
     } catch (error) {
@@ -111,24 +112,22 @@ export class HarvestScheduler {
    */
   scheduleNextHarvest() {
     if (!this.isStarted) return;
-         
+
     const interval = this.harvestCycle;
     this.currentTimerId = setTimeout(() => this.onHarvestInterval(), interval);
-
   }
-
 
   /**
    * Handles the harvest interval timer.
    * @private
    */
   async onHarvestInterval() {
-
     try {
       // Check if there's any data to harvest (buffer or retry queue) before starting the harvest process
       const hasBufferData = this.eventBuffer && !this.eventBuffer.isEmpty();
-      const hasRetryData = this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
-      
+      const hasRetryData =
+        this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
+
       if (!hasBufferData && !hasRetryData) return;
       await this.triggerHarvest({});
     } catch (error) {
@@ -160,22 +159,20 @@ export class HarvestScheduler {
       if (options.isFinalHarvest) {
         const maxBeaconSize = Constants.MAX_BEACON_SIZE;
         const payloadSize = dataSize(events);
-        
+
         if (payloadSize > maxBeaconSize) {
-          
           // Trim events to fit beacon size (keep most recent events)
           events = this.trimEventsToFit(events, maxBeaconSize);
-          
         }
       }
-      
+
       // Send single payload - buffer limits guarantee it fits API constraints
       const result = await this.sendChunk(events, options, true);
-      
+
       return {
         success: result.success,
         totalChunks: 1,
-        results: [result]
+        results: [result],
       };
     } catch (error) {
       Log.error("Harvest cycle failed:", error.message);
@@ -209,10 +206,10 @@ export class HarvestScheduler {
     for (let i = events.length - 1; i >= 0; i--) {
       const event = events[i];
       const eventSize = dataSize(event);
-      
+
       // Check if adding this event would exceed the limit
       const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] });
-      
+
       if (testPayloadSize > maxSize) continue;
 
       // Add event to the beginning to maintain chronological order
@@ -226,7 +223,7 @@ export class HarvestScheduler {
         originalCount: events.length,
         trimmedCount: trimmedEvents.length,
         finalSize: currentSize,
-        maxSize
+        maxSize,
       });
     }
 
@@ -245,28 +242,26 @@ export class HarvestScheduler {
     const freshEvents = this.eventBuffer.drain();
     let events = [...freshEvents];
     let currentPayloadSize = dataSize(freshEvents);
-    
+
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {
       const retryQueueSize = this.retryQueueHandler.getQueueSize();
-      
+
       // Calculate available space for retry events
       const availableSpace = Constants.MAX_PAYLOAD_SIZE - currentPayloadSize;
-      const availableEventCount = Constants.MAX_EVENTS_PER_BATCH - events.length;
+      const availableEventCount =
+        Constants.MAX_EVENTS_PER_BATCH - events.length;
 
-      
       if (availableSpace > 0 && availableEventCount > 0) {
         const retryEvents = this.retryQueueHandler.getRetryEventsToFit(
-          availableSpace, 
+          availableSpace,
           availableEventCount
         );
 
-        
         if (retryEvents.length > 0) {
-          events = [ ...retryEvents, ...events]; // Append retry events before fresh events for maintaining chronoligical order
-          
+          events = [...retryEvents, ...events]; // Append retry events before fresh events for maintaining chronoligical order
         }
-      } 
+      }
     }
     return events;
   }
@@ -327,7 +322,7 @@ export class HarvestScheduler {
       this.fallBackUrl = "";
     } else if (this.retryCount >= 2) {
       // Switch to fallback after 2 consecutive failures
-      this.fallBackUrl = Constants.COLLECTOR['US'][1];
+      this.fallBackUrl = Constants.COLLECTOR["US"][1];
     }
   }
 
@@ -346,14 +341,40 @@ export class HarvestScheduler {
   }
 
   /**
+   * Updates the harvest interval and restarts the scheduler to apply the new interval.
+   * @param {number} newInterval - The new harvest interval in milliseconds
+   * @returns {boolean} - True if interval was updated successfully, false otherwise
+   */
+
+  updateHarvestInterval(newInterval) {
+    if (typeof newInterval !== "number" && isNaN(newInterval)) {
+      Log.warn("Invalid newInterval provided to updateHarvestInterval");
+      return;
+    }
+
+    if (newInterval < 1000 || newInterval > 300000) {
+      Log.warn("newInterval out of bounds (1000-300000), ignoring");
+      return;
+    }
+
+    this.harvestCycle = newInterval;
+    Log.notice("Updated harvestCycle:", this.harvestCycle);
+
+    this.stopScheduler();
+    this.startScheduler();
+
+    return;
+  }
+
+  /**
    * Sets up page lifecycle event handlers.
    * @private
    */
   setupPageLifecycleHandlers() {
     let finalHarvestTriggered = false;
-    
+
     const triggerFinalHarvest = () => {
-      if (finalHarvestTriggered)  return;
+      if (finalHarvestTriggered) return;
       finalHarvestTriggered = true;
 
       this.triggerHarvest({ isFinalHarvest: true, force: true });
@@ -361,7 +382,7 @@ export class HarvestScheduler {
 
     // Handle page visibility changes
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden)  triggerFinalHarvest();
+      if (document.hidden) triggerFinalHarvest();
     });
 
     // Handle page unload
@@ -374,5 +395,4 @@ export class HarvestScheduler {
       triggerFinalHarvest();
     });
   }
-
 }

@@ -15,29 +15,27 @@ export function recordEvent(eventType, attributes = {}) {
       return false;
     }
 
-
     // Get app configuration
-    const { appName, applicationID } = window.NRVIDEO.info;
 
+    if (!window?.NRVIDEO?.info) return;
+
+    const { appName, applicationID } = window.NRVIDEO.info;
 
     const eventObject = {
       ...attributes,
       eventType,
       ...(applicationID ? {} : { appName }), // Only include appName when no applicationID
       timestamp: Date.now(),
-      timeSinceLoad: window.performance ? window.performance.now() / 1000 : null,
+      timeSinceLoad: window.performance
+        ? window.performance.now() / 1000
+        : null,
     };
 
     // Send to video analytics harvester
     const success = videoAnalyticsHarvester.addEvent(eventObject);
     return success;
-
   } catch (error) {
     Log.error("Failed to record event:", error.message);
     return false;
   }
 }
-
-
-
-

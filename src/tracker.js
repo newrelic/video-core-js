@@ -2,7 +2,8 @@ import pkg from "../package.json";
 import Emitter from "./emitter";
 import Chrono from "./chrono";
 import Constants from "./constants";
-import {setHearbeatInterval} from "./utils";
+import { videoAnalyticsHarvester } from "./agent";
+import Log from "./log";
 
 /**
  * Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.
@@ -76,9 +77,6 @@ class Tracker extends Emitter {
       if (options.parentTracker) this.parentTracker = options.parentTracker;
       if (options.customData) this.customData = options.customData;
       if (options.heartbeat) this.heartbeat = options.heartbeat;
-       if(options.harvestInterval) {
-         setHearbeatInterval(options.harvestInterval);
-      }
     }
   }
 
@@ -237,15 +235,10 @@ class Tracker extends Emitter {
    * Internally, this will call {@see Emitter#emit}, so you could listen any event fired.
    *
    * @example
-   * tracker.send('BANNER_CLICK', { url: 'http....' })
+   * tracker.sendVideoAction('BANNER_CLICK', { url: 'http....' })
    *
    * @param {string} event Event name
    * @param {object} [att] Key:value dictionary filled with attributes.
-   */
-
-  /**
-   * getElapsedTime: Calculate the time elapsed between two same actions
-   *
    */
 
   sendVideoAction(event, att) {
@@ -267,6 +260,26 @@ class Tracker extends Emitter {
       event,
       this.getAttributes(att, "customAction")
     );
+  }
+
+  /**
+   * Sets the harvest interval for video tracking.
+   * @param {*} interval - The interval in milliseconds.
+   * @returns {void}
+   */
+
+  setHarvestInterval(interval) {
+    if (!videoAnalyticsHarvester) {
+      Log.error("VideoAnalyticsHarvester is not available");
+      return;
+    }
+
+    try {
+      videoAnalyticsHarvester.setHarvestInterval(interval);
+    } catch (error) {
+      Log.error("Failed to set harvest interval:", error.message);
+      return;
+    }
   }
 }
 

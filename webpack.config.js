@@ -1,6 +1,5 @@
 var path = require("path");
 var webpack = require("webpack");
-var WebpackObfuscator = require("webpack-obfuscator");
 
 var pkg = require("./package.json");
 var license =
@@ -15,7 +14,6 @@ var license =
   pkg.author;
 
 module.exports = [
-
   // UMD Build
   {
     entry: "./src/index.js",
@@ -24,7 +22,7 @@ module.exports = [
       filename: "nrvideo" + ".min.js",
       library: "nrvideo",
       libraryTarget: "umd",
-      libraryExport: "default", 
+      libraryExport: "default",
     },
     devtool: "source-map",
     module: {
@@ -46,15 +44,6 @@ module.exports = [
         banner: license,
         entryOnly: true,
       }),
-      new WebpackObfuscator(
-        {
-          rotateStringArray: true,
-          stringArray: true,
-          stringArrayThreshold: 0.75,
-          identifierNamesGenerator: "mangled",
-        },
-        ["excluded.js"]
-      ),
     ],
   },
   // CommonJS Build
@@ -86,15 +75,6 @@ module.exports = [
         banner: license,
         entryOnly: true,
       }),
-      new WebpackObfuscator(
-        {
-          rotateStringArray: true,
-          stringArray: true,
-          stringArrayThreshold: 0.75,
-          identifierNamesGenerator: "mangled",
-        },
-        ["excluded.js"]
-      ),
     ],
   },
   // ES Module Build
@@ -130,15 +110,6 @@ module.exports = [
         banner: license,
         entryOnly: true,
       }),
-      new WebpackObfuscator(
-        {
-          rotateStringArray: true,
-          stringArray: true,
-          stringArrayThreshold: 0.75,
-          identifierNamesGenerator: "mangled",
-        },
-        ["excluded.js"]
-      ),
     ],
   },
 ];
