@@ -55,23 +55,6 @@ class VideoAnalyticsAgent {
   }
 
   /**
-   * Destroys the video analytics agent and cleans up resources.
-   */
-  destroy() {
-    if (!this.isInitialized) {
-      return;
-    }
-
-    this.harvestScheduler.destroy();
-
-    this.eventBuffer = null;
-    this.harvestScheduler = null;
-    this.isInitialized = false;
-
-    Log.notice("Video analytics agent destroyed");
-  }
-
-  /**
    * Sets the harvest interval for the scheduler.
    * @param {number} interval - The harvest interval in milliseconds.
    */

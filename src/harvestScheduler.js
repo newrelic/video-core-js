@@ -357,11 +357,25 @@ export class HarvestScheduler {
       return;
     }
 
+    // Check if the interval has actually changed to avoid unnecessary actions
+    if (this.harvestCycle === newInterval) {
+      return;
+    }
+
+    // 1. Update the harvestCycle property with the new interval
     this.harvestCycle = newInterval;
     Log.notice("Updated harvestCycle:", this.harvestCycle);
 
-    this.stopScheduler();
-    this.startScheduler();
+    // 2. Clear the existing timer
+    if (this.currentTimerId) {
+      clearTimeout(this.currentTimerId);
+      this.currentTimerId = null;
+    }
+
+    // 3. Schedule a new timer with the updated interval
+    if (this.isStarted) {
+      this.scheduleNextHarvest();
+    }
 
     return;
   }

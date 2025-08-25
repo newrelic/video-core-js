@@ -1,6 +1,6 @@
 import Log from "./log";
-import Constants from "./constants";  
-import {dataSize} from "./utils"
+import Constants from "./constants";
+import { dataSize } from "./utils";
 
 const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
 
@@ -12,19 +12,19 @@ const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
 export class NrVideoEventAggregator {
   constructor() {
     // Simplified to single priority queue for equal treatment
-    
+
     this.buffer = [];
-    this.maxPayloadSize = MAX_PAYLOAD_SIZE
-    this.maxEventsPerBatch = MAX_EVENTS_PER_BATCH 
+    this.maxPayloadSize = MAX_PAYLOAD_SIZE;
+    this.maxEventsPerBatch = MAX_EVENTS_PER_BATCH;
     this.currentPayloadSize = 0;
     this.totalEvents = 0;
-    
+
     // Dual threshold system - whichever is reached first triggers harvest
     // Payload size thresholds
     this.smartHarvestPayloadThreshold = Math.floor(this.maxPayloadSize * 0.6); // 60% of 1MB = 600KB
     this.overflowPayloadThreshold = Math.floor(this.maxPayloadSize * 0.9); // 90% of 1MB = 900KB
-    
-    // Event count thresholds  
+
+    // Event count thresholds
     this.smartHarvestEventThreshold = Math.floor(this.maxEventsPerBatch * 0.6); // 60% of 1000 = 600 events
     this.overflowEventThreshold = Math.floor(this.maxEventsPerBatch * 0.9); // 90% of 1000 = 900 events
 
@@ -41,13 +41,12 @@ export class NrVideoEventAggregator {
     try {
       // Calculate event payload size
       const eventSize = dataSize(eventObject);
-      
 
       // Check if we need to make room based on EITHER payload size OR event count limits
-      const wouldExceedPayload = (this.currentPayloadSize + eventSize) >= this.maxPayloadSize;
-      const wouldExceedEventCount = (this.totalEvents + 1) >= this.maxEventsPerBatch;
-
-    
+      const wouldExceedPayload =
+        this.currentPayloadSize + eventSize >= this.maxPayloadSize;
+      const wouldExceedEventCount =
+        this.totalEvents + 1 >= this.maxEventsPerBatch;
 
       if (wouldExceedPayload || wouldExceedEventCount) {
         this.makeRoom();
@@ -57,7 +56,7 @@ export class NrVideoEventAggregator {
       this.buffer.push(eventObject);
       this.totalEvents++;
       this.currentPayloadSize += eventSize;
-    
+
       // Check if smart harvest should be triggered
       this.checkSmartHarvestTrigger();
 
@@ -76,37 +75,51 @@ export class NrVideoEventAggregator {
    * @private
    */
   checkSmartHarvestTrigger() {
-    const payloadPercentage = (this.currentPayloadSize / this.maxPayloadSize);
-    const eventPercentage = (this.totalEvents / this.maxEventsPerBatch);
-    
-  
+    const payloadPercentage = this.currentPayloadSize / this.maxPayloadSize;
+    const eventPercentage = this.totalEvents / this.maxEventsPerBatch;
+
     // Check 90% emergency thresholds first (either payload OR event count)
-    const isPayloadOverflowReached = this.currentPayloadSize >= this.overflowPayloadThreshold;
-    const isEventOverflowReached = this.totalEvents >= this.overflowEventThreshold;
-    
+    const isPayloadOverflowReached =
+      this.currentPayloadSize >= this.overflowPayloadThreshold;
+    const isEventOverflowReached =
+      this.totalEvents >= this.overflowEventThreshold;
+
     if (isPayloadOverflowReached || isEventOverflowReached) {
-      const triggerReason = isPayloadOverflowReached ? 
-        `payload ${this.currentPayloadSize}/${this.maxPayloadSize} bytes (${Math.round(payloadPercentage * 100)}%)` :
-        `events ${this.totalEvents}/${this.maxEventsPerBatch} (${Math.round(eventPercentage * 100)}%)`;
-        
-      Log.warn(`OVERFLOW PREVENTION: ${triggerReason} - Emergency harvest triggered`);
-      
-      if (this.onSmartHarvestTrigger && typeof this.onSmartHarvestTrigger === 'function') {
+      const triggerReason = isPayloadOverflowReached
+        ? `payload ${this.currentPayloadSize}/${
+            this.maxPayloadSize
+          } bytes (${Math.round(payloadPercentage * 100)}%)`
+        : `events ${this.totalEvents}/${this.maxEventsPerBatch} (${Math.round(
+            eventPercentage * 100
+          )}%)`;
+
+      Log.warn(
+        `OVERFLOW PREVENTION: ${triggerReason} - Emergency harvest triggered`
+      );
+
+      if (
+        this.onSmartHarvestTrigger &&
+        typeof this.onSmartHarvestTrigger === "function"
+      ) {
         // Trigger immediate emergency harvest
-        this.onSmartHarvestTrigger('overflow', 90);
+        this.onSmartHarvestTrigger("overflow", 90);
       }
     }
 
     // Check 60% smart harvest thresholds (either payload OR event count)
     else {
-      const isPayloadSmartReached = this.currentPayloadSize >= this.smartHarvestPayloadThreshold;
-      const isEventSmartReached = this.totalEvents >= this.smartHarvestEventThreshold;
-      
+      const isPayloadSmartReached =
+        this.currentPayloadSize >= this.smartHarvestPayloadThreshold;
+      const isEventSmartReached =
+        this.totalEvents >= this.smartHarvestEventThreshold;
+
       if (isPayloadSmartReached || isEventSmartReached) {
-        
-        if (this.onSmartHarvestTrigger && typeof this.onSmartHarvestTrigger === 'function') {
+        if (
+          this.onSmartHarvestTrigger &&
+          typeof this.onSmartHarvestTrigger === "function"
+        ) {
           // Trigger proactive harvest
-          this.onSmartHarvestTrigger('smart', 60);
+          this.onSmartHarvestTrigger("smart", 60);
         }
       }
     }
@@ -120,7 +133,6 @@ export class NrVideoEventAggregator {
     this.onSmartHarvestTrigger = callback;
   }
 
-  
   /**
    * Drains all events from the buffer in FIFO order (first in, first out).
    * No limits needed since buffer already manages size via makeRoom() and smart harvest triggers.
@@ -128,10 +140,8 @@ export class NrVideoEventAggregator {
    */
   drain() {
     try {
-     
       // Drain ALL events - buffer size is already managed by makeRoom() and smart harvest
       const events = this.buffer.splice(0);
-      
 
       // Reset counters since buffer is now empty
       this.totalEvents = 0;
@@ -143,7 +153,6 @@ export class NrVideoEventAggregator {
       return [];
     }
   }
-
 
   /**
    * Checks if the buffer is empty.
@@ -167,7 +176,6 @@ export class NrVideoEventAggregator {
   clear() {
     this.buffer = [];
     this.totalEvents = 0;
-    
   }
 
   /**
@@ -175,11 +183,28 @@ export class NrVideoEventAggregator {
    * Uses FIFO approach - removes the first (oldest) event.
    * @private
    */
-  makeRoom() {
-    if (this.buffer.length > 0) {
-      const removed = this.buffer.shift();
-      this.totalEvents--;
-      
+  makeRoom(newEventSize) {
+    // Keep a loop to evict events until we meet ALL conditions for the new event
+    while (
+      // Condition 1: Exceeding max event count
+      this.totalEvents >= this.maxEventsPerBatch ||
+      // Condition 2: Exceeding max payload size
+      this.currentPayloadSize + newEventSize >= this.maxPayloadSize
+    ) {
+      if (this.buffer.length > 0) {
+        const removed = this.buffer.shift(); // Remove the oldest event (FIFO)
+
+        // Recalculate size and count after removal
+        const removedSize = dataSize(removed);
+        this.totalEvents--;
+        this.currentPayloadSize -= removedSize;
+
+        // Optional: Log a warning for a dropped event
+        Log.warn("Event buffer full, oldest event removed.");
+      } else {
+        // Buffer is somehow empty, but conditions were met. Break the loop.
+        break;
+      }
     }
   }
 }
