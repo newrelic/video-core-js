@@ -217,12 +217,18 @@ export class HarvestScheduler {
 
     const discardedCount = events.length - trimmedEvents.length;
     if (discardedCount > 0) {
+      const discardedEvents = events.slice(0, discardedCount);
       Log.warn(`Discarded ${discardedCount} events to fit beacon size limit`, {
         originalCount: events.length,
         trimmedCount: trimmedEvents.length,
         finalSize: currentSize,
         maxSize,
       });
+
+      // send discarded events to retry queue
+      if (this.retryQueueHandler) {
+        this.retryQueueHandler.addFailedEvents(discardedEvents);
+      }
     }
 
     return trimmedEvents;

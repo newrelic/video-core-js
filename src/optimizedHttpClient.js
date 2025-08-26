@@ -100,7 +100,7 @@ export class OptimizedHttpClient {
    * @param {string} endpoint - The endpoint that was used for the request
    * @private
    */
-  handleRequestComplete(request, result, startTime) {
+  handleRequestComplete(request, result) {
     const { callback } = request;
 
     // Use smart retry logic based on HTTP status codes

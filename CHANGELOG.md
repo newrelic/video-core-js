@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.0] - 2025/08/26
+
+### Standalone Agent: Decoupled & Redesigned
+
+#### Key Changes
+
+- **Breaking Change: Decoupled Agent 💥**  
+  The browser agent is now a completely standalone unit with its own architecture, independent of the main application.
+
+- **Enhancement: Independent Logic ⚙️**  
+  The agent now uses its own dedicated harvesting logic for data collection, including a custom queue and enhanced error handling.
+
+- **Build: Simplified Onboarding 🚀**  
+  The onboarding process has been streamlined to reflect its new decoupled nature, making it easier to integrate and manage.
 
 ## [3.1.1] - 2025/06/09
 
@@ -13,11 +27,11 @@ All notable changes to this project will be documented in this file.
 
 ### Enhancements
 
-* **Publishing to npm:** The package can now be published to npm, making it easily accessible.
+- **Publishing to npm:** The package can now be published to npm, making it easily accessible.
 
 ### Build
 
-* **Distribution Formats:** Added `cjs`, `esm`, and `umd` builds to the `dist` folder, ensuring compatibility with CommonJS, ES Modules, and UMD module formats.
+- **Distribution Formats:** Added `cjs`, `esm`, and `umd` builds to the `dist` folder, ensuring compatibility with CommonJS, ES Modules, and UMD module formats.
 
 ## [3.0.0] - 2025/02/20
 

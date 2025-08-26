@@ -5,42 +5,33 @@
 The New Relic video tracking core library is the base for all video trackers in the browser platform. It contains the classes and core mechanisms used by the player specific trackers.
 It segregates the events into different event types based on action, such as video-related events going to `VideoAction`, ad-related events to `VideoAdAction`, errors to `VideoErrorAction`, and custom actions to `VideoCustomAction`.
 
-## Build
+## Registering Trackers
 
-Install dependencies:
+Any browser-based video tracker can extend the `VideoTracker` class and use its core functionality.
 
-```
-$ npm install
-```
-
-And build:
-
-```
-$ npm run build:dev
-```
-
-Or if you need a production build:
-
-```
-$ npm run build
-```
-
-## Usage
-
-Add **scripts** inside `dist` folder to your page.
-
-> If you want to know how to generate `dist` folder, refer to **npm commands** section.
-
-### Registering Trackers
-
-`nrvideo` provides a class called `VideoTracker` that will serve as an interface with
-_Browser Agent_, allowing you to manage and send events to New Relic.
-
-First of all, you have to add a tracker in the core class:
+To initialize a tracker, create an instance of your specific tracker class:
 
 ```javascript
-var tracker = new VideoTracker(player);
+const options = {
+  info: {
+    licenseKey: "xxxxxxxxxxx",
+    beacon: "xxxxxxxxxx",
+    applicationId: "xxxxxxx",
+  },
+};
+
+// User can get the `info` object by completing the onboarding process on New Relic.
+const tracker = new VideoSpecificTracker(player, options);
 ```
+
+Some of the APIs exposed and commonly used are:
+
+- `tracker.setUserId("userId")` &mdash; Set the user ID.
+- `tracker.setHarvestInterval(30000)` &mdash; Set the harvest interval time (in milliseconds).
+- `tracker.setOptions({ customData: { key: value } })` &mdash; Set custom options or data.
+- `tracker.sendCustom("CustomEvent", { data: "custom-test" })` &mdash; Send a custom event.
+
+Any event emitted by the tracker will be sent to New Relic and processed according to its type.
 
 Once the tracker is added, any event it emits will be sent to New Relic and processed by the following functions:
 
