@@ -49,7 +49,7 @@ export class NrVideoEventAggregator {
         this.totalEvents + 1 >= this.maxEventsPerBatch;
 
       if (wouldExceedPayload || wouldExceedEventCount) {
-        this.makeRoom();
+        this.makeRoom(eventSize);
       }
 
       // Add to unified buffer
@@ -184,6 +184,12 @@ export class NrVideoEventAggregator {
    * @private
    */
   makeRoom(newEventSize) {
+    // Before the while loop in makeRoom()
+    if (newEventSize > this.maxPayloadSize) {
+      Log.error("Event dropped: Event size exceeds maximum payload size.");
+      return; // Exit the function to prevent infinite loop
+    }
+
     // Keep a loop to evict events until we meet ALL conditions for the new event
     while (
       // Condition 1: Exceeding max event count

@@ -1,9 +1,9 @@
 {
   "name": "@newrelic/video-core",
-  "version": "3.1.1",
+  "version": "4.0.0",
   "description": "New Relic video tracking core library",
-  "main": "./src/index.js",
-  "module": "./src/index.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
   "scripts": {
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
@@ -21,7 +21,9 @@
   },
   "author": "Jordi Aguilar",
   "contributors": [
-    "Andreu Santarén Llop"
+    "Andreu Santarén Llop",
+    "Malay Chandan",
+    "Bharat Sarsawat"
   ],
   "license": "Apache-2.0",
   "devDependencies": {

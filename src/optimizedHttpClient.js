@@ -1,14 +1,11 @@
 import { dataSize, shouldRetry } from "./utils";
 import Log from "./log";
 
-
 /**
  * Optimized HTTP client for video analytics data transmission with
  * performance monitoring and efficient request handling.
  */
 export class OptimizedHttpClient {
-  
-  
   /**
    * Sends data to the specified URL with performance monitoring.
    * @param {object} requestOptions - Request configuration
@@ -21,11 +18,10 @@ export class OptimizedHttpClient {
   async send(requestOptions, callback) {
     const { url, payload, options = {} } = requestOptions;
 
-  
     try {
       // Validate input
       if (!url || !payload) {
-        throw new Error('URL and payload are required');
+        throw new Error("URL and payload are required");
       }
 
       // Create request object
@@ -38,9 +34,8 @@ export class OptimizedHttpClient {
 
       // Execute request immediately
       await this.executeRequest(request);
-
     } catch (error) {
-      Log.error('Failed to send request:', error.message);
+      Log.error("Failed to send request:", error.message);
       callback({ retry: false, status: 0, error: error.message });
     }
   }
@@ -55,7 +50,6 @@ export class OptimizedHttpClient {
     const startTime = Date.now();
 
     try {
-
       const requestBody = JSON.stringify(payload.body);
 
       // Handle final harvest with sendBeacon
@@ -67,35 +61,36 @@ export class OptimizedHttpClient {
       }
 
       // Use fetch with timeout
-      const response = await this.fetchWithTimeout(url, {
-        method: 'POST',
-        body: requestBody,
-        headers: { 
-          'Content-Type': 'application/json',
+      const response = await this.fetchWithTimeout(
+        url,
+        {
+          method: "POST",
+          body: requestBody,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          keepalive: options.isFinalHarvest,
         },
-        keepalive: options.isFinalHarvest
-      }, 10000);
+        10000
+      );
 
       const result = {
         success: response.ok,
         status: response.status,
-        statusText: response.statusText
+        statusText: response.statusText,
       };
 
       this.handleRequestComplete(request, result, startTime);
-
     } catch (error) {
       const result = {
         success: false,
         status: 0,
-        error: error.message
+        error: error.message,
       };
 
       this.handleRequestComplete(request, result, startTime);
     }
   }
-
-  
 
   /**
    * Handles request completion.
@@ -107,21 +102,18 @@ export class OptimizedHttpClient {
    */
   handleRequestComplete(request, result, startTime) {
     const { callback } = request;
-   
 
     // Use smart retry logic based on HTTP status codes
-    const shouldRetryRequest = !result.success && (
-      result.status === 0 || // Network/timeout errors
-      shouldRetry(result.status) // Smart status code-based retry
-    );
-
+    const shouldRetryRequest =
+      !result.success &&
+      (result.status === 0 || // Network/timeout errors
+        shouldRetry(result.status)); // Smart status code-based retry
 
     callback({
       retry: shouldRetryRequest,
       status: result.status,
-      error: result.error
+      error: result.error,
     });
-
   }
 
   /**
@@ -135,7 +127,7 @@ export class OptimizedHttpClient {
     try {
       return navigator.sendBeacon(url, body);
     } catch (error) {
-      Log.warn('sendBeacon failed, falling back to fetch:', error.message);
+      Log.warn("sendBeacon failed, falling back to fetch:", error.message);
       return false;
     }
   }
@@ -156,13 +148,13 @@ export class OptimizedHttpClient {
     try {
       const response = await fetch(url, {
         ...options,
-        signal: controller.signal
+        signal: controller.signal,
       });
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         throw new Error(`Request timeout after ${timeout}ms`);
       }
       throw error;

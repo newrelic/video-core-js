@@ -29,8 +29,7 @@ export class HarvestScheduler {
     // Scheduler state
     this.isStarted = false;
     this.currentTimerId = null;
-    this.harvestCycle =
-      window.NRVIDEO.info.harvestInterval || Constants.INTERVAL;
+    this.harvestCycle = Constants.INTERVAL;
     this.isHarvesting = false;
 
     // Page lifecycle handling
@@ -205,7 +204,6 @@ export class HarvestScheduler {
 
     for (let i = events.length - 1; i >= 0; i--) {
       const event = events[i];
-      const eventSize = dataSize(event);
 
       // Check if adding this event would exceed the limit
       const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] });
@@ -245,7 +243,7 @@ export class HarvestScheduler {
 
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {
-      const retryQueueSize = this.retryQueueHandler.getQueueSize();
+      //const retryQueueSize = this.retryQueueHandler.getQueueSize();
 
       // Calculate available space for retry events
       const availableSpace = Constants.MAX_PAYLOAD_SIZE - currentPayloadSize;
@@ -275,7 +273,7 @@ export class HarvestScheduler {
    * @private
    */
   async sendChunk(chunk, options, isLastChunk) {
-    const url = buildUrl(this.fallBackUrl);
+    const url = buildUrl(this.fallBackUrl); //
     const payload = { body: { ins: chunk } };
     const requestOptions = {
       url,
