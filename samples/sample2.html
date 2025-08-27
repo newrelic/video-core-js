@@ -33,18 +33,10 @@
         }
       }
 
-      // Set up a custom backend for event recording, it will be used instead of New Relic Browser Agent
-      // let backend = new nrvideo.NRInsightsBackend("ACCOUNT ID", "API KEY");
-
-      // Set a custom attribute
-      // backend.setAttribute("videoElementId", "myPlayer");
-      // nrvideo.Core.setBackend(backend);
-
       // Init tracker
       nrvideo.Log.level = nrvideo.Log.Levels.ALL;
       var myPlayer = document.getElementById("myPlayer");
-      let myTracker = new MyTracker(myPlayer);
-      nrvideo.Core.addTracker(myTracker);
+      let myTracker = new MyTracker(myPlayer, options);
 
       // Send a sample events
       myTracker.sendVideoAction("VIDEO_SAMPLE_ACTION", { num: 1 });

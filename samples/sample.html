@@ -2,7 +2,7 @@
 <html>
   <head>
     <!-- newrelic browser agent. REMEMBER TO REPLACE THIS SCRIPT WITH YOUR OWN BROWSER AGENT -->
-    <script type="text/javascript" src="agent.js"></script>
+    <!-- <script type="text/javascript" src="agent.js"></script> -->
 
     <!-- newrelic video core -->
     <script src="../dist/umd/nrvideo.min.js"></script>
@@ -35,17 +35,31 @@
         }
       }
 
-      // Init tracker
+      // To check all logs use this
       nrvideo.Log.level = nrvideo.Log.Levels.ALL;
+
+      // // Init tracker
       var myPlayer = document.getElementById("myPlayer");
-      let myTracker = new MyTracker(myPlayer);
-      nrvideo.Core.addTracker(myTracker);
+
+      const options = {
+        info: {
+          licenseKey: "YOUR_LICENSE_KEY",
+          beacon: "YOUR_BEACON_URL",
+          applicationId: "YOUR_APPLICATION_ID",
+        },
+      };
+
+      let myTracker = new MyTracker(myPlayer, options);
 
       // Send a sample event
       myTracker.sendVideoCustomAction("CUSTOM_WITH_ATT", "timeSinceCustom");
       myTracker.sendVideoAction("SAMPLE_STARTED", {
         videoElementId: myPlayer.id,
       });
+
+      // use exposed methods
+      myTracker.setHarvestInterval(10000);
+      myTracker.setUserId("USER_ID");
     </script>
   </body>
 </html>
