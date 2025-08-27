@@ -51,6 +51,9 @@
 
       let myTracker = new MyTracker(myPlayer, options);
 
+      // to pass all Tracker events to the core
+      nrvideo.Core.addTracker(myTracker);
+
       // Send a sample event
       myTracker.sendVideoCustomAction("CUSTOM_WITH_ATT", "timeSinceCustom");
       myTracker.sendVideoAction("SAMPLE_STARTED", {

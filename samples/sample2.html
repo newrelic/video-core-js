@@ -3,7 +3,7 @@
   <head>
     <script src="./agent.js"></script>
     <!-- newrelic video core -->
-    <script src="../dist/newrelic-video-core.min.js"></script>
+    <script src="../dist/umd/nrvideo.min.js"></script>
   </head>
 
   <body>
@@ -37,6 +37,8 @@
       nrvideo.Log.level = nrvideo.Log.Levels.ALL;
       var myPlayer = document.getElementById("myPlayer");
       let myTracker = new MyTracker(myPlayer, options);
+
+      nrvideo.Core.addTracker(myTracker);
 
       // Send a sample events
       myTracker.sendVideoAction("VIDEO_SAMPLE_ACTION", { num: 1 });

@@ -9,10 +9,10 @@ All notable changes to this project will be documented in this file.
 #### Key Changes
 
 - **Breaking Change: Decoupled Agent 💥**  
-  The browser agent is now a completely standalone unit with its own architecture, independent of the main application.
+  The browser agent is now a completely standalone unit with its own architecture, independent of the Browser Agent.
 
 - **Enhancement: Independent Logic ⚙️**  
-  The agent now uses its own dedicated harvesting logic for data collection, including a custom queue and enhanced error handling.
+  The agent now uses its own dedicated harvesting logic for data collection.
 
 - **Build: Simplified Onboarding 🚀**  
   The onboarding process has been streamlined to reflect its new decoupled nature, making it easier to integrate and manage.
