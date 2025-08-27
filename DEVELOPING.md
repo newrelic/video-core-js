@@ -1,12 +1,6 @@
 [![Community Project header](https://github.com/newrelic/opensource-website/raw/master/src/images/categories/Community_Project.png)](https://opensource.newrelic.com/oss-category/#community-project)
 
-# New Relic Videojs Tracker
-
-New Relic video tracking for Videojs Player.
-
-## Requirements
-
-This video monitor solutions works on top of New Relic's **Browser Agent**.
+# New Relic Video Core
 
 ## Build
 
@@ -30,15 +24,9 @@ $ npm run build
 
 ## Usage
 
-Load **scripts** inside `dist` folder into your page.
+Add **scripts** inside `dist` folder to your page.
 
-```html
-<script src="../dist/newrelic-video-videojs.min.js"></script>
-```
-
-```javascript
-nrvideo.Core.addTracker(new nrvideo.VideojsTracker(player));
-```
+> If you want to know how to generate `dist` folder, refer to **npm commands** section.
 
 ## Release
 
