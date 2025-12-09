@@ -641,6 +641,7 @@ class VideoTracker extends Tracker {
         this.parentTracker.state.goLastAd();
       this.state.goViewCountUp();
       this.state.totalPlaytime = 0;
+      this.state.startupTime = 0;
     }
   }
 

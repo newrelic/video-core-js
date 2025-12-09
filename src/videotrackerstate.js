@@ -102,12 +102,6 @@ class VideoTrackerState {
     this.hadPlaybackFailure = false;
 
     /**
-     * Timestamp when content was requested (internal tracking for startup time).
-     * @private
-     */
-    this._firstRequestTimestamp = null;
-
-    /**
      * The amount of ms the user has been rebuffering during content playback.
      */
     this.totalRebufferingTime = 0;
@@ -468,12 +462,6 @@ class VideoTrackerState {
 
       this.timeSinceLastAd.reset();
       this.timeSinceRequested.start();
-
-      // Track timestamp for startup time calculation (content only)
-      if (this._firstRequestTimestamp === null && !this.isAd()) {
-        this._firstRequestTimestamp = Date.now();
-      }
-
       return true;
     } else {
       return false;
@@ -492,8 +480,8 @@ class VideoTrackerState {
         this.numberOfVideos++;
 
         // Calculate startup time (content only) - only calculate once
-        if (this.startupTime === null && this._firstRequestTimestamp !== null) {
-          this.startupTime = Date.now() - this._firstRequestTimestamp - this.totalAdPlaytime;
+        if (this.startupTime === null) {
+          this.startupTime = this.timeSinceRequested.getDeltaTime() - this.totalAdPlaytime;
         }
       }
       this.isStarted = true;
@@ -728,9 +716,10 @@ class VideoTrackerState {
       // Had Startup Failure: error before content started
       if (!this.isStarted) {
         this.hadStartupFailure = true;
+      } else {
+        // Had Playback Failure: any content error
+        this.hadPlaybackFailure = true;
       }
-      // Had Playback Failure: any content error
-      this.hadPlaybackFailure = true;
     }
   }
 
