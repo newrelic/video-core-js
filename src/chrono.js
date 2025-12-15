@@ -17,6 +17,9 @@ class Chrono {
     /** Stop time */
     this.stopTime = 0;
 
+    /** accumulation of all the start and stop intervals */
+    this.accumulator = 0;
+
     /**
      * If you set an offset in a chrono, its value will be added getDeltaTime and stop.
      *
@@ -59,7 +62,18 @@ class Chrono {
    */
   stop() {
     this.stopTime = new Date().getTime();
+    if(this.startTime < this.stopTime) {
+      this.accumulator += (this.stopTime - this.startTime);
+    }
     return this.getDeltaTime();
+  }
+
+  getDuration() {
+    if(this.stopTime) {
+      return this.accumulator + this.offset;
+    } else {
+      return this.accumulator + (this.getDeltaTime() ?? 0)
+    }
   }
 
   /**
@@ -71,6 +85,7 @@ class Chrono {
     chrono.startTime = this.startTime;
     chrono.stopTime = this.stopTime;
     chrono.offset = this.offset;
+    chrono.accumulator = this.accumulator;
     return chrono;
   }
 }

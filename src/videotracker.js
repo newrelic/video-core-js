@@ -601,9 +601,22 @@ class VideoTracker extends Tracker {
         ev = VideoTracker.Events.AD_START;
         if (this.parentTracker) this.parentTracker.state.isPlaying = false;
         this.sendVideoAdAction(ev, att);
+        this.state.startAdsTime();
       } else {
         ev = VideoTracker.Events.CONTENT_START;
         this.sendVideoAction(ev, att);
+        let totalAdsTime = 0;
+        if(this.adsTracker) {
+          // If ads state is set to playing (ad error) after content start, reset the ad state.
+          if(this.adsTracker.state.isPlaying || this.adsTracker.state.isBuffering) {
+            totalAdsTime = this.adsTracker.state.stopAdsTime();
+            this.adsTracker.state.isPlaying = false;
+            this.adsTracker.state.isBuffering = false;
+          } else {
+            totalAdsTime = this.adsTracker.state.totalAdTime() ?? 0;
+          }
+        }
+        this.state.setStartupTime(totalAdsTime)
       }
       //this.send(ev, att);
       this.startHeartbeat();
@@ -626,6 +639,7 @@ class VideoTracker extends Tracker {
         att.timeSinceAdRequested = this.state.timeSinceRequested.getDeltaTime();
         att.timeSinceAdStarted = this.state.timeSinceStarted.getDeltaTime();
         if (this.parentTracker) this.parentTracker.state.isPlaying = true;
+        this.state.stopAdsTime();
       } else {
         ev = VideoTracker.Events.CONTENT_END;
         att.timeSinceRequested = this.state.timeSinceRequested.getDeltaTime();
@@ -641,7 +655,11 @@ class VideoTracker extends Tracker {
         this.parentTracker.state.goLastAd();
       this.state.goViewCountUp();
       this.state.totalPlaytime = 0;
-      this.state.startupTime = 0;
+      if(!this.isAd()) {
+        // reset the states after the view count is up
+          if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
+          this.state.startupTime = null;
+      }
     }
   }
 

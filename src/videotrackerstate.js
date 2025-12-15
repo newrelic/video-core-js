@@ -187,9 +187,12 @@ class VideoTrackerState {
     /** A dictionary containing the custom timeSince attributes. */
     this.customTimeSinceAttributes = {};
 
-    /** This are used to collect the time of buffred and pause resume between two heartbeats */
+    /** This are used to collect the time of buffered and pause resume between two heartbeats */
     this.elapsedTime = new Chrono();
     this.bufferElapsedTime = new Chrono();
+
+    /** tracks total ad play time  */
+    this._totalAdPlaytime = new Chrono();
   }
 
   /** Returns true if the tracker is currently on ads. */
@@ -334,74 +337,20 @@ class VideoTrackerState {
       try {
           // QoE KPIs - Content only
           if (this.startupTime !== null) {
-              kpi["kpi.startupTime"] = this.startupTime;
+              kpi["startupTime"] = this.startupTime;
           }
           if (this.peakBitrate > 0) {
-              kpi["kpi.peakBitrate"] = this.peakBitrate;
+              kpi["peakBitrate"] = this.peakBitrate;
           }
-          kpi["kpi.hadStartupFailure"] = this.hadStartupFailure;
-          kpi["kpi.hadPlaybackFailure"] = this.hadPlaybackFailure;
-          kpi["kpi.totalRebufferingTime"] = this.totalRebufferingTime;
+          kpi["hadStartupFailure"] = this.hadStartupFailure;
+          kpi["hadPlaybackFailure"] = this.hadPlaybackFailure;
+          kpi["totalRebufferingTime"] = this.totalRebufferingTime;
           // Calculate rebuffering ratio as percentage (avoid division by zero)
-          kpi["kpi.rebufferingRatio"] = this.totalPlaytime > 0
+          kpi["rebufferingRatio"] = this.totalPlaytime > 0
               ? (this.totalRebufferingTime / this.totalPlaytime) * 100
               : 0;
-          kpi["kpi.totalPlaytime"] = this.totalPlaytime;
-          kpi["kpi.averageBitrate"] = this.partialAverageBitrate / this.totalPlaytime;
-
-          // Log all KPI values and their constituent parts
-/*
-          console.log('[Video Core JS] QoE KPI Values:', {
-              'kpi.startupTime': {
-                  value: kpi["kpi.startupTime"],
-                  source: 'Set once on first CONTENT_START event',
-                  rawValue: this.startupTime
-              },
-              'kpi.peakBitrate': {
-                  value: kpi["kpi.peakBitrate"],
-                  source: 'Maximum bitrate observed during playback',
-                  rawValue: this.peakBitrate
-              },
-              'kpi.hadStartupFailure': {
-                  value: kpi["kpi.hadStartupFailure"],
-                  source: 'Error occurred before content started',
-                  rawValue: this.hadStartupFailure
-              },
-              'kpi.hadPlaybackFailure': {
-                  value: kpi["kpi.hadPlaybackFailure"],
-                  source: 'Error occurred during playback',
-                  rawValue: this.hadPlaybackFailure
-              },
-              'kpi.totalRebufferingTime': {
-                  value: kpi["kpi.totalRebufferingTime"],
-                  source: 'Accumulated rebuffering duration (ms)',
-                  rawValue: this.totalRebufferingTime
-              },
-              'kpi.rebufferingRatio': {
-                  value: kpi["kpi.rebufferingRatio"],
-                  source: 'Calculated as (totalRebufferingTime / totalPlaytime) * 100',
-                  calculation: {
-                      totalRebufferingTime: this.totalRebufferingTime,
-                      totalPlaytime: this.totalPlaytime,
-                      formula: '(totalRebufferingTime / totalPlaytime) * 100'
-                  }
-              },
-              'kpi.totalPlaytime': {
-                  value: kpi["kpi.totalPlaytime"],
-                  source: 'Accumulated playtime (ms, excludes pauses/buffers)',
-                  rawValue: this.totalPlaytime
-              },
-              'kpi.averageBitrate': {
-                  value: kpi["kpi.averageBitrate"],
-                  source: 'Calculated as (partialAverageBitrate * totalPlaytime) / totalPlaytime',
-                  calculation: {
-                      partialAverageBitrate: this.partialAverageBitrate,
-                      totalPlaytime: this.totalPlaytime,
-                      formula: '(partialAverageBitrate * totalPlaytime) / totalPlaytime'
-                  }
-              }
-          });
-*/
+          kpi["totalPlaytime"] = this.totalPlaytime;
+          kpi["averageBitrate"] = this.partialAverageBitrate / this.totalPlaytime;
       } catch (error) {
           Log.error("Failed to add attributes for QOE KPIs", error.message);
       }
@@ -478,11 +427,6 @@ class VideoTrackerState {
         this.numberOfAds++;
       } else {
         this.numberOfVideos++;
-
-        // Calculate startup time (content only) - only calculate once
-        if (this.startupTime === null) {
-          this.startupTime = this.timeSinceRequested.getDeltaTime() - this.totalAdPlaytime;
-        }
       }
       this.isStarted = true;
       this.isPlaying = true;
@@ -505,6 +449,7 @@ class VideoTrackerState {
       this.timeSinceRequested.stop();
       this.timeSinceStarted.stop();
       this.playtimeSinceLastEvent.stop();
+      this.isPlaying = false;
       return true;
     } else {
       return false;
@@ -740,6 +685,33 @@ class VideoTrackerState {
       this.partialAverageBitrate += (bitrate * this.totalPlaytime);
     }
   }
+
+  /** Methods to manage total ads time chrono */
+  clearTotalAdsTime() {
+    console.log("clear total ads time", this.totalAdTime);
+    this._totalAdPlaytime.reset();
+  }
+
+  totalAdTime() {
+    return this._totalAdPlaytime.getDuration();
+  }
+
+  startAdsTime() {
+    console.log("startAdsTime");
+    return this._totalAdPlaytime.start();
+  }
+
+  stopAdsTime() {
+    console.log("stopAdsTime");
+    return this._totalAdPlaytime.stop();
+  }
+
+  setStartupTime(totalAdTime) {
+    if (this.startupTime === null) {
+      this.startupTime = Math.max(this.timeSinceRequested.getDeltaTime() - totalAdTime, 0)
+    }
+  }
+
 }
 
 export default VideoTrackerState;

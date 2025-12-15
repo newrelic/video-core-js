@@ -48,9 +48,9 @@ class VideoAnalyticsAgent {
     }
 
     try {
-      if(eventObject.actionName && eventObject.actionName === Tracker.Events.VIEW_QOE_AGGREGATE) {
+      if(eventObject.actionName && eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
           // This makes sure that there is only one QOE aggregate event for a harvest cycle
-          return this.eventBuffer.addOrReplaceByActionName(Tracker.Events.VIEW_QOE_AGGREGATE, eventObject);
+          return this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, eventObject);
       }
       return this.eventBuffer.add(eventObject);
     } catch (error) {

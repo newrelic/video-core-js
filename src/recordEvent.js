@@ -40,11 +40,11 @@ export function recordEvent(eventType, attributes = {}) {
       ...otherAttrs,
     };
 
-    const metadataAttributes = getObjectEntriesForKeys(Constants.VIEW_QOE_AGGREGATE_KEYS, attributes)
+    const metadataAttributes = getObjectEntriesForKeys(Constants.QOE_AGGREGATE_KEYS, attributes)
 
     const qoeEventObject = {
         eventType: "VideoAction",
-        actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+        actionName: Tracker.Events.QOE_AGGREGATE,
         ...qoeAttrs,
         ...metadataAttributes,
         ...otherAttrs,

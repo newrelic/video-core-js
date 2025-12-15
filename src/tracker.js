@@ -293,7 +293,7 @@ class Tracker extends Emitter {
 Tracker.Events = {
   /** The heartbeat event is sent once every 30 seconds while the video is playing. */
   HEARTBEAT: "HEARTBEAT",
-  VIEW_QOE_AGGREGATE: "VIEW_QOE_AGGREGATE",
+  QOE_AGGREGATE: "QOE_AGGREGATE",
 };
 
 export default Tracker;
