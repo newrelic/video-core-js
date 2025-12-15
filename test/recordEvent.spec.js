@@ -201,7 +201,7 @@ describe("recordEvent", () => {
 
       const qoeEventObject = addEventStub.secondCall.args[0];
       expect(qoeEventObject.eventType).to.equal("VideoAction");
-      expect(qoeEventObject.actionName).to.equal(Tracker.Events.VIEW_QOE_AGGREGATE);
+      expect(qoeEventObject.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
     });
 
     it("should include qoe attributes in QoE event object", () => {
@@ -283,7 +283,7 @@ describe("recordEvent", () => {
       expect(addEventStub.calledTwice).to.be.true;
       const qoeEventObject = addEventStub.secondCall.args[0];
       expect(qoeEventObject.eventType).to.equal("VideoAction");
-      expect(qoeEventObject.actionName).to.equal(Tracker.Events.VIEW_QOE_AGGREGATE);
+      expect(qoeEventObject.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
     });
   });
 
@@ -321,7 +321,7 @@ describe("recordEvent", () => {
 
       const secondCallArgs = addEventStub.secondCall.args[0];
       expect(secondCallArgs.eventType).to.equal("VideoAction");
-      expect(secondCallArgs.actionName).to.equal(Tracker.Events.VIEW_QOE_AGGREGATE);
+      expect(secondCallArgs.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
       expect(secondCallArgs.totalPlaytime).to.equal(100);
     });
 
@@ -492,7 +492,7 @@ describe("recordEvent", () => {
       expect(qoeEvent.averageBitrate).to.equal(2500000);
       expect(qoeEvent.viewId).to.equal("view-789");
       expect(qoeEvent.playerName).to.equal("CustomPlayer");
-      expect(qoeEvent.actionName).to.equal(Tracker.Events.VIEW_QOE_AGGREGATE);
+      expect(qoeEvent.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
       expect(qoeEvent).to.not.have.property("contentDuration");
       expect(qoeEvent).to.not.have.property("playerState");
     });
@@ -508,7 +508,7 @@ describe("recordEvent", () => {
       const qoeEvent = addEventStub.secondCall.args[0];
 
       expect(mainEvent.actionName).to.equal("BUFFER_START");
-      expect(qoeEvent.actionName).to.equal(Tracker.Events.VIEW_QOE_AGGREGATE);
+      expect(qoeEvent.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
     });
   });
 });

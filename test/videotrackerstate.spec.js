@@ -280,42 +280,44 @@ describe("VideoTrackerState", () => {
       expect(state.hadStartupFailure).to.be.false;
       expect(state.hadPlaybackFailure).to.be.false;
       expect(state.totalRebufferingTime).to.equal(0);
-      expect(state._firstRequestTimestamp).to.be.null;
     });
 
-    it("should calculate startupTime correctly on first CONTENT_START after CONTENT_REQUEST", () => {
-      const beforeRequest = Date.now();
+    it("should set startupTime with ad time adjustment using setStartupTime()", () => {
       state.goRequest();
 
-      // Simulate a small delay
-      const delay = 100;
-      const startTime = beforeRequest + delay;
+      // Mock timeSinceRequested to return 1000ms
+      const originalGetDeltaTime = state.timeSinceRequested.getDeltaTime.bind(state.timeSinceRequested);
+      state.timeSinceRequested.getDeltaTime = () => 1000;
 
-      // Mock Date.now() to return a specific time
-      const originalDateNow = Date.now;
-      Date.now = () => startTime;
+      state.setStartupTime(300); // 300ms of ad time
+      expect(state.startupTime).to.equal(700); // 1000 - 300
 
-      state.goStart();
-
-      expect(state.startupTime).to.be.a("number");
-      expect(state.startupTime).to.be.closeTo(delay, 20);
-
-      // Restore Date.now
-      Date.now = originalDateNow;
+      // Restore original method
+      state.timeSinceRequested.getDeltaTime = originalGetDeltaTime;
     });
 
-    it("should not recalculate startupTime on subsequent starts", () => {
+    it("should only set startupTime once when using setStartupTime()", () => {
       state.goRequest();
-      state.goStart();
-      const firstStartupTime = state.startupTime;
+      state.timeSinceRequested.getDeltaTime = () => 1000;
 
-      // Trigger end and start again
-      state.goEnd();
+      state.setStartupTime(200);
+      const firstValue = state.startupTime;
+      expect(firstValue).to.equal(800);
+
+      // Try to set again with different ad time
+      state.timeSinceRequested.getDeltaTime = () => 2000;
+      state.setStartupTime(500);
+
+      // Should still be the first value
+      expect(state.startupTime).to.equal(firstValue);
+    });
+
+    it("should not allow negative startupTime when using setStartupTime()", () => {
       state.goRequest();
-      state.goStart();
+      state.timeSinceRequested.getDeltaTime = () => 100;
 
-      // startupTime should remain the same
-      expect(state.startupTime).to.equal(firstStartupTime);
+      state.setStartupTime(500); // More ad time than total time
+      expect(state.startupTime).to.equal(0); // Math.max ensures 0
     });
 
     it("should track peakBitrate correctly (max value over time)", () => {
@@ -365,10 +367,10 @@ describe("VideoTrackerState", () => {
 
       state.goError();
       expect(state.hadStartupFailure).to.be.true;
-      expect(state.hadPlaybackFailure).to.be.true;
+      expect(state.hadPlaybackFailure).to.be.false; // Startup errors do not set hadPlaybackFailure
     });
 
-    it("should set hadPlaybackFailure=true on any content error", () => {
+    it("should set hadPlaybackFailure=true on content error after start", () => {
       state.goRequest();
       state.goStart();
 
@@ -434,7 +436,7 @@ describe("VideoTrackerState", () => {
 
       const result = state.getQoeAttributes();
       const qoeAttrs = result.qoe;
-      expect(qoeAttrs["kpi.rebufferingRatio"]).to.be.closeTo(10, 0.1); // 10%
+      expect(qoeAttrs["rebufferingRatio"]).to.be.closeTo(10, 0.1); // 10%
     });
 
     it("should handle rebufferingRatio when totalPlaytime is 0", () => {
@@ -443,7 +445,7 @@ describe("VideoTrackerState", () => {
 
       const result = state.getQoeAttributes();
       const qoeAttrs = result.qoe;
-      expect(qoeAttrs["kpi.rebufferingRatio"]).to.equal(0);
+      expect(qoeAttrs["rebufferingRatio"]).to.equal(0);
     });
 
     it("getQoeAttributes() should return all KPI attributes with correct structure", () => {
@@ -463,14 +465,61 @@ describe("VideoTrackerState", () => {
 
       expect(result).to.be.an("object");
       expect(result.qoe).to.be.an("object");
-      expect(qoeAttrs["kpi.startupTime"]).to.equal(500);
-      expect(qoeAttrs["kpi.peakBitrate"]).to.equal(2000);
-      expect(qoeAttrs["kpi.hadStartupFailure"]).to.be.false;
-      expect(qoeAttrs["kpi.hadPlaybackFailure"]).to.be.true;
-      expect(qoeAttrs["kpi.totalRebufferingTime"]).to.equal(300);
-      expect(qoeAttrs["kpi.rebufferingRatio"]).to.be.closeTo(6, 0.1);
-      expect(qoeAttrs["kpi.totalPlaytime"]).to.equal(5000);
-      expect(qoeAttrs["kpi.averageBitrate"]).to.be.a("number");
+      expect(qoeAttrs["startupTime"]).to.equal(500);
+      expect(qoeAttrs["peakBitrate"]).to.equal(2000);
+      expect(qoeAttrs["hadStartupFailure"]).to.be.false;
+      expect(qoeAttrs["hadPlaybackFailure"]).to.be.true;
+      expect(qoeAttrs["totalRebufferingTime"]).to.equal(300);
+      expect(qoeAttrs["rebufferingRatio"]).to.be.closeTo(6, 0.1);
+      expect(qoeAttrs["totalPlaytime"]).to.equal(5000);
+      expect(qoeAttrs["averageBitrate"]).to.be.a("number");
+    });
+
+    describe("Ad Time Tracking", () => {
+      it("should track total ad playtime", (done) => {
+        expect(state.totalAdTime()).to.equal(0);
+
+        state.startAdsTime();
+
+        // Wait a small amount of time
+        setTimeout(() => {
+          state.stopAdsTime();
+          const adTime = state.totalAdTime();
+          expect(adTime).to.be.greaterThan(0);
+          done();
+        }, 10);
+      });
+
+      it("should accumulate ad time across multiple start/stop cycles", (done) => {
+        state.startAdsTime();
+
+        setTimeout(() => {
+          state.stopAdsTime();
+          const firstDuration = state.totalAdTime();
+
+          state.startAdsTime();
+
+          setTimeout(() => {
+            state.stopAdsTime();
+            const secondDuration = state.totalAdTime();
+            expect(secondDuration).to.be.greaterThan(firstDuration);
+            done();
+          }, 10);
+        }, 10);
+      });
+
+      it("should clear total ad time", (done) => {
+        state.startAdsTime();
+
+        setTimeout(() => {
+          state.stopAdsTime();
+          expect(state.totalAdTime()).to.be.greaterThan(0);
+
+          state.clearTotalAdsTime();
+          expect(state.totalAdTime()).to.equal(0);
+          done();
+        }, 10);
+      });
     });
   });
 });

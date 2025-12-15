@@ -32,7 +32,7 @@ describe("QOE_AGGREGATE Buffer Management", () => {
   it("should add QOE_AGGREGATE to buffer on first event", () => {
     const qoeEvent = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 1000,
       "kpi.hadStartupFailure": false,
       "kpi.hadPlaybackFailure": false
@@ -45,25 +45,25 @@ describe("QOE_AGGREGATE Buffer Management", () => {
 
     const events = videoAnalyticsHarvester.eventBuffer.drain();
     expect(events.length).to.equal(1);
-    expect(events[0].actionName).to.equal(Tracker.Events.VIEW_QOE_AGGREGATE);
+    expect(events[0].actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
   });
 
   it("should maintain only ONE QOE_AGGREGATE event in buffer at any time", () => {
     const qoeEvent1 = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 1000
     };
 
     const qoeEvent2 = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 2000
     };
 
     const qoeEvent3 = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 3000
     };
 
@@ -83,13 +83,13 @@ describe("QOE_AGGREGATE Buffer Management", () => {
   it("should correctly adjust payload size when replacing QOE_AGGREGATE", () => {
     const smallQoeEvent = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 1000
     };
 
     const largeQoeEvent = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 2000,
       "kpi.peakBitrate": 2000,
       "kpi.averageBitrate": 1800,
@@ -118,19 +118,19 @@ describe("QOE_AGGREGATE Buffer Management", () => {
   it("should not increment event count when replacing QOE_AGGREGATE", () => {
     const qoeEvent1 = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 1000
     };
 
     const qoeEvent2 = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 2000
     };
 
     const qoeEvent3 = {
       eventType: "VideoAction",
-      actionName: Tracker.Events.VIEW_QOE_AGGREGATE,
+      actionName: Tracker.Events.QOE_AGGREGATE,
       "kpi.totalPlaytime": 3000
     };
 
