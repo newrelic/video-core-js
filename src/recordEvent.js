@@ -42,19 +42,26 @@ export function recordEvent(eventType, attributes = {}) {
 
     const metadataAttributes = getObjectEntriesForKeys(Constants.QOE_AGGREGATE_KEYS, attributes)
 
-    const qoeEventObject = {
-        eventType: "VideoAction",
-        actionName: Tracker.Events.QOE_AGGREGATE,
-        ...qoeAttrs,
-        ...metadataAttributes,
-        ...otherAttrs,
+    let qoeEventObject = null;
+    if(eventType === "VideoAction") {
+        qoeEventObject = {
+            eventType: "VideoAction",
+            actionName: Tracker.Events.QOE_AGGREGATE,
+            ...qoeAttrs,
+            ...metadataAttributes,
+            ...otherAttrs,
+        }
     }
 
     // Send to video analytics harvester
     const success = videoAnalyticsHarvester.addEvent(eventObject);
-    const successQoe = videoAnalyticsHarvester.addEvent(qoeEventObject);
 
-    return success && successQoe;
+    if(qoeEventObject) {
+        const successQoe = videoAnalyticsHarvester.addEvent(qoeEventObject);
+        return success && successQoe;
+    }
+
+    return success;
   } catch (error) {
     Log.error("Failed to record event:", error.message);
     return false;
