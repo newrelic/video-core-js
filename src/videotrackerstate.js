@@ -686,6 +686,15 @@ class VideoTrackerState {
     }
   }
 
+  /**
+   * Resets tracked variable for view id change
+   * */
+  resetViewIdTrackedState() {
+    this.peakBitrate = 0;
+    this.partialAverageBitrate = 0;
+    this.startupTime = null;
+  }
+
   /** Methods to manage total ads time chrono */
   clearTotalAdsTime() {
     console.log("clear total ads time", this.totalAdTime);

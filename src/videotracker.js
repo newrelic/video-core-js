@@ -604,7 +604,6 @@ class VideoTracker extends Tracker {
         this.state.startAdsTime();
       } else {
         ev = VideoTracker.Events.CONTENT_START;
-        this.sendVideoAction(ev, att);
         let totalAdsTime = 0;
         if(this.adsTracker) {
           // If ads state is set to playing (ad error) after content start, reset the ad state.
@@ -617,6 +616,7 @@ class VideoTracker extends Tracker {
           }
         }
         this.state.setStartupTime(totalAdsTime)
+        this.sendVideoAction(ev, att);
       }
       //this.send(ev, att);
       this.startHeartbeat();
@@ -658,7 +658,7 @@ class VideoTracker extends Tracker {
       if(!this.isAd()) {
         // reset the states after the view count is up
           if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
-          this.state.startupTime = null;
+          this.state.resetViewIdTrackedState();
       }
     }
   }
