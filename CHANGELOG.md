@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [4.0.3] - 2025/11/03
+## [4.1.0-beta] - 2025/12/18
+
+### Feature
+
+- Add QOE KPIs attributes for VideoAction event with updated DATAMODEL.md
+
+## [4.0.2] - 2025/11/03
 
 ### Chore
 

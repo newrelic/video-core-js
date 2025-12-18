@@ -160,3 +160,27 @@ export async function decompressPayload(compressedData) {
     throw new Error(`Failed to decompress payload: ${error.message}`);
   }
 }
+
+/**
+ * Filters an object to include only the specified keys.
+ * Creates a new object containing only the key-value pairs from the source object
+ * that match the provided keys array.
+ * @param {string[]} keys - Array of keys to extract from the object. If empty, null, or not an array, returns the original object.
+ * @param {object} obj - The source object to extract entries from.
+ * @returns {object} A new object containing only the entries that match the specified keys. Returns an empty object if obj is invalid.
+ * @example
+ * const data = { name: 'John', age: 30, city: 'NYC', country: 'USA' };
+ * const filtered = getObjectEntriesForKeys(['name', 'city'], data);
+ * // Returns: { name: 'John', city: 'NYC' }
+ */
+export function getObjectEntriesForKeys(keys, obj) {
+    if(!keys || !Array.isArray(keys) || keys.length === 0) return obj;
+    if(!obj || typeof obj !== 'object') return {};
+
+    return keys.reduce((result, key) => {
+        if(key in obj) {
+            result[key] = obj[key];
+        }
+        return result;
+    }, {});
+}

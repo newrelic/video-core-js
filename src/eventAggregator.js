@@ -33,11 +33,36 @@ export class NrVideoEventAggregator {
   }
 
   /**
+   * If an event with the specified actionName already exists in the buffer, it will be replaced.
+   * Otherwise, the event will be added as a new entry.
+   * @param {string} actionName - The actionName to search for in the buffer
+   * @param {object} eventObject - The event object to add or use as replacement. Should contain an actionName property.
+   * @returns {boolean} True if the operation succeeded, false if an error occurred
+   */
+  addOrReplaceByActionName(actionName, eventObject) {
+      const i = this.buffer.findIndex(e => e.actionName === actionName);
+
+      try {
+          if(i === -1) {
+              this.add(eventObject);
+          } else {
+              this.add(eventObject, i);
+          }
+          return true;
+      } catch (error) {
+          Log.error("Failed to set or replace the event to buffer:", error.message);
+          return false;
+      }
+      return false;
+    }
+
+  /**
    * Adds an event to the unified buffer.
    * All events are treated equally in FIFO order.
    * @param {object} eventObject - The event to add
+   * @param {number} index - index at which the event should be replaced with
    */
-  add(eventObject) {
+  add(eventObject, index) {
     try {
       // Calculate event payload size
       const eventSize = dataSize(eventObject);
@@ -52,10 +77,18 @@ export class NrVideoEventAggregator {
         this.makeRoom(eventSize);
       }
 
-      // Add to unified buffer
-      this.buffer.push(eventObject);
-      this.totalEvents++;
-      this.currentPayloadSize += eventSize;
+      if(index !== undefined && index !== null && index > -1) {
+          // replace in unified buffer
+          const previousPayloadSize = dataSize(this.buffer[index]);
+          this.buffer[index] = eventObject;
+          // Updating the payload size for the replaced event
+          this.currentPayloadSize += eventSize - previousPayloadSize;
+      } else {
+          // Add to unified buffer
+          this.buffer.push(eventObject);
+          this.totalEvents++;
+          this.currentPayloadSize += eventSize;
+      }
 
       // Check if smart harvest should be triggered
       this.checkSmartHarvestTrigger();
