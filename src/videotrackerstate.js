@@ -61,6 +61,8 @@ class VideoTrackerState {
      */
     this.totalPlaytime = 0;
 
+    this.weightedAverageBitrate = 0;
+
     /**
      * The amount of ms the user has been watching ads during an ad break.
      */
@@ -85,6 +87,11 @@ class VideoTrackerState {
      * Peak Bitrate: Maximum contentBitrate observed across all content playback.
      */
     this.peakBitrate = 0;
+
+    /**
+     * Last tracked bitrate
+     */
+    this._lastBitrate = null;
 
     /**
      * total bitrate partial value for average weighted average bitrate
@@ -350,7 +357,7 @@ class VideoTrackerState {
               ? (this.totalRebufferingTime / this.totalPlaytime) * 100
               : 0;
           kpi["totalPlaytime"] = this.totalPlaytime;
-          kpi["averageBitrate"] = this.partialAverageBitrate / this.totalPlaytime;
+          kpi["averageBitrate"] = this.weightedBitrate;
       } catch (error) {
           Log.error("Failed to add attributes for QOE KPIs", error.message);
       }
@@ -680,9 +687,16 @@ class VideoTrackerState {
    * @param {number} bitrate Current content bitrate in bps.
    */
   trackContentBitrateState(bitrate) {
-    if (bitrate && typeof bitrate === "number" && !this.isAd()) {
+    if (bitrate && typeof bitrate === "number") {
       this.peakBitrate = Math.max(this.peakBitrate, bitrate);
-      this.partialAverageBitrate += (bitrate * this.totalPlaytime);
+
+      if(this._lastBitrate === null || this._lastBitrate !== bitrate) {
+        const totalPlaytime = this.timeSinceLastRenditionChange.getDeltaTime() || this.totalPlaytime;
+        const currentWeightedBitrate = (bitrate * totalPlaytime);
+        this.partialAverageBitrate += currentWeightedBitrate;
+        this.weightedBitrate = currentWeightedBitrate / totalPlaytime;
+        this._lastBitrate = bitrate;
+      }
     }
   }
 
@@ -693,6 +707,7 @@ class VideoTrackerState {
     this.peakBitrate = 0;
     this.partialAverageBitrate = 0;
     this.startupTime = null;
+    this._lastBitrate = null;
   }
 
   /** Methods to manage total ads time chrono */

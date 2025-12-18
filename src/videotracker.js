@@ -521,7 +521,9 @@ class VideoTracker extends Tracker {
 
     this.state.getStateAttributes(att);
 
-    this.state.trackContentBitrateState(att.contentBitrate);
+    if(this.state.isStarted && !this.isAd()) {
+      this.state.trackContentBitrateState(att.contentBitrate);
+    }
 
     for (let key in this.customData) {
       att[key] = this.customData[key];

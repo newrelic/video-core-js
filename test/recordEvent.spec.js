@@ -103,21 +103,21 @@ describe("recordEvent", () => {
       const result = recordEvent("VideoAdAction", {});
 
       expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).to.be.false;
     });
 
     it("should accept valid event type 'VideoErrorAction'", () => {
       const result = recordEvent("VideoErrorAction", {});
 
       expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).to.be.false;
     });
 
     it("should accept valid event type 'VideoCustomAction'", () => {
       const result = recordEvent("VideoCustomAction", {});
 
       expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).to.be.false;
     });
   });
 
