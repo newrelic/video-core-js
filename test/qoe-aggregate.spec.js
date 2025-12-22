@@ -33,6 +33,7 @@ describe("QOE_AGGREGATE Buffer Management", () => {
     const qoeEvent = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
+      qoeAggregateVersion: "1.0.0",
       "kpi.totalPlaytime": 1000,
       "kpi.hadStartupFailure": false,
       "kpi.hadPlaybackFailure": false
@@ -46,6 +47,7 @@ describe("QOE_AGGREGATE Buffer Management", () => {
     const events = videoAnalyticsHarvester.eventBuffer.drain();
     expect(events.length).to.equal(1);
     expect(events[0].actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+    expect(events[0].qoeAggregateVersion).to.equal("1.0.0");
   });
 
   it("should maintain only ONE QOE_AGGREGATE event in buffer at any time", () => {
@@ -113,6 +115,36 @@ describe("QOE_AGGREGATE Buffer Management", () => {
 
     // Verify event count remains 1
     expect(videoAnalyticsHarvester.eventBuffer.size()).to.equal(1);
+  });
+
+  it("should include qoeAggregateVersion in all QOE_AGGREGATE events", () => {
+    const qoeEvent1 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      qoeAggregateVersion: "1.0.0",
+      "kpi.totalPlaytime": 1000
+    };
+
+    const qoeEvent2 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      qoeAggregateVersion: "1.0.0",
+      "kpi.totalPlaytime": 2000,
+      "kpi.peakBitrate": 2000
+    };
+
+    // Add first event and verify qoeAggregateVersion
+    videoAnalyticsHarvester.addEvent(qoeEvent1);
+    let events = videoAnalyticsHarvester.eventBuffer.drain();
+    expect(events.length).to.equal(1);
+    expect(events[0].qoeAggregateVersion).to.equal("1.0.0");
+
+    // Add second event to replace and verify qoeAggregateVersion still present
+    videoAnalyticsHarvester.addEvent(qoeEvent2);
+    events = videoAnalyticsHarvester.eventBuffer.drain();
+    expect(events.length).to.equal(1);
+    expect(events[0].qoeAggregateVersion).to.equal("1.0.0");
+    expect(events[0]["kpi.totalPlaytime"]).to.equal(2000);
   });
 
   it("should not increment event count when replacing QOE_AGGREGATE", () => {
