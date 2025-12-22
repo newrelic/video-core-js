@@ -47,6 +47,7 @@ export function recordEvent(eventType, attributes = {}) {
         qoeEventObject = {
             eventType: "VideoAction",
             actionName: Tracker.Events.QOE_AGGREGATE,
+            qoeAggregateVersion: '1.0.0',
             ...qoeAttrs,
             ...metadataAttributes,
             ...otherAttrs,
