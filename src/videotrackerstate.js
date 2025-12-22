@@ -94,6 +94,11 @@ class VideoTrackerState {
     this._lastBitrate = null;
 
     /**
+     * Tracks the last updated timestamp for bitrate
+     * */
+    this._lastBitrateChangeTimestamp = null;
+
+    /**
      * total bitrate partial value for average weighted average bitrate
      */
     this.partialAverageBitrate = 0;
@@ -691,11 +696,12 @@ class VideoTrackerState {
       this.peakBitrate = Math.max(this.peakBitrate, bitrate);
 
       if(this._lastBitrate === null || this._lastBitrate !== bitrate) {
-        const totalPlaytime = this.timeSinceLastRenditionChange.getDeltaTime() || this.totalPlaytime;
-        const currentWeightedBitrate = (bitrate * totalPlaytime);
+        const deltaPlaytime = this._lastBitrateChangeTimestamp === null ? this.totalPlaytime : Date.now() - this._lastBitrateChangeTimestamp;
+        const currentWeightedBitrate = (bitrate * deltaPlaytime);
         this.partialAverageBitrate += currentWeightedBitrate;
-        this.weightedBitrate = currentWeightedBitrate / totalPlaytime;
+        this.weightedBitrate = currentWeightedBitrate / deltaPlaytime;
         this._lastBitrate = bitrate;
+        this._lastBitrateChangeTimestamp = Date.now();
       }
     }
   }
@@ -708,6 +714,7 @@ class VideoTrackerState {
     this.partialAverageBitrate = 0;
     this.startupTime = null;
     this._lastBitrate = null;
+    this._lastBitrateChangeTimestamp = null;
   }
 
   /** Methods to manage total ads time chrono */
