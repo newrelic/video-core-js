@@ -202,6 +202,7 @@ describe("recordEvent", () => {
       const qoeEventObject = addEventStub.secondCall.args[0];
       expect(qoeEventObject.eventType).to.equal("VideoAction");
       expect(qoeEventObject.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+      expect(qoeEventObject.qoeAggregateVersion).to.equal("1.0.0");
     });
 
     it("should include qoe attributes in QoE event object", () => {
@@ -221,6 +222,7 @@ describe("recordEvent", () => {
         totalRebufferTime: 5,
         averageBitrate: 2500000
       });
+      expect(qoeEventObject.qoeAggregateVersion).to.equal("1.0.0");
     });
 
     it("should include metadata attributes from VIEW_QOE_AGGREGATE_KEYS in QoE event", () => {
@@ -242,6 +244,7 @@ describe("recordEvent", () => {
       expect(qoeEventObject.src).to.equal("http://example.com/video.mp4");
       expect(qoeEventObject.coreVersion).to.equal("2.0.0");
       expect(qoeEventObject).to.not.have.property("otherAttribute");
+      expect(qoeEventObject.qoeAggregateVersion).to.equal("1.0.0");
     });
 
     it("should add timestamp and timeSinceLoad to QoE event", () => {
@@ -284,6 +287,7 @@ describe("recordEvent", () => {
       const qoeEventObject = addEventStub.secondCall.args[0];
       expect(qoeEventObject.eventType).to.equal("VideoAction");
       expect(qoeEventObject.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+      expect(qoeEventObject.qoeAggregateVersion).to.equal("1.0.0");
     });
   });
 
@@ -493,6 +497,7 @@ describe("recordEvent", () => {
       expect(qoeEvent.viewId).to.equal("view-789");
       expect(qoeEvent.playerName).to.equal("CustomPlayer");
       expect(qoeEvent.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+      expect(qoeEvent.qoeAggregateVersion).to.equal("1.0.0");
       expect(qoeEvent).to.not.have.property("contentDuration");
       expect(qoeEvent).to.not.have.property("playerState");
     });

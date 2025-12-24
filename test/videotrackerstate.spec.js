@@ -1,5 +1,6 @@
 import TrackerState from "../src/videotrackerstate.js";
 import chai from "chai";
+import sinon from "sinon";
 
 const expect = chai.expect;
 
@@ -280,6 +281,8 @@ describe("VideoTrackerState", () => {
       expect(state.hadStartupFailure).to.be.false;
       expect(state.hadPlaybackFailure).to.be.false;
       expect(state.totalRebufferingTime).to.equal(0);
+      expect(state._lastBitrate).to.be.null;
+      expect(state._lastBitrateChangeTimestamp).to.be.null;
     });
 
     it("should set startupTime with ad time adjustment using setStartupTime()", () => {
@@ -321,44 +324,73 @@ describe("VideoTrackerState", () => {
     });
 
     it("should track peakBitrate correctly (max value over time)", () => {
-      state.trackContentBitrateState(1000);
-      expect(state.peakBitrate).to.equal(1000);
+      let currentTime = 1000000;
+      const dateNowStub = sinon.stub(Date, "now");
+      dateNowStub.returns(currentTime);
 
-      state.trackContentBitrateState(1500);
-      expect(state.peakBitrate).to.equal(1500);
+      try {
+        state.totalPlaytime = 1000;
+        state.trackContentBitrateState(1000);
+        expect(state.peakBitrate).to.equal(1000);
 
-      state.trackContentBitrateState(800);
-      expect(state.peakBitrate).to.equal(1500); // Should remain at max
+        currentTime += 1000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(1500);
+        expect(state.peakBitrate).to.equal(1500);
 
-      state.trackContentBitrateState(2000);
-      expect(state.peakBitrate).to.equal(2000);
+        currentTime += 1000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(800);
+        expect(state.peakBitrate).to.equal(1500); // Should remain at max
+
+        currentTime += 1000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(2000);
+        expect(state.peakBitrate).to.equal(2000);
+      } finally {
+        dateNowStub.restore();
+      }
     });
 
     it("should track partialAverageBitrate accumulation", () => {
       expect(state.partialAverageBitrate).to.equal(0);
 
       // Simulate playtime progression for weighted average calculation
-      // Now uses timeSinceLastRenditionChange or totalPlaytime for calculation
-      // partialAverageBitrate += (bitrate * totalPlaytime)
-      // weightedBitrate = (bitrate * totalPlaytime) / totalPlaytime
+      // First bitrate change uses totalPlaytime as delta
+      // Subsequent changes use Date.now() - _lastBitrateChangeTimestamp as delta
+      // partialAverageBitrate += (bitrate * deltaPlaytime)
+      // weightedBitrate = (bitrate * deltaPlaytime) / deltaPlaytime
 
-      state.totalPlaytime = 1000; // 1 second
-      state.timeSinceLastRenditionChange.getDeltaTime = () => 1000;
-      state.trackContentBitrateState(1000);
-      expect(state.partialAverageBitrate).to.equal(1000 * 1000); // 1,000,000
-      expect(state.weightedBitrate).to.equal(1000);
+      let currentTime = 1000000;
+      const dateNowStub = sinon.stub(Date, "now");
+      dateNowStub.returns(currentTime);
 
-      state.totalPlaytime = 2000; // 2 seconds
-      state.timeSinceLastRenditionChange.getDeltaTime = () => 2000;
-      state.trackContentBitrateState(1500);
-      expect(state.partialAverageBitrate).to.equal(1000000 + (1500 * 2000)); // 1,000,000 + 3,000,000 = 4,000,000
-      expect(state.weightedBitrate).to.equal(1500);
+      try {
+        // First bitrate change: uses totalPlaytime (1000ms)
+        state.totalPlaytime = 1000; // 1 second
+        state.trackContentBitrateState(1000);
+        expect(state.partialAverageBitrate).to.equal(1000 * 1000); // 1,000,000
+        expect(state.weightedBitrate).to.equal(1000);
+        expect(state._lastBitrateChangeTimestamp).to.equal(currentTime);
 
-      state.totalPlaytime = 3000; // 3 seconds
-      state.timeSinceLastRenditionChange.getDeltaTime = () => 3000;
-      state.trackContentBitrateState(800);
-      expect(state.partialAverageBitrate).to.equal(4000000 + (800 * 3000)); // 4,000,000 + 2,400,000 = 6,400,000
-      expect(state.weightedBitrate).to.equal(800);
+        // Second bitrate change: uses timestamp delta (2000ms)
+        currentTime += 2000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(1500);
+        expect(state.partialAverageBitrate).to.equal(1000000 + (1500 * 2000)); // 1,000,000 + 3,000,000 = 4,000,000
+        expect(state.weightedBitrate).to.equal(1500);
+        expect(state._lastBitrateChangeTimestamp).to.equal(currentTime);
+
+        // Third bitrate change: uses timestamp delta (3000ms)
+        currentTime += 3000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(800);
+        expect(state.partialAverageBitrate).to.equal(4000000 + (800 * 3000)); // 4,000,000 + 2,400,000 = 6,400,000
+        expect(state.weightedBitrate).to.equal(800);
+        expect(state._lastBitrateChangeTimestamp).to.equal(currentTime);
+      } finally {
+        dateNowStub.restore();
+      }
     });
 
     it("should ignore ad bitrates for QOE tracking", () => {
@@ -367,14 +399,105 @@ describe("VideoTrackerState", () => {
       // this method when in ad mode. This test verifies the method's behavior
       // when mistakenly called with ads, but in practice the VideoTracker ensures
       // it's only called for content.
-      state.setIsAd(true);
-      state.totalPlaytime = 1000;
-      state.timeSinceLastRenditionChange.getDeltaTime = () => 1000;
-      state.trackContentBitrateState(5000);
+      const dateNowStub = sinon.stub(Date, "now").returns(1000000);
 
-      // The method will still track since it doesn't check isAd() internally
-      expect(state.peakBitrate).to.equal(5000);
-      expect(state.partialAverageBitrate).to.equal(5000 * 1000);
+      try {
+        state.setIsAd(true);
+        state.totalPlaytime = 1000;
+        state.trackContentBitrateState(5000);
+
+        // The method will still track since it doesn't check isAd() internally
+        expect(state.peakBitrate).to.equal(5000);
+        expect(state.partialAverageBitrate).to.equal(5000 * 1000);
+      } finally {
+        dateNowStub.restore();
+      }
+    });
+
+    it("should use totalPlaytime for first bitrate change and timestamps for subsequent changes", () => {
+      let currentTime = 1000000;
+      const dateNowStub = sinon.stub(Date, "now");
+      dateNowStub.returns(currentTime);
+
+      try {
+        // First call: _lastBitrateChangeTimestamp is null, so uses totalPlaytime
+        state.totalPlaytime = 1500;
+        state.trackContentBitrateState(2000);
+
+        expect(state._lastBitrateChangeTimestamp).to.equal(currentTime);
+        expect(state.partialAverageBitrate).to.equal(2000 * 1500); // bitrate * totalPlaytime
+        expect(state.weightedBitrate).to.equal(2000);
+
+        // Second call: _lastBitrateChangeTimestamp is set, so uses Date.now() - timestamp
+        currentTime += 3000; // 3 seconds pass
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(2500);
+
+        expect(state._lastBitrateChangeTimestamp).to.equal(currentTime);
+        expect(state.partialAverageBitrate).to.equal((2000 * 1500) + (2500 * 3000)); // previous + (bitrate * delta)
+        expect(state.weightedBitrate).to.equal(2500);
+      } finally {
+        dateNowStub.restore();
+      }
+    });
+
+    it("should update _lastBitrateChangeTimestamp on each bitrate change", () => {
+      let currentTime = 1000000;
+      const dateNowStub = sinon.stub(Date, "now");
+      dateNowStub.returns(currentTime);
+
+      try {
+        state.totalPlaytime = 1000;
+
+        // First bitrate change
+        state.trackContentBitrateState(1000);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1000000);
+
+        // Second bitrate change
+        currentTime = 1002000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(1500);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1002000);
+
+        // Third bitrate change
+        currentTime = 1005000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(2000);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1005000);
+      } finally {
+        dateNowStub.restore();
+      }
+    });
+
+    it("should not update _lastBitrateChangeTimestamp when bitrate hasn't changed", () => {
+      let currentTime = 1000000;
+      const dateNowStub = sinon.stub(Date, "now");
+      dateNowStub.returns(currentTime);
+
+      try {
+        state.totalPlaytime = 1000;
+
+        // First bitrate change - should update timestamp
+        state.trackContentBitrateState(1500);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1000000);
+        const initialPartialAverage = state.partialAverageBitrate;
+
+        // Same bitrate - should NOT update timestamp or partial average
+        currentTime = 1002000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(1500);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1000000); // Should remain unchanged
+        expect(state.partialAverageBitrate).to.equal(initialPartialAverage); // Should remain unchanged
+
+        // Different bitrate - should update timestamp
+        currentTime = 1003000;
+        dateNowStub.returns(currentTime);
+        state.trackContentBitrateState(2000);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1003000); // Should be updated
+        expect(state.partialAverageBitrate).to.be.greaterThan(initialPartialAverage); // Should increase
+      } finally {
+        dateNowStub.restore();
+      }
     });
 
     it("should set hadStartupFailure=true when error occurs before start", () => {
@@ -490,6 +613,34 @@ describe("VideoTrackerState", () => {
       expect(qoeAttrs["rebufferingRatio"]).to.be.closeTo(6, 0.1);
       expect(qoeAttrs["totalPlaytime"]).to.equal(5000);
       expect(qoeAttrs["averageBitrate"]).to.equal(1200); // Now validates the actual weightedBitrate value
+    });
+
+    it("should reset _lastBitrateChangeTimestamp when calling resetViewIdTrackedState()", () => {
+      const dateNowStub = sinon.stub(Date, "now").returns(1000000);
+
+      try {
+        // Set up state with bitrate tracking
+        state.totalPlaytime = 1000;
+        state.trackContentBitrateState(2000);
+
+        expect(state.peakBitrate).to.equal(2000);
+        expect(state.partialAverageBitrate).to.equal(2000000);
+        expect(state.startupTime).to.be.null;
+        expect(state._lastBitrate).to.equal(2000);
+        expect(state._lastBitrateChangeTimestamp).to.equal(1000000);
+
+        // Reset the state
+        state.resetViewIdTrackedState();
+
+        // Verify all QOE state variables are reset
+        expect(state.peakBitrate).to.equal(0);
+        expect(state.partialAverageBitrate).to.equal(0);
+        expect(state.startupTime).to.be.null;
+        expect(state._lastBitrate).to.be.null;
+        expect(state._lastBitrateChangeTimestamp).to.be.null;
+      } finally {
+        dateNowStub.restore();
+      }
     });
 
     describe("Ad Time Tracking", () => {

@@ -1,6 +1,6 @@
 {
   "name": "@newrelic/video-core",
-  "version": "4.1.0-beta",
+  "version": "4.1.1-beta",
   "description": "New Relic video tracking core library",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
