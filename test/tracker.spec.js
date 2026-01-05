@@ -1,23 +1,38 @@
 import Tracker from "../src/tracker";
 import Log from "../src/log";
-import chai from "chai";
 import sinon from "sinon";
-
-const expect = chai.expect;
-const assert = chai.assert;
+import { JSDOM } from "jsdom";
 
 describe("Tracker", () => {
   let tracker;
-  global.document =
-    typeof global.document === "undefined" ? {} : global.document;
 
   // Mute console
-  before(() => {
+  beforeAll(() => {
     Log.level = Log.Levels.SILENT;
+
+    const dom = new JSDOM("<!doctype html><html><body></body></html>");
+    global.window = dom.window;
+    global.document = dom.window.document;
   });
 
-  after(() => {
+  afterAll(() => {
     Log.level = Log.Levels.ERROR;
+  });
+
+  beforeEach(() => {
+    // Setup global window with NRVIDEO for agent initialization
+    global.window.NRVIDEO = {
+      info: {
+        appName: "TestApp",
+        applicationID: "test-123",
+        beacon: "bam.nr-data.net",
+        licenseKey: "test-key"
+      }
+    };
+  });
+
+  afterEach(() => {
+    delete global.window.NRVIDEO;
   });
 
   describe("setting", () => {
@@ -26,28 +41,30 @@ describe("Tracker", () => {
       let spy = sinon.spy(tracker, "unregisterListeners");
       tracker.dispose();
 
-      assert(spy.called, "unregisterListeners not called");
+      expect(spy.called).toBe(true);
       spy.restore();
     });
 
+    it("should call registerListeners method", () => {
+      tracker = new Tracker();
+      expect(() => tracker.registerListeners()).not.toThrow();
+    });
+
     it("should set options", () => {
-      // construct
       tracker = new Tracker({ customData: { key: "value" } });
-      expect(tracker.customData.key).to.equal("value");
+      expect(tracker.customData.key).toBe("value");
 
-      // no change
       tracker.setOptions();
-      expect(tracker.customData.key).to.equal("value");
+      expect(tracker.customData.key).toBe("value");
 
-      // change
       tracker.setOptions({ customData: { key: "value2" } });
-      expect(tracker.customData.key).to.equal("value2");
+      expect(tracker.customData.key).toBe("value2");
     });
 
     it("should send custom data", (done) => {
       tracker = new Tracker({ customData: { a: 1 } });
       tracker.on("EVENT", (e) => {
-        expect(e.data.a).to.equal(1);
+        expect(e.data.a).toBe(1);
         done();
       });
       tracker.sendVideoAction("EVENT");
@@ -56,23 +73,75 @@ describe("Tracker", () => {
     it("should return attributes", () => {
       tracker = new Tracker();
       let att = tracker.getAttributes();
-      expect(att.trackerName).to.not.be.undefined;
-      expect(att.trackerVersion).to.not.be.undefined;
-      expect(att.coreVersion).to.not.be.undefined;
-      expect(att.timeSinceTrackerReady).to.not.be.undefined;
+      expect(att.trackerName).toBeDefined();
+      expect(att.trackerVersion).toBeDefined();
+      expect(att.coreVersion).toBeDefined();
+      expect(att.timeSinceTrackerReady).toBeDefined();
+    });
+
+    it("should return tracker name", () => {
+      tracker = new Tracker();
+      expect(tracker.getTrackerName()).toBe("base-tracker");
+    });
+
+    it("should return tracker version", () => {
+      tracker = new Tracker();
+      const version = tracker.getTrackerVersion();
+      expect(version).toBeDefined();
+      expect(typeof version).toBe("string");
+    });
+
+    it("should not include isBackgroundEvent when document.hidden is undefined", () => {
+      tracker = new Tracker();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(global.document, 'hidden');
+
+      // Set document.hidden to undefined
+      Object.defineProperty(global.document, 'hidden', {
+        writable: true,
+        configurable: true,
+        value: undefined
+      });
+
+      let att = tracker.getAttributes();
+      expect(att.isBackgroundEvent).toBeUndefined();
+
+      // Restore original descriptor
+      if (originalDescriptor) {
+        Object.defineProperty(global.document, 'hidden', originalDescriptor);
+      }
     });
   });
 
   describe("setting and getting heartbeat", () => {
-    it.skip("should return heartbeat", () => {
+    it("should return default heartbeat of 30000", () => {
       tracker = new Tracker();
-      expect(tracker.getHeartbeat()).to.equal(30000);
+      // Create a mock state object to avoid undefined error
+      tracker.state = { _isAd: false };
+      expect(tracker.getHeartbeat()).toBe(30000);
+    });
 
-      tracker.setOptions({ parentTracker: new Tracker({ heartbeat: 20000 }) });
-      expect(tracker.getHeartbeat()).to.equal(20000);
+    it("should return parent tracker heartbeat", () => {
+      const parent = new Tracker({ heartbeat: 20000 });
+      parent.state = { _isAd: false };
+      tracker = new Tracker();
+      tracker.state = { _isAd: false };
+      tracker.setOptions({ parentTracker: parent });
+      expect(tracker.getHeartbeat()).toBe(20000);
+    });
 
-      tracker.setOptions({ heartbeat: 10000 });
-      expect(tracker.getHeartbeat()).to.equal(10000);
+    it("should return own heartbeat over parent", () => {
+      const parent = new Tracker({ heartbeat: 20000 });
+      parent.state = { _isAd: false };
+      tracker = new Tracker({ heartbeat: 10000 });
+      tracker.state = { _isAd: false };
+      tracker.setOptions({ parentTracker: parent });
+      expect(tracker.getHeartbeat()).toBe(10000);
+    });
+
+    it("should return 2000 for ad trackers", () => {
+      tracker = new Tracker();
+      tracker.state = { _isAd: true };
+      expect(tracker.getHeartbeat()).toBe(2000);
     });
 
     it("should send heartbeat", (done) => {
@@ -81,36 +150,116 @@ describe("Tracker", () => {
     });
   });
 
-  describe("Tracker heartbeating", () => {
-    let tracker;
-    let clock;
-
-    beforeEach(() => {
-      tracker = new Tracker({ heartbeat: 500 });
-      clock = sinon.useFakeTimers(); // Use fake timers to control the time
+  describe("harvest interval management", () => {
+    it("should set harvest interval successfully", () => {
+      tracker = new Tracker();
+      expect(() => tracker.setHarvestInterval(10000)).not.toThrow();
     });
 
-    afterEach(() => {
-      clock.restore(); // Restore the original timers
+    it("should handle error when videoAnalyticsHarvester is not available", async () => {
+      tracker = new Tracker();
+      const logErrorSpy = sinon.spy(Log, "error");
+
+      // Import agent module dynamically
+      const agentModule = await import("../src/agent.js");
+      const originalHarvester = agentModule.videoAnalyticsHarvester;
+
+      try {
+        // Set harvester to null to simulate unavailable state
+        agentModule.videoAnalyticsHarvester = null;
+
+        tracker.setHarvestInterval(10000);
+
+        expect(logErrorSpy.called).toBe(true);
+        const errorCall = logErrorSpy.getCalls().find(call =>
+          call.args[0] && call.args[0].includes("VideoAnalyticsHarvester is not available")
+        );
+        expect(errorCall).toBeDefined();
+      } finally {
+        // Always restore
+        agentModule.videoAnalyticsHarvester = originalHarvester;
+        logErrorSpy.restore();
+      }
     });
 
-    it.skip("should start and stop heartbeats", (done) => {
-      const heartbeatSpy = sinon.spy(tracker, "sendHeartbeat");
+    it("should handle error when setHarvestInterval throws", async () => {
+      tracker = new Tracker();
+      const logErrorSpy = sinon.spy(Log, "error");
 
-      tracker.startHeartbeat();
+      // Import agent module dynamically
+      const agentModule = await import("../src/agent.js");
+      const originalMethod = agentModule.videoAnalyticsHarvester.setHarvestInterval;
 
-      // Fast forward time to ensure at least one heartbeat is sent
-      clock.tick(5000); // The heartbeat interval has a minimum of 5000ms, as per your code comments
+      try {
+        agentModule.videoAnalyticsHarvester.setHarvestInterval = () => {
+          throw new Error("Test error");
+        };
 
-      // Check if sendHeartbeat was called appropriately
-      expect(heartbeatSpy.called).to.be.true;
+        tracker.setHarvestInterval(10000);
 
-      // Stop the heartbeat
-      tracker.stopHeartbeat();
+        expect(logErrorSpy.called).toBe(true);
+        const errorCall = logErrorSpy.getCalls().find(call =>
+          call.args[0] && call.args[0].includes("Failed to set harvest interval")
+        );
+        expect(errorCall).toBeDefined();
+      } finally {
+        // Always restore
+        agentModule.videoAnalyticsHarvester.setHarvestInterval = originalMethod;
+        logErrorSpy.restore();
+      }
+    });
+  });
 
-      // Clear the spy
-      heartbeatSpy.restore();
-      done();
+  describe("video action", () => {
+    it("should send video action with custom data", (done) => {
+      tracker = new Tracker({ customData: { test: "value" } });
+      tracker.on("CUSTOM_ACTION", (e) => {
+        expect(e.data.test).toBe("value");
+        done();
+      });
+      tracker.sendVideoAction("CUSTOM_ACTION", {});
+    });
+
+    it("should send video ad action", (done) => {
+      tracker = new Tracker({ customData: { adId: "123" } });
+      tracker.on("AD_START", (e) => {
+        expect(e.eventType).toBe("VideoAdAction");
+        expect(e.data.adId).toBe("123");
+        done();
+      });
+      tracker.sendVideoAdAction("AD_START", {});
+    });
+
+    it("should send video error action when not ad", (done) => {
+      tracker = new Tracker();
+      tracker.isAd = () => false;
+      tracker.on("ERROR_EVENT", (e) => {
+        expect(e.eventType).toBe("VideoErrorAction");
+        expect(e.data.trackerName).toBeDefined();
+        done();
+      });
+      tracker.sendVideoErrorAction("ERROR_EVENT", {});
+    });
+
+    it("should send video error action when is ad", (done) => {
+      tracker = new Tracker();
+      tracker.isAd = () => true;
+      tracker.on("AD_ERROR_EVENT", (e) => {
+        expect(e.eventType).toBe("VideoErrorAction");
+        expect(e.data.trackerName).toBeDefined();
+        done();
+      });
+      tracker.sendVideoErrorAction("AD_ERROR_EVENT", {});
+    });
+
+    it("should send video custom action", (done) => {
+      tracker = new Tracker({ customData: { customField: "value" } });
+      tracker.on("CUSTOM_EVENT", (e) => {
+        expect(e.eventType).toBe("VideoCustomAction");
+        expect(e.data.customField).toBe("value");
+        done();
+      });
+      tracker.sendVideoCustomAction("CUSTOM_EVENT", {});
     });
   });
 });
