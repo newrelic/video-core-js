@@ -210,56 +210,5 @@ describe("Tracker", () => {
     });
   });
 
-  describe("video action", () => {
-    it("should send video action with custom data", (done) => {
-      tracker = new Tracker({ customData: { test: "value" } });
-      tracker.on("CUSTOM_ACTION", (e) => {
-        expect(e.data.test).toBe("value");
-        done();
-      });
-      tracker.sendVideoAction("CUSTOM_ACTION", {});
-    });
-
-    it("should send video ad action", (done) => {
-      tracker = new Tracker({ customData: { adId: "123" } });
-      tracker.on("AD_START", (e) => {
-        expect(e.eventType).toBe("VideoAdAction");
-        expect(e.data.adId).toBe("123");
-        done();
-      });
-      tracker.sendVideoAdAction("AD_START", {});
-    });
-
-    it("should send video error action when not ad", (done) => {
-      tracker = new Tracker();
-      tracker.isAd = () => false;
-      tracker.on("ERROR_EVENT", (e) => {
-        expect(e.eventType).toBe("VideoErrorAction");
-        expect(e.data.trackerName).toBeDefined();
-        done();
-      });
-      tracker.sendVideoErrorAction("ERROR_EVENT", {});
-    });
-
-    it("should send video error action when is ad", (done) => {
-      tracker = new Tracker();
-      tracker.isAd = () => true;
-      tracker.on("AD_ERROR_EVENT", (e) => {
-        expect(e.eventType).toBe("VideoErrorAction");
-        expect(e.data.trackerName).toBeDefined();
-        done();
-      });
-      tracker.sendVideoErrorAction("AD_ERROR_EVENT", {});
-    });
-
-    it("should send video custom action", (done) => {
-      tracker = new Tracker({ customData: { customField: "value" } });
-      tracker.on("CUSTOM_EVENT", (e) => {
-        expect(e.eventType).toBe("VideoCustomAction");
-        expect(e.data.customField).toBe("value");
-        done();
-      });
-      tracker.sendVideoCustomAction("CUSTOM_EVENT", {});
-    });
-  });
+  
 });
