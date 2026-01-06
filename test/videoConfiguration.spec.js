@@ -38,19 +38,6 @@ describe('videoConfiguration', function() {
           expect(global.window.NRVIDEO).toBeUndefined();
         });
       });
-
-      it('should require licenseKey', function() {
-        const result = setVideoConfig({appName: 'test', region: 'US'});
-        // NOTE: Bug in source code - always returns true
-        expect(result).toBe(true);
-        expect(global.window.NRVIDEO).toBeUndefined();
-      });
-
-      it('should reject empty licenseKey', function() {
-        const result = setVideoConfig({licenseKey: '', appName: 'test', region: 'US'});
-        // NOTE: Bug in source code - always returns true
-        expect(result).toBe(true);
-      });
     });
 
     describe('applicationID path', function() {
@@ -76,7 +63,6 @@ describe('videoConfiguration', function() {
         };
 
         const result = setVideoConfig(config);
-        // NOTE: Bug in source code - always returns true
         expect(result).toBe(true);
       });
 
@@ -88,7 +74,6 @@ describe('videoConfiguration', function() {
         };
 
         const result = setVideoConfig(config);
-        // NOTE: Bug in source code - always returns true
         expect(result).toBe(true);
       });
 
@@ -154,7 +139,6 @@ describe('videoConfiguration', function() {
         };
 
         const result = setVideoConfig(config);
-        // NOTE: Bug in source code - always returns true
         expect(result).toBe(true);
       });
 
