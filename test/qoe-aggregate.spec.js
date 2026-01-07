@@ -114,6 +114,36 @@ describe("QOE_AGGREGATE Buffer Management", () => {
     expect(videoAnalyticsHarvester.eventBuffer.size()).toBe(1);
   });
 
+  it("should include qoeAggregateVersion in all QOE_AGGREGATE events", () => {
+    const qoeEvent1 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      qoeAggregateVersion: "1.0.0",
+      "kpi.totalPlaytime": 1000
+    };
+
+    const qoeEvent2 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      qoeAggregateVersion: "1.0.0",
+      "kpi.totalPlaytime": 2000,
+      "kpi.peakBitrate": 2000
+    };
+
+    // Add first event and verify qoeAggregateVersion
+    videoAnalyticsHarvester.addEvent(qoeEvent1);
+    let events = videoAnalyticsHarvester.eventBuffer.drain();
+    expect(events.length).toBe(1);
+    expect(events[0].qoeAggregateVersion).toBe("1.0.0");
+
+    // Add second event to replace and verify qoeAggregateVersion still present
+    videoAnalyticsHarvester.addEvent(qoeEvent2);
+    events = videoAnalyticsHarvester.eventBuffer.drain();
+    expect(events.length).toBe(1);
+    expect(events[0].qoeAggregateVersion).toBe("1.0.0");
+    expect(events[0]["kpi.totalPlaytime"]).toBe(2000);
+  });
+
   it("should not increment event count when replacing QOE_AGGREGATE", () => {
     const qoeEvent1 = {
       eventType: "VideoAction",

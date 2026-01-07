@@ -33,8 +33,7 @@ describe('videoConfiguration', function() {
         invalidInputs.forEach(input => {
           delete global.window.NRVIDEO;
           const result = setVideoConfig(input);
-          // NOTE: Bug in source code - setConfiguration always returns true
-          expect(result).toBe(true);
+          expect(result).toBe(false);
           expect(global.window.NRVIDEO).toBeUndefined();
         });
       });
@@ -48,8 +47,9 @@ describe('videoConfiguration', function() {
           beacon: 'bam.nr-data.net'
         };
 
-        setVideoConfig(config);
+        const result = setVideoConfig(config);
 
+        expect(result).toBe(true);
         expect(global.window.NRVIDEO).toBeDefined();
         expect(global.window.NRVIDEO.info.licenseKey).toBe('test-key');
         expect(global.window.NRVIDEO.info.applicationID).toBe('app-123');
@@ -63,7 +63,7 @@ describe('videoConfiguration', function() {
         };
 
         const result = setVideoConfig(config);
-        expect(result).toBe(true);
+        expect(result).toBe(false);
       });
 
       it('should reject invalid beacon', function() {
@@ -74,7 +74,7 @@ describe('videoConfiguration', function() {
         };
 
         const result = setVideoConfig(config);
-        expect(result).toBe(true);
+        expect(result).toBe(false);
       });
 
       it('should accept all valid beacons', function() {
@@ -121,14 +121,14 @@ describe('videoConfiguration', function() {
           licenseKey: 'test-key',
           appName: 'MyApp'
         });
-        expect(result).toBe(true);
+        expect(result).toBe(false);
 
         // Test missing appName
         result = setVideoConfig({
           licenseKey: 'test-key',
           region: 'US'
         });
-        expect(result).toBe(true);
+        expect(result).toBe(false);
       });
 
       it('should reject invalid region', function() {
@@ -139,7 +139,7 @@ describe('videoConfiguration', function() {
         };
 
         const result = setVideoConfig(config);
-        expect(result).toBe(true);
+        expect(result).toBe(false);
       });
 
       it('should accept all valid regions', function() {

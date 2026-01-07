@@ -2,7 +2,7 @@ import VideoTracker from '../src/videotracker'
 
 describe('VideoTracker Playtime', () => {
   let tracker, adTracker
-  
+
   it('playtime calc should be right', (done) => {
     tracker = new VideoTracker(1)
     adTracker = new VideoTracker(1)
