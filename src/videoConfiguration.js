@@ -15,6 +15,9 @@ class VideoConfiguration {
    */
 
   setConfiguration(userInfo) {
+    if (!this.validateRequiredFields(userInfo)) {
+      return false;
+    }
     this.initializeGlobalConfig(userInfo);
     Log.notice("Video analytics configuration initialized successfully");
     return true;
@@ -74,7 +77,6 @@ class VideoConfiguration {
    * Initializes the global NRVIDEO configuration object.
    */
   initializeGlobalConfig(userInfo) {
-    if (!this.validateRequiredFields(userInfo)) return;
 
     let { licenseKey, appName, region, beacon, applicationID } = userInfo;
 

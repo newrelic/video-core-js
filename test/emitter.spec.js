@@ -1,7 +1,4 @@
 import Emitter from "../src/emitter.js";
-import chai from "chai";
-
-const expect = chai.expect;
 
 describe("Emitter", () => {
   let emitter;
@@ -48,7 +45,7 @@ describe("Emitter", () => {
     emitter.off("a", cb);
     emitter.emit("eventType", "a");
 
-    expect(a).to.equal(0);
+    expect(a).toBe(0);
     done();
   });
 });
