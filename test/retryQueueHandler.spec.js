@@ -127,7 +127,7 @@ describe('RetryQueueHandler', function() {
       handler.maxQueueSizeBytes = originalMax;
     });
 
-    it.skip('should handle case where event size alone exceeds maxQueueSizeBytes', function() {
+    it('should handle case where event size alone exceeds maxQueueSizeBytes', function() {
       stubs[0].restore();
       const originalMax = handler.maxQueueSizeBytes;
       handler.maxQueueSizeBytes = 1000;

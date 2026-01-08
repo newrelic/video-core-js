@@ -2,6 +2,7 @@ import Tracker from "../src/tracker";
 import Log from "../src/log";
 import sinon from "sinon";
 import { JSDOM } from "jsdom";
+import assert from "assert";
 
 describe("Tracker", () => {
   let tracker;
@@ -41,7 +42,7 @@ describe("Tracker", () => {
       let spy = sinon.spy(tracker, "unregisterListeners");
       tracker.dispose();
 
-      expect(spy.called).toBe(true);
+      assert(spy.called, "unregisterListeners not called");
       spy.restore();
     });
 
@@ -180,6 +181,31 @@ describe("Tracker", () => {
         agentModule.videoAnalyticsHarvester = originalHarvester;
         logErrorSpy.restore();
       }
+    });
+
+    it("should start and stop heartbeats", (done) => {
+      tracker = new Tracker();
+      tracker.state = { _isAd: false };
+      
+      const clock = sinon.useFakeTimers();
+      const heartbeatSpy = sinon.spy(tracker, "sendHeartbeat");
+
+      tracker.startHeartbeat();
+
+      // Fast forward past the heartbeat interval (30000ms default)
+      clock.tick(30000);
+
+      expect(heartbeatSpy.calledOnce).toBe(true);
+
+      tracker.stopHeartbeat();
+      
+      // Verify no more heartbeats after stopping
+      clock.tick(30000);
+      expect(heartbeatSpy.calledOnce).toBe(true); // Still only called once
+
+      heartbeatSpy.restore();
+      clock.restore();
+      done();
     });
 
     it("should handle error when setHarvestInterval throws", async () => {
