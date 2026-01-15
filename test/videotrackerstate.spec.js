@@ -352,6 +352,7 @@ describe("VideoTrackerState", () => {
       state.hadPlaybackFailure = true;
       state.totalRebufferingTime = 300;
       state.totalPlaytime = 5000;
+      state.numberOfErrors = 3;
 
       const result = state.getQoeAttributes();
       const qoeAttrs = result.qoe;
@@ -365,7 +366,8 @@ describe("VideoTrackerState", () => {
       expect(qoeAttrs["totalRebufferingTime"]).toBe(300);
       expect(qoeAttrs["rebufferingRatio"]).toBeCloseTo(6, 0);
       expect(qoeAttrs["totalPlaytime"]).toBe(5000);
-      expect(qoeAttrs["averageBitrate"]).toBe(1200); 
+      expect(qoeAttrs["averageBitrate"]).toBe(1200);
+      expect(qoeAttrs["numberOfErrors"]).toBe(3);
     });
 
     it("should handle errors in getQoeAttributes and return empty qoe object", () => {

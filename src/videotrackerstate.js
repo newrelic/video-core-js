@@ -363,6 +363,7 @@ class VideoTrackerState {
               : 0;
           kpi["totalPlaytime"] = this.totalPlaytime;
           kpi["averageBitrate"] = this.weightedBitrate;
+          kpi["numberOfErrors"] = this.numberOfErrors;
       } catch (error) {
           Log.error("Failed to add attributes for QOE KPIs", error.message);
       }
