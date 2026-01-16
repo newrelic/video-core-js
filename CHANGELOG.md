@@ -1,13 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.1-beta] - 2025/12/19
+
+## Fix
+
 - Added an attribute numberOfErrors in QOE KPIs attribute.
 
 ## [4.1.3-beta] - 2025/01/16
-
-All notable changes to this project will be documented in this file.
-
-## [4.1.1-beta] - 2025/12/19
 
 ### Fix
 
