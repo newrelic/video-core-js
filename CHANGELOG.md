@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [4.1.1-beta] - 2025/12/19
 
-## Chore
+## Fix
 
 - Added an attribute numberOfErrors in QOE KPIs attribute.
 
