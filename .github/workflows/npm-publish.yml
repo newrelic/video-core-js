@@ -33,6 +33,7 @@ on:
   pull_request:
     branches:
     - stable
+    - stable-beta
     types:
     - closed
 
