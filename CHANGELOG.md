@@ -1,5 +1,7 @@
 # Changelog
-- Added attribute of numberOfErrors in QOE KPIs attribute
+All notable changes to this project will be documented in this file.
+
+- Added an attribute numberOfErrors in QOE KPIs attribute.
 
 ## [4.1.3-beta] - 2025/01/16
 
