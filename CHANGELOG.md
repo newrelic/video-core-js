@@ -13,6 +13,12 @@ All notable changes to this project will be documented in this file.
 
 - Update logic for average bitrate to consider correct delta time
 
+## [4.1.4-beta] - 2025/01/19
+
+### Fix
+
+- Excluded test folder from module.exports in webpack config
+
 ## [4.1.0-beta] - 2025/12/18
 
 ### Feature

@@ -29,7 +29,10 @@ module.exports = [
       rules: [
         {
           test: /\.(?:js|mjs|cjs)$/,
-          exclude: /node_modules/,
+          exclude: [
+            /node_modules/,
+            /test/,
+          ],
           use: {
             loader: "babel-loader",
             options: {
@@ -60,7 +63,10 @@ module.exports = [
       rules: [
         {
           test: /\.(js|mjs|cjs)$/,
-          exclude: /node_modules/,
+          exclude: [
+            /node_modules/,
+            /test/,
+          ],
           use: {
             loader: "babel-loader",
             options: {
@@ -95,7 +101,10 @@ module.exports = [
       rules: [
         {
           test: /\.(js|mjs|cjs)$/,
-          exclude: /node_modules/,
+          exclude: [
+            /node_modules/,
+            /test/,
+          ],
           use: {
             loader: "babel-loader",
             options: {
