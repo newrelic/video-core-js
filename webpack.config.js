@@ -22,7 +22,6 @@ module.exports = [
       filename: "nrvideo" + ".min.js",
       library: "nrvideo",
       libraryTarget: "umd",
-      libraryExport: "default",
     },
     devtool: "source-map",
     module: {
