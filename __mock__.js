@@ -58,6 +58,12 @@ const nrvideo = {
     sendRenditionChanged() {}
     setAdsTracker() {}
     getTrackerVersion() { return '1.0.0'; }
+
+    // Added for consumer repository compatibility
+    setPlayer(player, tag) {
+      this.player = player;
+      this.tag = tag || player;
+    }
   },
 
   /**
