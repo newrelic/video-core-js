@@ -26,7 +26,7 @@ const nrvideo = {
   version,
 
   // Enhanced video analytics components (new)
-
+ 
   NrVideoEventAggregator,
   RetryQueueHandler,
   OptimizedHttpClient,
@@ -38,24 +38,6 @@ const nrvideo = {
   recordEvent,
 
 
-};
-
-// Named exports for better tree-shaking and interop
-export {
-  Core,
-  Constants,
-  Chrono,
-  Log,
-  Emitter,
-  Tracker,
-  VideoTracker,
-  VideoTrackerState,
-  NrVideoEventAggregator,
-  RetryQueueHandler,
-  OptimizedHttpClient,
-  HarvestScheduler,
-  recordEvent,
-  version
 };
 
 export default nrvideo;
