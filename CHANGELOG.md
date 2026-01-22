@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.5-beta] - 2025/01/19
+
+### Fix
+
+- update configs for correct module resolution for consumer
+
 ## [4.1.1-beta] - 2025/12/19
 
 ## Fix
