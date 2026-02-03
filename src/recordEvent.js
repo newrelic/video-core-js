@@ -57,7 +57,7 @@ export function recordEvent(eventType, attributes = {}) {
     // Send to video analytics harvester
     const success = videoAnalyticsHarvester.addEvent(eventObject);
 
-    if(qoeEventObject) {
+    if(qoeEventObject && window?.NRVIDEO?.config?.qoeAggregate) {
         const successQoe = videoAnalyticsHarvester.addEvent(qoeEventObject);
         return success && successQoe;
     }

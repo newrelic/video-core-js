@@ -10,15 +10,19 @@ const { COLLECTOR } = Constants;
 class VideoConfiguration {
   /**
    * Validates and sets the video analytics configuration.
-   * @param {object} userConfig - User provided configuration
+   * @param {object} userInfo - User provided configuration
+   * @param {object} [config] - Optional configuration object
    * @returns {boolean} True if configuration is valid and set
    */
 
-  setConfiguration(userInfo) {
+  setConfiguration(userInfo, config) {
     if (!this.validateRequiredFields(userInfo)) {
       return false;
     }
-    this.initializeGlobalConfig(userInfo);
+    if (!this.validateConfigFields(config)) {
+      return false;
+    }
+    this.initializeGlobalConfig(userInfo, config);
     Log.notice("Video analytics configuration initialized successfully");
     return true;
   }
@@ -74,9 +78,36 @@ class VideoConfiguration {
   }
 
   /**
-   * Initializes the global NRVIDEO configuration object.
+   * Validates optional config fields.
+   * @param {object} config - Config to validate
+   * @returns {boolean} True if valid
    */
-  initializeGlobalConfig(userInfo) {
+  validateConfigFields(config) {
+    if (config === null || config === undefined) {
+      return true;
+    }
+
+    if (typeof config !== "object") {
+      Log.error("config must be an object");
+      return false;
+    }
+
+    const { qoeAggregate } = config;
+
+    if (qoeAggregate !== undefined && typeof qoeAggregate !== "boolean") {
+      Log.error("qoeAggregate must be a boolean");
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Initializes the global NRVIDEO configuration object.
+   * @param {object} userInfo - User provided configuration
+   * @param {object} [config] - Optional configuration object
+   */
+  initializeGlobalConfig(userInfo, config) {
 
     let { licenseKey, appName, region, beacon, applicationID } = userInfo;
 
@@ -95,6 +126,9 @@ class VideoConfiguration {
         applicationID,
         ...(applicationID ? {} : { appName }), // Only include appName when no applicationID
       },
+      config: {
+        qoeAggregate: config?.qoeAggregate ?? true,
+      }
     };
   }
 }
@@ -104,11 +138,12 @@ const videoConfiguration = new VideoConfiguration();
 
 /**
  * Sets the video analytics configuration.
- * @param {object} config - Configuration object
+ * @param {object} info - Info configuration object
+ * @param {object} [config] - Optional configuration object
  * @returns {boolean} True if configuration was set successfully
  */
-export function setVideoConfig(info) {
-  return videoConfiguration.setConfiguration(info);
+export function setVideoConfig(info, config) {
+  return videoConfiguration.setConfiguration(info, config);
 }
 
 export { videoConfiguration };

@@ -16,7 +16,7 @@ class Core {
   static addTracker(tracker, options) {
     // Set video analytics configuration
     if (options?.info) {
-      setVideoConfig(options.info);
+      setVideoConfig(options.info, options?.config);
     }
     
     if (tracker.on && tracker.emit) {
