@@ -87,7 +87,7 @@ class VideoConfiguration {
       return true;
     }
 
-    if (typeof config !== "object") {
+    if (typeof config !== "object" || Array.isArray(config)) {
       Log.error("config must be an object");
       return false;
     }

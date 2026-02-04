@@ -44,6 +44,9 @@ describe("recordEvent", () => {
         applicationID: "test-app-id-12345",
         beacon: "bam.nr-data.net",
         licenseKey: "test-license-key"
+      },
+      config: {
+        qoeAggregate: true
       }
     };
 
@@ -471,6 +474,80 @@ describe("recordEvent", () => {
       expect(qoeEventObject.viewSession).toBe("session-456");
       expect(qoeEventObject.contentIsAutoplayed).toBe(true);
       expect(qoeEventObject.totalPlaytime).toBe(100);
+    });
+  });
+
+  describe("qoeAggregate config flag", () => {
+    it("should send QoE event when qoeAggregate is true", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: true };
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(true);
+
+      const qoeEventObject = addEventStub.secondCall.args[0];
+      expect(qoeEventObject.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
+    });
+
+    it("should NOT send QoE event when qoeAggregate is false", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: false };
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should NOT send QoE event when config is undefined", () => {
+      delete global.window.NRVIDEO.config;
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should NOT send QoE event when config.qoeAggregate is undefined", () => {
+      global.window.NRVIDEO.config = {};
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should handle null config gracefully", () => {
+      global.window.NRVIDEO.config = null;
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should only send QoE event for VideoAction event type when qoeAggregate is true", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: true };
+
+      recordEvent("VideoAdAction", { actionName: "AD_PLAY" });
+
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should return false when main event succeeds but QoE event fails", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: true };
+      addEventStub.onFirstCall().returns(true);
+      addEventStub.onSecondCall().returns(false);
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(false);
+      expect(addEventStub.calledTwice).toBe(true);
     });
   });
 
