@@ -45,7 +45,11 @@ Constants.INTERVAL = 10000; //10 seconds
 Constants.QOE_AGGREGATE_KEYS = [
     "coreVersion", "instrumentation.name",
     "instrumentation.provider", "instrumentation.version", "isBackgroundEvent", "playerName", "playerVersion",
-    "src", "viewId", "viewSession", "contentIsAutoplayed"
+    "src", "viewId", "viewSession", "contentIsAutoplayed", "contentIsMuted", "contentRenditionHeight", "contentRenditionWidth",
+    "contentSrc", "numberOfVideos", "pageUrl", "trackerName", "trackerVersion", "contentDuration", "contentPlayrate", "contentPlayhead",
+    "contentPreload", "elapsedTime", "contentTitle", "contentId", "contentIsLive", "deviceType", "deviceGroup", "deviceManufacturer",
+    "deviceModel", "deviceName", "deviceSize", "deviceUuid", "contentRenditionName", "contentIsFullscreen", "contentCdn",
+    "contentFps", "asnOrganization", "asnLongitude", "asnLatitude", "asn", "timeSinceRequested", "timeSinceStarted"
 ]
 
 export default Constants;
