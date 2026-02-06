@@ -158,5 +158,144 @@ describe('videoConfiguration', function() {
         });
       });
     });
+
+    describe('config parameter validation', function() {
+      it('should accept valid config with qoeAggregate as true', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+        const config = {
+          qoeAggregate: true
+        };
+
+        const result = setVideoConfig(info, config);
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+      });
+
+      it('should accept valid config with qoeAggregate as false', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+        const config = {
+          qoeAggregate: false
+        };
+
+        const result = setVideoConfig(info, config);
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
+      });
+
+      it('should default qoeAggregate to true when config is undefined', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+
+        const result = setVideoConfig(info);
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+      });
+
+      it('should default qoeAggregate to true when config is null', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+
+        const result = setVideoConfig(info, null);
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+      });
+
+      it('should default qoeAggregate to true when qoeAggregate is undefined in config', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+        const config = {};
+
+        const result = setVideoConfig(info, config);
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+      });
+
+      it('should reject config when it is not an object', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+
+        const invalidConfigs = ['string', 123, true];
+
+        invalidConfigs.forEach(invalidConfig => {
+          delete global.window.NRVIDEO;
+          const result = setVideoConfig(info, invalidConfig);
+          expect(result).toBe(false);
+          expect(global.window.NRVIDEO).toBeUndefined();
+        });
+      });
+
+      it('should reject config when it is an array', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+
+        const result = setVideoConfig(info, []);
+
+        expect(result).toBe(false);
+        expect(global.window.NRVIDEO).toBeUndefined();
+      });
+
+      it('should reject config when qoeAggregate is not a boolean', function() {
+        const info = {
+          licenseKey: 'test-key',
+          appName: 'MyApp',
+          region: 'US'
+        };
+
+        const invalidQoeValues = ['true', 1, 0, null, {}, []];
+
+        invalidQoeValues.forEach(invalidQoeValue => {
+          delete global.window.NRVIDEO;
+          const config = { qoeAggregate: invalidQoeValue };
+          const result = setVideoConfig(info, config);
+          expect(result).toBe(false);
+          expect(global.window.NRVIDEO).toBeUndefined();
+        });
+      });
+
+      it('should work with applicationID path and valid config', function() {
+        const info = {
+          licenseKey: 'test-key',
+          applicationID: 'app-123',
+          beacon: 'bam.nr-data.net'
+        };
+        const config = {
+          qoeAggregate: false
+        };
+
+        const result = setVideoConfig(info, config);
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
+        expect(global.window.NRVIDEO.info.applicationID).toBe('app-123');
+      });
+    });
   });
 });
