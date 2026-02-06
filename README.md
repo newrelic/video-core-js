@@ -31,6 +31,7 @@ const tracker = new VideoSpecificTracker(player, options);
 
 - **qoeAggregate** (boolean, optional, default: `true`): Controls whether Quality of Experience (QoE) events are aggregated and sent to New Relic. Set to `false` if you want to disable QoE event collection.
 
+
 ## APIs
 
 Some of the APIs exposed and commonly used are:
