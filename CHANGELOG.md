@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.8-beta] - 2025/02/09
+
+### Fix
+
+- Add more attributes for QOE event for better analysis
+
 ## [4.1.5-beta] - 2025/01/19
 
 ### Fix
