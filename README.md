@@ -19,7 +19,7 @@ const options = {
     applicationId: "xxxxxxx",
   },
   config: {
-    qoeAggregate: true, // Optional: Enable/disable QoE (Quality of Experience) event aggregation (default: true)
+    qoeAggregate: false, // Optional: Enable/disable QoE (Quality of Experience) event aggregation (default: false)
   },
 };
 
@@ -29,7 +29,7 @@ const tracker = new VideoSpecificTracker(player, options);
 
 ### Configuration Options
 
-- **qoeAggregate** (boolean, optional, default: `true`): Controls whether Quality of Experience (QoE) events are aggregated and sent to New Relic. Set to `false` if you want to disable QoE event collection.
+- **qoeAggregate** (boolean, optional, default: `false`): Controls whether Quality of Experience (QoE) events are aggregated and sent to New Relic. Set to `true` if you want to enable QoE event collection.
 
 
 ## APIs
