@@ -18,11 +18,21 @@ const options = {
     beacon: "xxxxxxxxxx",
     applicationId: "xxxxxxx",
   },
+  config: {
+    qoeAggregate: false, // Optional: Enable/disable QoE (Quality of Experience) event aggregation (default: false)
+  },
 };
 
 // User can get the `info` object by completing the onboarding process on New Relic.
 const tracker = new VideoSpecificTracker(player, options);
 ```
+
+### Configuration Options
+
+- **qoeAggregate** (boolean, optional, default: `false`): Controls whether Quality of Experience (QoE) events are aggregated and sent to New Relic. Set to `true` if you want to enable QoE event collection.
+
+
+## APIs
 
 Some of the APIs exposed and commonly used are:
 

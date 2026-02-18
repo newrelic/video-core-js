@@ -33,6 +33,7 @@ on:
   pull_request:
     branches:
     - stable
+    - stable-beta
     types:
     - closed
 
@@ -80,6 +81,11 @@ jobs:
       run: |
         PACKAGE_VERSION=$(jq -r '.version' package.json)
         echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
+        if echo "$PACKAGE_VERSION" | grep -q "beta"; then
+          echo "NPM_TAG=beta" >> $GITHUB_ENV
+        else
+          echo "NPM_TAG=latest" >> $GITHUB_ENV
+        fi
 
     - name: Run security audit
       run: npm audit --audit-level=critical
@@ -96,7 +102,7 @@ jobs:
     #     gh release create v${{ env.PACKAGE_VERSION }} --generate-notes
 
     - name: Publish to NPM
-      run: npm publish
+      run: npm publish --tag ${{ env.NPM_TAG }}
     - name: Configure AWS Credentials
       if: ${{ inputs.s3-path != '' }}
       uses: aws-actions/configure-aws-credentials@v2

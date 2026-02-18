@@ -53,7 +53,6 @@ export class NrVideoEventAggregator {
           Log.error("Failed to set or replace the event to buffer:", error.message);
           return false;
       }
-      return false;
     }
 
   /**

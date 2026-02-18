@@ -1,6 +1,12 @@
 # Changelog
-
 All notable changes to this project will be documented in this file.
+
+## [4.1.0] - 2026/02/18
+
+### Feat
+
+- **Add QOE health index KPIs with toggle config**
+  Introduced Quality of Experience (QOE) health index key performance indicators with configurable toggle to enable/disable tracking
 
 ## [4.0.3] - 2026/01/29
 
@@ -9,11 +15,6 @@ All notable changes to this project will be documented in this file.
 - **Drop bitrate values before start**
   Modified `getAttributes()` in `videotracker.js` to check `this.state.isStarted` before adding bitrate attributes
 
-## [4.1.0-beta] - 2025/12/18
-
-### Feature
-
-- Add QOE KPIs attributes for VideoAction event with updated DATAMODEL.md
 
 ## [4.0.2] - 2025/11/03
 

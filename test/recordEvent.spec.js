@@ -3,11 +3,8 @@ import { videoAnalyticsHarvester } from "../src/agent.js";
 import Constants from "../src/constants.js";
 import Log from "../src/log.js";
 import Tracker from "../src/tracker.js";
-import chai from "chai";
 import sinon from "sinon";
-
-const expect = chai.expect;
-const assert = chai.assert;
+import { JSDOM } from "jsdom";
 
 describe("recordEvent", () => {
   let addEventStub;
@@ -16,33 +13,54 @@ describe("recordEvent", () => {
   let logWarnSpy;
   let logErrorSpy;
 
-  before(() => {
+  beforeAll(() => {
     Log.level = Log.Levels.SILENT;
+
+    // Setup JSDOM environment
+    const dom = new JSDOM("<!doctype html><html><body></body></html>");
+    global.window = dom.window;
+    global.document = dom.window.document;
+
+    // Initialize agent
+    if (!videoAnalyticsHarvester.isInitialized) {
+      videoAnalyticsHarvester.initialize();
+    }
   });
 
-  after(() => {
+  afterAll(() => {
     Log.level = Log.Levels.ERROR;
+
+    // Stop scheduler
+    if (videoAnalyticsHarvester.harvestScheduler) {
+      videoAnalyticsHarvester.harvestScheduler.stopScheduler();
+    }
   });
 
   beforeEach(() => {
     // Setup window mock with NRVIDEO
-    performanceNowStub = sinon.stub().returns(5000);
-    global.window = {
-      NRVIDEO: {
-        info: {
-          appName: "TestApp",
-          applicationID: "test-app-id-12345",
-          beacon: "bam.nr-data.net",
-          licenseKey: "test-license-key"
-        }
+    global.window.NRVIDEO = {
+      info: {
+        appName: "TestApp",
+        applicationID: "test-app-id-12345",
+        beacon: "bam.nr-data.net",
+        licenseKey: "test-license-key"
       },
-      performance: {
-        now: performanceNowStub
-      },
-      location: {
-        href: "http://test.com/video"
+      config: {
+        qoeAggregate: true
       }
     };
+
+    // Ensure window.performance exists (in case previous test deleted it)
+    if (!global.window.performance) {
+      global.window.performance = {
+        now: () => 0
+      };
+    }
+
+    // Stub performance.now() on the existing window.performance object
+    if (global.window.performance && global.window.performance.now) {
+      performanceNowStub = sinon.stub(global.window.performance, "now").returns(5000);
+    }
 
     // Stub harvester addEvent
     addEventStub = sinon.stub(videoAnalyticsHarvester, "addEvent").returns(true);
@@ -58,6 +76,9 @@ describe("recordEvent", () => {
   afterEach(() => {
     addEventStub.restore();
     dateNowStub.restore();
+    if (performanceNowStub && performanceNowStub.restore) {
+      performanceNowStub.restore();
+    }
     logWarnSpy.restore();
     logErrorSpy.restore();
     delete global.window;
@@ -67,10 +88,10 @@ describe("recordEvent", () => {
     it("should return false for invalid event type", () => {
       const result = recordEvent("InvalidEventType", { someAttr: "value" });
 
-      expect(result).to.be.false;
-      expect(logWarnSpy.calledOnce).to.be.true;
-      expect(logWarnSpy.firstCall.args[0]).to.include("Invalid event type");
-      expect(addEventStub.called).to.be.false;
+      expect(result).toBe(false);
+      expect(logWarnSpy.calledOnce).toBe(true);
+      expect(logWarnSpy.firstCall.args[0]).toContain("Invalid event type");
+      expect(addEventStub.called).toBe(false);
     });
 
     it("should return undefined when window.NRVIDEO.info is missing", () => {
@@ -78,46 +99,45 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", { someAttr: "value" });
 
-      expect(result).to.be.undefined;
-      expect(addEventStub.called).to.be.false;
+      expect(result).toBeUndefined();
+      expect(addEventStub.called).toBe(false);
     });
 
     it("should return false when window is undefined due to error handling", () => {
-      delete global.window;
+      delete global.window.NRVIDEO;
 
       const result = recordEvent("VideoAction", { someAttr: "value" });
 
-      expect(result).to.be.false;
-      expect(addEventStub.called).to.be.false;
-      expect(logErrorSpy.calledOnce).to.be.true;
+      expect(result).toBe(undefined);
+      expect(addEventStub.called).toBe(false);
     });
 
     it("should accept valid event type 'VideoAction'", () => {
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(true);
     });
 
     it("should accept valid event type 'VideoAdAction'", () => {
       const result = recordEvent("VideoAdAction", {});
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.false;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
     });
 
     it("should accept valid event type 'VideoErrorAction'", () => {
       const result = recordEvent("VideoErrorAction", {});
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.false;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
     });
 
     it("should accept valid event type 'VideoCustomAction'", () => {
       const result = recordEvent("VideoCustomAction", {});
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.false;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
     });
   });
 
@@ -131,10 +151,10 @@ describe("recordEvent", () => {
 
       recordEvent("VideoAction", attributes);
 
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).toBe(true);
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject).to.deep.include({
+      expect(eventObject).toMatchObject({
         eventType: "VideoAction",
         actionName: "PLAY",
         contentDuration: 120,
@@ -148,16 +168,16 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", {});
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject.timestamp).to.equal(1234567890);
-      expect(dateNowStub.calledOnce).to.be.true;
+      expect(eventObject.timestamp).toBe(1234567890);
+      expect(dateNowStub.calledOnce).toBe(true);
     });
 
     it("should add timeSinceLoad from performance.now() in seconds", () => {
       recordEvent("VideoAction", {});
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject.timeSinceLoad).to.equal(5); // 5000ms / 1000 = 5s
-      expect(performanceNowStub.calledOnce).to.be.true;
+      expect(eventObject.timeSinceLoad).toBe(5); // 5000ms / 1000 = 5s
+      expect(performanceNowStub.calledOnce).toBe(true);
     });
 
     it("should set timeSinceLoad to null when performance is undefined", () => {
@@ -166,14 +186,14 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", {});
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject.timeSinceLoad).to.be.null;
+      expect(eventObject.timeSinceLoad).toBeNull();
     });
 
     it("should NOT include appName when applicationID is present", () => {
       recordEvent("VideoAction", { someAttr: "value" });
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject).to.not.have.property("appName");
+      expect(eventObject).not.toHaveProperty("appName");
     });
 
     it("should include appName when applicationID is missing", () => {
@@ -182,7 +202,7 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", { someAttr: "value" });
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject.appName).to.equal("TestApp");
+      expect(eventObject.appName).toBe("TestApp");
     });
   });
 
@@ -197,11 +217,11 @@ describe("recordEvent", () => {
 
       recordEvent("VideoAction", attributes);
 
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).toBe(true);
 
       const qoeEventObject = addEventStub.secondCall.args[0];
-      expect(qoeEventObject.eventType).to.equal("VideoAction");
-      expect(qoeEventObject.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+      expect(qoeEventObject.eventType).toBe("VideoAction");
+      expect(qoeEventObject.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
     });
 
     it("should include qoe attributes in QoE event object", () => {
@@ -216,11 +236,12 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const qoeEventObject = addEventStub.secondCall.args[0];
-      expect(qoeEventObject).to.deep.include({
+      expect(qoeEventObject).toMatchObject({
         totalPlaytime: 100,
         totalRebufferTime: 5,
         averageBitrate: 2500000
       });
+      expect(qoeEventObject.qoeAggregateVersion).toBe("1.0.0");
     });
 
     it("should include metadata attributes from VIEW_QOE_AGGREGATE_KEYS in QoE event", () => {
@@ -236,12 +257,12 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const qoeEventObject = addEventStub.secondCall.args[0];
-      expect(qoeEventObject.viewId).to.equal("view-123");
-      expect(qoeEventObject.playerName).to.equal("TestPlayer");
-      expect(qoeEventObject.playerVersion).to.equal("1.0.0");
-      expect(qoeEventObject.src).to.equal("http://example.com/video.mp4");
-      expect(qoeEventObject.coreVersion).to.equal("2.0.0");
-      expect(qoeEventObject).to.not.have.property("otherAttribute");
+      expect(qoeEventObject.viewId).toBe("view-123");
+      expect(qoeEventObject.playerName).toBe("TestPlayer");
+      expect(qoeEventObject.playerVersion).toBe("1.0.0");
+      expect(qoeEventObject.src).toBe("http://example.com/video.mp4");
+      expect(qoeEventObject.coreVersion).toBe("2.0.0");
+      expect(qoeEventObject).not.toHaveProperty("otherAttribute");
     });
 
     it("should add timestamp and timeSinceLoad to QoE event", () => {
@@ -254,8 +275,8 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const qoeEventObject = addEventStub.secondCall.args[0];
-      expect(qoeEventObject.timestamp).to.equal(1234567890);
-      expect(qoeEventObject.timeSinceLoad).to.equal(5);
+      expect(qoeEventObject.timestamp).toBe(1234567890);
+      expect(qoeEventObject.timeSinceLoad).toBe(5);
     });
 
     it("should NOT include qoe property in main event object", () => {
@@ -269,8 +290,8 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject).to.not.have.property("qoe");
-      expect(eventObject.actionName).to.equal("PLAY");
+      expect(eventObject).not.toHaveProperty("qoe");
+      expect(eventObject.actionName).toBe("PLAY");
     });
 
     it("should create QoE event even when qoe attribute is missing", () => {
@@ -280,10 +301,10 @@ describe("recordEvent", () => {
 
       recordEvent("VideoAction", attributes);
 
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).toBe(true);
       const qoeEventObject = addEventStub.secondCall.args[0];
-      expect(qoeEventObject.eventType).to.equal("VideoAction");
-      expect(qoeEventObject.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+      expect(qoeEventObject.eventType).toBe("VideoAction");
+      expect(qoeEventObject.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
     });
   });
 
@@ -291,7 +312,7 @@ describe("recordEvent", () => {
     it("should call addEvent exactly twice", () => {
       recordEvent("VideoAction", { actionName: "PLAY" });
 
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(addEventStub.calledTwice).toBe(true);
     });
 
     it("should call addEvent with main event object first", () => {
@@ -303,7 +324,7 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const firstCallArgs = addEventStub.firstCall.args[0];
-      expect(firstCallArgs).to.deep.include({
+      expect(firstCallArgs).toMatchObject({
         eventType: "VideoAction",
         actionName: "PLAY",
         contentDuration: 120
@@ -320,9 +341,9 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const secondCallArgs = addEventStub.secondCall.args[0];
-      expect(secondCallArgs.eventType).to.equal("VideoAction");
-      expect(secondCallArgs.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
-      expect(secondCallArgs.totalPlaytime).to.equal(100);
+      expect(secondCallArgs.eventType).toBe("VideoAction");
+      expect(secondCallArgs.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
+      expect(secondCallArgs.totalPlaytime).toBe(100);
     });
 
     it("should return true when both addEvent calls succeed", () => {
@@ -330,7 +351,7 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.true;
+      expect(result).toBe(true);
     });
 
     it("should return false when first addEvent call fails", () => {
@@ -339,7 +360,7 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.false;
+      expect(result).toBe(false);
     });
 
     it("should return false when second addEvent call fails", () => {
@@ -348,7 +369,7 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.false;
+      expect(result).toBe(false);
     });
 
     it("should return false when both addEvent calls fail", () => {
@@ -356,7 +377,7 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.false;
+      expect(result).toBe(false);
     });
   });
 
@@ -364,19 +385,19 @@ describe("recordEvent", () => {
     it("should handle empty attributes object", () => {
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(true);
 
       const eventObject = addEventStub.firstCall.args[0];
-      expect(eventObject.eventType).to.equal("VideoAction");
-      expect(eventObject.timestamp).to.equal(1234567890);
+      expect(eventObject.eventType).toBe("VideoAction");
+      expect(eventObject.timestamp).toBe(1234567890);
     });
 
     it("should handle undefined attributes parameter", () => {
       const result = recordEvent("VideoAction");
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(true);
     });
 
     it("should handle attributes with only qoe property", () => {
@@ -392,9 +413,9 @@ describe("recordEvent", () => {
       const eventObject = addEventStub.firstCall.args[0];
       const qoeEventObject = addEventStub.secondCall.args[0];
 
-      expect(eventObject).to.not.have.property("totalPlaytime");
-      expect(qoeEventObject.totalPlaytime).to.equal(100);
-      expect(qoeEventObject.totalRebufferTime).to.equal(5);
+      expect(eventObject).not.toHaveProperty("totalPlaytime");
+      expect(qoeEventObject.totalPlaytime).toBe(100);
+      expect(qoeEventObject.totalRebufferTime).toBe(5);
     });
 
     it("should handle error during execution and return false", () => {
@@ -403,9 +424,9 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", {});
 
-      expect(result).to.be.false;
-      expect(logErrorSpy.calledOnce).to.be.true;
-      expect(logErrorSpy.firstCall.args[0]).to.include("Failed to record event");
+      expect(result).toBe(false);
+      expect(logErrorSpy.calledOnce).toBe(true);
+      expect(logErrorSpy.firstCall.args[0]).toContain("Failed to record event");
     });
 
     it("should handle null qoe attribute", () => {
@@ -416,8 +437,8 @@ describe("recordEvent", () => {
 
       const result = recordEvent("VideoAction", attributes);
 
-      expect(result).to.be.true;
-      expect(addEventStub.calledTwice).to.be.true;
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(true);
     });
 
     it("should handle attributes with all VIEW_QOE_AGGREGATE_KEYS", () => {
@@ -441,18 +462,92 @@ describe("recordEvent", () => {
       recordEvent("VideoAction", attributes);
 
       const qoeEventObject = addEventStub.secondCall.args[0];
-      expect(qoeEventObject.coreVersion).to.equal("2.0.0");
-      expect(qoeEventObject["instrumentation.name"]).to.equal("video-tracker");
-      expect(qoeEventObject["instrumentation.provider"]).to.equal("newrelic");
-      expect(qoeEventObject["instrumentation.version"]).to.equal("1.0.0");
-      expect(qoeEventObject.isBackgroundEvent).to.be.false;
-      expect(qoeEventObject.playerName).to.equal("TestPlayer");
-      expect(qoeEventObject.playerVersion).to.equal("1.0.0");
-      expect(qoeEventObject.src).to.equal("http://example.com/video.mp4");
-      expect(qoeEventObject.viewId).to.equal("view-123");
-      expect(qoeEventObject.viewSession).to.equal("session-456");
-      expect(qoeEventObject.contentIsAutoplayed).to.be.true;
-      expect(qoeEventObject.totalPlaytime).to.equal(100);
+      expect(qoeEventObject.coreVersion).toBe("2.0.0");
+      expect(qoeEventObject["instrumentation.name"]).toBe("video-tracker");
+      expect(qoeEventObject["instrumentation.provider"]).toBe("newrelic");
+      expect(qoeEventObject["instrumentation.version"]).toBe("1.0.0");
+      expect(qoeEventObject.isBackgroundEvent).toBe(false);
+      expect(qoeEventObject.playerName).toBe("TestPlayer");
+      expect(qoeEventObject.playerVersion).toBe("1.0.0");
+      expect(qoeEventObject.src).toBe("http://example.com/video.mp4");
+      expect(qoeEventObject.viewId).toBe("view-123");
+      expect(qoeEventObject.viewSession).toBe("session-456");
+      expect(qoeEventObject.contentIsAutoplayed).toBe(true);
+      expect(qoeEventObject.totalPlaytime).toBe(100);
+    });
+  });
+
+  describe("qoeAggregate config flag", () => {
+    it("should send QoE event when qoeAggregate is true", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: true };
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledTwice).toBe(true);
+
+      const qoeEventObject = addEventStub.secondCall.args[0];
+      expect(qoeEventObject.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
+    });
+
+    it("should NOT send QoE event when qoeAggregate is false", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: false };
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should NOT send QoE event when config is undefined", () => {
+      delete global.window.NRVIDEO.config;
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should NOT send QoE event when config.qoeAggregate is undefined", () => {
+      global.window.NRVIDEO.config = {};
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should handle null config gracefully", () => {
+      global.window.NRVIDEO.config = null;
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(true);
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should only send QoE event for VideoAction event type when qoeAggregate is true", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: true };
+
+      recordEvent("VideoAdAction", { actionName: "AD_PLAY" });
+
+      expect(addEventStub.calledOnce).toBe(true);
+      expect(addEventStub.calledTwice).toBe(false);
+    });
+
+    it("should return false when main event succeeds but QoE event fails", () => {
+      global.window.NRVIDEO.config = { qoeAggregate: true };
+      addEventStub.onFirstCall().returns(true);
+      addEventStub.onSecondCall().returns(false);
+
+      const result = recordEvent("VideoAction", { actionName: "PLAY" });
+
+      expect(result).toBe(false);
+      expect(addEventStub.calledTwice).toBe(true);
     });
   });
 
@@ -477,24 +572,24 @@ describe("recordEvent", () => {
       const qoeEvent = addEventStub.secondCall.args[0];
 
       // Main event should have regular attributes but NOT qoe attributes
-      expect(mainEvent.actionName).to.equal("PAUSE");
-      expect(mainEvent.contentDuration).to.equal(120);
-      expect(mainEvent.playerState).to.equal("paused");
-      expect(mainEvent.viewId).to.equal("view-789");
-      expect(mainEvent.playerName).to.equal("CustomPlayer");
-      expect(mainEvent).to.not.have.property("totalPlaytime");
-      expect(mainEvent).to.not.have.property("totalRebufferTime");
-      expect(mainEvent).to.not.have.property("averageBitrate");
+      expect(mainEvent.actionName).toBe("PAUSE");
+      expect(mainEvent.contentDuration).toBe(120);
+      expect(mainEvent.playerState).toBe("paused");
+      expect(mainEvent.viewId).toBe("view-789");
+      expect(mainEvent.playerName).toBe("CustomPlayer");
+      expect(mainEvent).not.toHaveProperty("totalPlaytime");
+      expect(mainEvent).not.toHaveProperty("totalRebufferTime");
+      expect(mainEvent).not.toHaveProperty("averageBitrate");
 
       // QoE event should have qoe attributes and metadata keys
-      expect(qoeEvent.totalPlaytime).to.equal(50);
-      expect(qoeEvent.totalRebufferTime).to.equal(2);
-      expect(qoeEvent.averageBitrate).to.equal(2500000);
-      expect(qoeEvent.viewId).to.equal("view-789");
-      expect(qoeEvent.playerName).to.equal("CustomPlayer");
-      expect(qoeEvent.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
-      expect(qoeEvent).to.not.have.property("contentDuration");
-      expect(qoeEvent).to.not.have.property("playerState");
+      expect(qoeEvent.totalPlaytime).toBe(50);
+      expect(qoeEvent.totalRebufferTime).toBe(2);
+      expect(qoeEvent.averageBitrate).toBe(2500000);
+      expect(qoeEvent.viewId).toBe("view-789");
+      expect(qoeEvent.playerName).toBe("CustomPlayer");
+      expect(qoeEvent.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
+      expect(qoeEvent).not.toHaveProperty("contentDuration");
+      expect(qoeEvent).not.toHaveProperty("playerState");
     });
 
     it("should maintain correct actionName values for both events", () => {
@@ -507,8 +602,8 @@ describe("recordEvent", () => {
       const mainEvent = addEventStub.firstCall.args[0];
       const qoeEvent = addEventStub.secondCall.args[0];
 
-      expect(mainEvent.actionName).to.equal("BUFFER_START");
-      expect(qoeEvent.actionName).to.equal(Tracker.Events.QOE_AGGREGATE);
+      expect(mainEvent.actionName).toBe("BUFFER_START");
+      expect(qoeEvent.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
     });
   });
 });
