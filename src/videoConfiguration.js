@@ -127,7 +127,7 @@ class VideoConfiguration {
         ...(applicationID ? {} : { appName }), // Only include appName when no applicationID
       },
       config: {
-        qoeAggregate: config?.qoeAggregate ?? true,
+        qoeAggregate: config?.qoeAggregate ?? false,
       }
     };
   }

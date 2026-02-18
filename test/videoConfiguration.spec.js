@@ -192,7 +192,7 @@ describe('videoConfiguration', function() {
         expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
       });
 
-      it('should default qoeAggregate to true when config is undefined', function() {
+      it('should default qoeAggregate to false when config is undefined', function() {
         const info = {
           licenseKey: 'test-key',
           appName: 'MyApp',
@@ -202,10 +202,10 @@ describe('videoConfiguration', function() {
         const result = setVideoConfig(info);
 
         expect(result).toBe(true);
-        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
       });
 
-      it('should default qoeAggregate to true when config is null', function() {
+      it('should default qoeAggregate to false when config is null', function() {
         const info = {
           licenseKey: 'test-key',
           appName: 'MyApp',
@@ -215,10 +215,10 @@ describe('videoConfiguration', function() {
         const result = setVideoConfig(info, null);
 
         expect(result).toBe(true);
-        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
       });
 
-      it('should default qoeAggregate to true when qoeAggregate is undefined in config', function() {
+      it('should default qoeAggregate to false when qoeAggregate is undefined in config', function() {
         const info = {
           licenseKey: 'test-key',
           appName: 'MyApp',
@@ -229,7 +229,7 @@ describe('videoConfiguration', function() {
         const result = setVideoConfig(info, config);
 
         expect(result).toBe(true);
-        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(true);
+        expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
       });
 
       it('should reject config when it is not an object', function() {
