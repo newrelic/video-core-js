@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.0] - 2026/02/18
+
+### Feat
+
+- **Add QOE health index KPIs with toggle config**
+  Introduced Quality of Experience (QOE) health index key performance indicators with configurable toggle to enable/disable tracking
+
 ## [4.0.3] - 2026/01/29
 
 ### Fix
