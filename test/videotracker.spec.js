@@ -87,6 +87,75 @@ describe("VideoTracker", () => {
       tag.webkitVideoDecodedByteCount += 3000;
       expect(tracker.getWebkitBitrate()).toBe(800);
     });
+
+    it("should drop bitrate attributes before content start", () => {
+      // Setup jsdom environment
+      const dom = new JSDOM("<!doctype html><html><body></body></html>");
+      global.window = dom.window;
+      global.document = dom.window.document;
+
+      tracker = new VideoTracker();
+
+      // Mock getBitrate to return a value
+      tracker.getBitrate = () => 5000000;
+      tracker.getRenditionBitrate = () => 4000000;
+
+      // Before content starts (only request sent)
+      tracker.sendRequest();
+      let attrsBeforeStart = tracker.getAttributes();
+      expect(attrsBeforeStart.contentBitrate).to.be.undefined;
+      expect(attrsBeforeStart.contentRenditionBitrate).to.be.undefined;
+
+      // After content starts
+      tracker.sendStart();
+      let attrsAfterStart = tracker.getAttributes();
+      expect(attrsAfterStart.contentBitrate).to.equal(5000000);
+      expect(attrsAfterStart.contentRenditionBitrate).to.equal(4000000);
+
+      // Other rendition attributes should still be included (even if null) before start
+      expect(attrsBeforeStart).to.have.property("contentRenditionName");
+      expect(attrsBeforeStart).to.have.property("contentRenditionHeight");
+      expect(attrsBeforeStart).to.have.property("contentRenditionWidth");
+
+      // Cleanup
+      delete global.window;
+      delete global.document;
+    });
+
+    it("should drop bitrate attributes before ad start", () => {
+      // Setup jsdom environment
+      const dom = new JSDOM("<!doctype html><html><body></body></html>");
+      global.window = dom.window;
+      global.document = dom.window.document;
+
+      tracker = new VideoTracker();
+      tracker.setIsAd(true);
+
+      // Mock getBitrate to return a value
+      tracker.getBitrate = () => 3000000;
+      tracker.getRenditionBitrate = () => 2500000;
+
+      // Before ad starts (only request sent)
+      tracker.sendRequest();
+      let attrsBeforeStart = tracker.getAttributes();
+      expect(attrsBeforeStart.adBitrate).to.be.undefined;
+      expect(attrsBeforeStart.adRenditionBitrate).to.be.undefined;
+
+      // After ad starts
+      tracker.sendStart();
+      let attrsAfterStart = tracker.getAttributes();
+      expect(attrsAfterStart.adBitrate).to.equal(3000000);
+      expect(attrsAfterStart.adRenditionBitrate).to.equal(2500000);
+
+      // Other rendition attributes should still be included (even if null) before start
+      expect(attrsBeforeStart).to.have.property("adRenditionName");
+      expect(attrsBeforeStart).to.have.property("adRenditionHeight");
+      expect(attrsBeforeStart).to.have.property("adRenditionWidth");
+
+      // Cleanup
+      delete global.window;
+      delete global.document;
+    });
   });
 
   describe("Event Firing", () => {

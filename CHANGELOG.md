@@ -1,41 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [4.1.8-beta] - 2025/02/09
+## [4.0.3] - 2026/01/29
 
 ### Fix
 
-- Add more attributes for QOE event for better analysis
+- **Drop bitrate values before start**
+  Modified `getAttributes()` in `videotracker.js` to check `this.state.isStarted` before adding bitrate attributes
 
-## [4.1.5-beta] - 2025/01/19
-
-### Fix
-
-- update configs for correct module resolution for consumer
-
-## [4.1.1-beta] - 2025/12/19
-
-## Fix
-
-- Added an attribute numberOfErrors in QOE KPIs attribute.
-
-## [4.1.3-beta] - 2025/01/16
-
-### Fix
-
-- Update logic for average bitrate to consider correct delta time
-
-## [4.1.4-beta] - 2025/01/19
-
-### Fix
-
-- Excluded test folder from module.exports in webpack config
-
-## [4.1.0-beta] - 2025/12/18
-
-### Feature
-
-- Add QOE KPIs attributes for VideoAction event with updated DATAMODEL.md
 
 ## [4.0.2] - 2025/11/03
 

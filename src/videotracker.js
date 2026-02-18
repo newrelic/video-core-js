@@ -465,12 +465,17 @@ class VideoTracker extends Tracker {
       att.adTitle = this.getTitle();
       att.adSrc = this.getSrc();
       att.adCdn = this.getCdn();
-      att.adBitrate =
-        this.getBitrate() ||
-        this.getWebkitBitrate() ||
-        this.getRenditionBitrate();
+
+      // Only add bitrate attributes after ad has started
+      if (this.state.isStarted) {
+        att.adBitrate =
+          this.getBitrate() ||
+          this.getWebkitBitrate() ||
+          this.getRenditionBitrate();
+        att.adRenditionBitrate = this.getRenditionBitrate();
+      }
+
       att.adRenditionName = this.getRenditionName();
-      att.adRenditionBitrate = this.getRenditionBitrate();
       att.adRenditionHeight = this.getRenditionHeight();
       att.adRenditionWidth = this.getRenditionWidth();
       att.adDuration = this.getDuration();
@@ -492,13 +497,17 @@ class VideoTracker extends Tracker {
       att.contentPlayhead = this.getPlayhead();
 
       att.contentIsLive = this.isLive();
-      att.contentBitrate =
-        this.getBitrate() ||
-        this.getWebkitBitrate() ||
-        this.getRenditionBitrate();
+
+      // Only add bitrate attributes after content has started
+      if (this.state.isStarted) {
+        att.contentBitrate =
+          this.getBitrate() ||
+          this.getWebkitBitrate() ||
+          this.getRenditionBitrate();
+        att.contentRenditionBitrate = this.getRenditionBitrate();
+      }
 
       att.contentRenditionName = this.getRenditionName();
-      att.contentRenditionBitrate = this.getRenditionBitrate();
       att.contentRenditionHeight = this.getRenditionHeight();
       att.contentRenditionWidth = this.getRenditionWidth();
       att.contentDuration = this.getDuration();
