@@ -31,6 +31,7 @@ export class HarvestScheduler {
     this.currentTimerId = null;
     this.harvestCycle = Constants.INTERVAL;
     this.isHarvesting = false;
+    this.qoeCycleCount = 1;
 
     // Page lifecycle handling
     this.setupPageLifecycleHandlers();
@@ -237,15 +238,29 @@ export class HarvestScheduler {
   /**
    * Drains events from the event buffer and optionally includes retry queue data.
    * Uses fresh-events-first approach with payload limits.
+   * Filters out QOE_AGGREGATE events based on the harvest interval multiplier,
+   * always including them on the first and final harvest cycles.
    * @param {object} options - Harvest options
    * @returns {Array} Drained events
    * @private
    */
-  drainEvents() {
+  drainEvents(options = {}) {
+    // Determine if this cycle should include the QOE_AGGREGATE event
+    const multiplier = window.NRVIDEO?.config?.qoeIntervalFactor ?? 1;
+    const isQoeCycle =
+      (this.qoeCycleCount - 1) % multiplier === 0 ||
+      !!options.isFinalHarvest;
+
     // Always drain fresh events first (priority approach)
     const freshEvents = this.eventBuffer.drain();
-    let events = [...freshEvents];
-    let currentPayloadSize = dataSize(freshEvents);
+    const filteredFreshEvents = isQoeCycle
+      ? freshEvents
+      : freshEvents.filter((e) => e.actionName !== "QOE_AGGREGATE");
+
+    this.qoeCycleCount++;
+
+    let events = [...filteredFreshEvents];
+    let currentPayloadSize = dataSize(filteredFreshEvents);
 
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {
