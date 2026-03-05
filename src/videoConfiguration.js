@@ -103,6 +103,18 @@ class VideoConfiguration {
   }
 
   /**
+   * Sanitizes qoeIntervalFactor, defaulting to 1 if the value is not a positive integer.
+   * @param {*} value
+   * @returns {number}
+   */
+  sanitizeQoeIntervalFactor(value) {
+    if (value === undefined || value === null) return 1;
+    if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
+    console.warn(`[nrvideo] Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 1.`);
+    return 1;
+  }
+
+  /**
    * Initializes the global NRVIDEO configuration object.
    * @param {object} userInfo - User provided configuration
    * @param {object} [config] - Optional configuration object
@@ -128,6 +140,7 @@ class VideoConfiguration {
       },
       config: {
         qoeAggregate: config?.qoeAggregate ?? false,
+        qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
       }
     };
   }

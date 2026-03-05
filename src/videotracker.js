@@ -239,6 +239,21 @@ class VideoTracker extends Tracker {
     return null;
   }
 
+  /** Override to return the manifest-declared bitrate in bps (Indicated Bitrate). */
+  getManifestBitrate() {
+    return null;
+  }
+
+  /** Override to return the measured network bitrate in bps (Observed Bitrate). */
+  getMeasuredBitrate() {
+    return null;
+  }
+
+  /** Override to return the download throughput in bps. */
+  getDownloadBitrate() {
+    return null;
+  }
+
   /** Calculates consumed bitrate using webkitVideoDecodedByteCount. */
   getWebkitBitrate() {
     if (this.tag && this.tag.webkitVideoDecodedByteCount) {
@@ -505,6 +520,9 @@ class VideoTracker extends Tracker {
           this.getWebkitBitrate() ||
           this.getRenditionBitrate();
         att.contentRenditionBitrate = this.getRenditionBitrate();
+        att.contentManifestBitrate = this.getManifestBitrate();
+        att.contentMeasuredBitrate = this.getMeasuredBitrate();
+        att.contentDownloadBitrate = this.getDownloadBitrate();
       }
 
       att.contentRenditionName = this.getRenditionName();
