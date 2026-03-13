@@ -33,8 +33,8 @@ describe("QOE_AGGREGATE Buffer Management", () => {
       actionName: Tracker.Events.QOE_AGGREGATE,
       qoeAggregateVersion: "1.0.0",
       "kpi.totalPlaytime": 1000,
-      "kpi.hadStartupFailure": false,
-      "kpi.hadPlaybackFailure": false
+      "kpi.hadStartupError": false,
+      "kpi.hadPlaybackError": false
     };
 
     const result = videoAnalyticsHarvester.addEvent(qoeEvent);
@@ -94,8 +94,8 @@ describe("QOE_AGGREGATE Buffer Management", () => {
       "kpi.averageBitrate": 1800,
       "kpi.totalRebufferingTime": 500,
       "kpi.rebufferingRatio": 5.5,
-      "kpi.hadStartupFailure": false,
-      "kpi.hadPlaybackFailure": true,
+      "kpi.hadStartupError": false,
+      "kpi.hadPlaybackError": true,
       "kpi.startupTime": 300
     };
 

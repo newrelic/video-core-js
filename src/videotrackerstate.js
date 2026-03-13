@@ -104,14 +104,14 @@ class VideoTrackerState {
     this.partialAverageBitrate = 0;
 
     /**
-     * Had Startup Failure: TRUE if CONTENT_ERROR occurs before CONTENT_START.
+     * Had Startup Error: TRUE if CONTENT_ERROR occurs before CONTENT_START.
      */
-    this.hadStartupFailure = false;
+    this.hadStartupError = false;
 
     /**
-     * Had Playback Failure: TRUE if CONTENT_ERROR occurs during content playback.
+     * Had Playback Error: TRUE if CONTENT_ERROR occurs during content playback.
      */
-    this.hadPlaybackFailure = false;
+    this.hadPlaybackError = false;
 
     /**
      * The amount of ms the user has been rebuffering during content playback.
@@ -354,8 +354,8 @@ class VideoTrackerState {
           if (this.peakBitrate > 0) {
               kpi["peakBitrate"] = this.peakBitrate;
           }
-          kpi["hadStartupFailure"] = this.hadStartupFailure;
-          kpi["hadPlaybackFailure"] = this.hadPlaybackFailure;
+          kpi["hadStartupError"] = this.hadStartupError;
+          kpi["hadPlaybackError"] = this.hadPlaybackError;
           kpi["totalRebufferingTime"] = this.totalRebufferingTime;
           // Calculate rebuffering ratio as percentage (avoid division by zero)
           kpi["rebufferingRatio"] = this.totalPlaytime > 0
@@ -670,13 +670,13 @@ class VideoTrackerState {
     } else {
       this.timeSinceLastError.start();
 
-      // Track failure flags for content errors only
-      // Had Startup Failure: error before content started
+      // Track error flags for content errors only
+      // Had Startup Error: error before content started
       if (!this.isStarted) {
-        this.hadStartupFailure = true;
+        this.hadStartupError = true;
       } else {
-        // Had Playback Failure: any content error
-        this.hadPlaybackFailure = true;
+        // Had Playback Error: any content error
+        this.hadPlaybackError = true;
       }
     }
   }
