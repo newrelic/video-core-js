@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.1] - 2026/03/13
+
+### Fix
+
+- **Rename QOE playback failure attrs to error**
+  Renamed `hadStartupFailure` and `hadPlaybackFailure` properties to `hadStartupError` and `hadPlaybackError` in `videotrackerstate.js` to align with error terminology.
+
 ## [4.1.0] - 2026/02/18
 
 ### Feat
