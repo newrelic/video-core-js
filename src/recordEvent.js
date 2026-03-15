@@ -1,11 +1,14 @@
 import { videoAnalyticsHarvester } from "./agent.js";
 import Constants from "./constants.js";
 import Log from "./log.js";
-import Tracker from "./tracker";
-import {getObjectEntriesForKeys} from "./utils";
 
 /**
- * Enhanced record event function with validation, enrichment, and unified handling.
+ * Record a video event. Validates the event type, enriches with timestamps,
+ * and adds to the harvesting buffer.
+ *
+ * QoE aggregate events are NOT created here — they are produced at harvest
+ * time by the QoE provider registered with the HarvestScheduler.
+ *
  * @param {string} eventType - Type of event to record
  * @param {object} attributes - Event attributes
  */
@@ -17,52 +20,21 @@ export function recordEvent(eventType, attributes = {}) {
       return false;
     }
 
-    // Get app configuration
-
     if (!window?.NRVIDEO?.info) return;
 
     const { appName, applicationID } = window.NRVIDEO.info;
 
-    const { qoe, ...eventAttributes } = attributes;
-    const qoeAttrs = qoe ? { ...qoe } : {};
-
-    const otherAttrs = {
-        ...(applicationID ? {} : { appName }), // Only include appName when no applicationID
-        timestamp: Date.now(),
-        timeSinceLoad: window.performance
-            ? window.performance.now() / 1000
-            : null,
-    }
-
     const eventObject = {
-      ...eventAttributes,
+      ...attributes,
       eventType,
-      ...otherAttrs,
+      ...(applicationID ? {} : { appName }),
+      timestamp: Date.now(),
+      timeSinceLoad: window.performance
+        ? window.performance.now() / 1000
+        : null,
     };
 
-    const metadataAttributes = getObjectEntriesForKeys(Constants.QOE_AGGREGATE_KEYS, attributes)
-
-    let qoeEventObject = null;
-    if(eventType === "VideoAction") {
-        qoeEventObject = {
-            eventType: "VideoAction",
-            actionName: Tracker.Events.QOE_AGGREGATE,
-            qoeAggregateVersion: '1.0.0',
-            ...qoeAttrs,
-            ...metadataAttributes,
-            ...otherAttrs,
-        }
-    }
-
-    // Send to video analytics harvester
-    const success = videoAnalyticsHarvester.addEvent(eventObject);
-
-    if(qoeEventObject && window?.NRVIDEO?.config?.qoeAggregate) {
-        const successQoe = videoAnalyticsHarvester.addEvent(qoeEventObject);
-        return success && successQoe;
-    }
-
-    return success;
+    return videoAnalyticsHarvester.addEvent(eventObject);
   } catch (error) {
     Log.error("Failed to record event:", error.message);
     return false;

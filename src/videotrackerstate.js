@@ -61,8 +61,6 @@ class VideoTrackerState {
      */
     this.totalPlaytime = 0;
 
-    this.weightedAverageBitrate = 0;
-
     /**
      * The amount of ms the user has been watching ads during an ad break.
      */
@@ -73,50 +71,6 @@ class VideoTrackerState {
 
     /** True if initial buffering event already happened. */
     this.initialBufferingHappened = false;
-
-    /**
-     * New QoE KPIs - Content only
-     */
-
-    /**
-     * Startup Time: Time from CONTENT_REQUEST to CONTENT_START in milliseconds.
-     */
-    this.startupTime = null;
-
-    /**
-     * Peak Bitrate: Maximum contentBitrate observed across all content playback.
-     */
-    this.peakBitrate = 0;
-
-    /**
-     * Last tracked bitrate
-     */
-    this._lastBitrate = null;
-
-    /**
-     * Tracks the last updated timestamp for bitrate
-     * */
-    this._lastBitrateChangeTimestamp = null;
-
-    /**
-     * total bitrate partial value for average weighted average bitrate
-     */
-    this.partialAverageBitrate = 0;
-
-    /**
-     * Had Startup Failure: TRUE if CONTENT_ERROR occurs before CONTENT_START.
-     */
-    this.hadStartupFailure = false;
-
-    /**
-     * Had Playback Failure: TRUE if CONTENT_ERROR occurs during content playback.
-     */
-    this.hadPlaybackFailure = false;
-
-    /**
-     * The amount of ms the user has been rebuffering during content playback.
-     */
-    this.totalRebufferingTime = 0;
 
     this.resetFlags();
     this.resetChronos();
@@ -342,36 +296,6 @@ class VideoTrackerState {
     return att;
   }
 
-  getQoeAttributes(att) {
-      att = att || {};
-      const kpi = {};
-
-      try {
-          // QoE KPIs - Content only
-          if (this.startupTime !== null) {
-              kpi["startupTime"] = this.startupTime;
-          }
-          if (this.peakBitrate > 0) {
-              kpi["peakBitrate"] = this.peakBitrate;
-          }
-          kpi["hadStartupFailure"] = this.hadStartupFailure;
-          kpi["hadPlaybackFailure"] = this.hadPlaybackFailure;
-          kpi["totalRebufferingTime"] = this.totalRebufferingTime;
-          // Calculate rebuffering ratio as percentage (avoid division by zero)
-          kpi["rebufferingRatio"] = this.totalPlaytime > 0
-              ? (this.totalRebufferingTime / this.totalPlaytime) * 100
-              : 0;
-          kpi["totalPlaytime"] = this.totalPlaytime;
-          kpi["averageBitrate"] = this.weightedBitrate;
-          kpi["numberOfErrors"] = this.numberOfErrors;
-      } catch (error) {
-          Log.error("Failed to add attributes for QOE KPIs", error.message);
-      }
-
-      att.qoe = kpi;
-      return att;
-  }
-
   /**
    * Calculate the bufferType attribute.
    *
@@ -548,11 +472,6 @@ class VideoTrackerState {
         this._bufferAcc += this.bufferElapsedTime.getDeltaTime();
       }
 
-      // Accumulate total rebuffering time for content only
-      if (!this.isAd() && this.initialBufferingHappened) {
-        this.totalRebufferingTime += this.timeSinceBufferBegin.getDeltaTime();
-      }
-
       return true;
     } else {
       return false;
@@ -669,15 +588,6 @@ class VideoTrackerState {
       this.timeSinceLastAdError.start();
     } else {
       this.timeSinceLastError.start();
-
-      // Track failure flags for content errors only
-      // Had Startup Failure: error before content started
-      if (!this.isStarted) {
-        this.hadStartupFailure = true;
-      } else {
-        // Had Playback Failure: any content error
-        this.hadPlaybackFailure = true;
-      }
     }
   }
 
@@ -689,33 +599,10 @@ class VideoTrackerState {
   }
 
   /**
-   * Updates peak bitrate with current bitrate value (content only).
-   * @param {number} bitrate Current content bitrate in bps.
+   * Resets tracked state for view id change.
    */
-  trackContentBitrateState(bitrate) {
-    if (bitrate && typeof bitrate === "number") {
-      this.peakBitrate = Math.max(this.peakBitrate, bitrate);
-
-      if(this._lastBitrate === null || this._lastBitrate !== bitrate) {
-        const deltaPlaytime = this._lastBitrateChangeTimestamp === null ? this.totalPlaytime : Date.now() - this._lastBitrateChangeTimestamp;
-        const currentWeightedBitrate = (bitrate * deltaPlaytime);
-        this.partialAverageBitrate += currentWeightedBitrate;
-        this.weightedBitrate = currentWeightedBitrate / deltaPlaytime;
-        this._lastBitrate = bitrate;
-        this._lastBitrateChangeTimestamp = Date.now();
-      }
-    }
-  }
-
-  /**
-   * Resets tracked variable for view id change
-   * */
   resetViewIdTrackedState() {
-    this.peakBitrate = 0;
-    this.partialAverageBitrate = 0;
-    this.startupTime = null;
-    this._lastBitrate = null;
-    this._lastBitrateChangeTimestamp = null;
+    // No-op — QoE state is now managed by QoEAggregator
   }
 
   /** Methods to manage total ads time chrono */
@@ -738,11 +625,7 @@ class VideoTrackerState {
     return this._totalAdPlaytime.stop();
   }
 
-  setStartupTime(totalAdTime) {
-    if (this.startupTime === null) {
-      this.startupTime = Math.max(this.timeSinceRequested.getDeltaTime() - totalAdTime, 0)
-    }
-  }
+  // startupTime is now computed by QoEAggregator from fully-assembled attributes
 
 }
 

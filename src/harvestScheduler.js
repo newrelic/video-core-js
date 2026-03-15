@@ -33,6 +33,9 @@ export class HarvestScheduler {
     this.isHarvesting = false;
     this.qoeCycleCount = 1;
 
+    // QoE harvest-time provider — called at drain time to get fresh QoE event
+    this.qoeProvider = null;
+
     // Page lifecycle handling
     this.setupPageLifecycleHandlers();
   }
@@ -236,10 +239,19 @@ export class HarvestScheduler {
   }
 
   /**
+   * Registers a QoE provider function called at harvest time to produce a
+   * fresh QOE_AGGREGATE event. The provider should return a fully-formed
+   * event object, or null if there is nothing to send (dirty check / no session).
+   * @param {Function} provider - () => object|null
+   */
+  setQoeProvider(provider) {
+    this.qoeProvider = typeof provider === "function" ? provider : null;
+  }
+
+  /**
    * Drains events from the event buffer and optionally includes retry queue data.
    * Uses fresh-events-first approach with payload limits.
-   * Filters out QOE_AGGREGATE events based on the harvest interval multiplier,
-   * always including them on the first and final harvest cycles.
+   * Appends a QoE aggregate event from the provider on eligible harvest cycles.
    * @param {object} options - Harvest options
    * @returns {Array} Drained events
    * @private
@@ -253,14 +265,23 @@ export class HarvestScheduler {
 
     // Always drain fresh events first (priority approach)
     const freshEvents = this.eventBuffer.drain();
-    const filteredFreshEvents = isQoeCycle
-      ? freshEvents
-      : freshEvents.filter((e) => e.actionName !== "QOE_AGGREGATE");
 
     this.qoeCycleCount++;
 
-    let events = [...filteredFreshEvents];
-    let currentPayloadSize = dataSize(filteredFreshEvents);
+    let events = [...freshEvents];
+
+    // Append QoE event from provider on eligible cycles (harvest-time pattern)
+    if (this.qoeProvider && isQoeCycle) {
+      try {
+        const qoeEvent = this.qoeProvider({ isFinalHarvest: !!options.isFinalHarvest });
+        if (qoeEvent) {
+          events.push(qoeEvent);
+        }
+      } catch (err) {
+        Log.error("QoE provider error:", err.message);
+      }
+    }
+    let currentPayloadSize = dataSize(freshEvents);
 
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {

@@ -75,15 +75,15 @@ describe('videoAnalyticsHarvester', function() {
       }
     });
 
-    it('should handle QOE_AGGREGATE events specially', function() {
-      const qoe1 = {actionName: 'QOE_AGGREGATE', value: 1};
-      const qoe2 = {actionName: 'QOE_AGGREGATE', value: 2};
+    it('should add all events to buffer equally (QoE handled by provider)', function() {
+      const event1 = {actionName: 'CONTENT_HEARTBEAT', value: 1};
+      const event2 = {actionName: 'CONTENT_HEARTBEAT', value: 2};
 
-      videoAnalyticsHarvester.addEvent(qoe1);
-      videoAnalyticsHarvester.addEvent(qoe2);
+      videoAnalyticsHarvester.addEvent(event1);
+      videoAnalyticsHarvester.addEvent(event2);
 
-      // Should only have 1 QOE event (replaced, not added)
-      expect(videoAnalyticsHarvester.eventBuffer.size()).toBe(1);
+      // Both events added — QoE is now produced at harvest time, not in buffer
+      expect(videoAnalyticsHarvester.eventBuffer.size()).toBe(2);
     });
 
     it('should return false when addEvent fails', function() {
@@ -93,6 +93,24 @@ describe('videoAnalyticsHarvester', function() {
       const result = videoAnalyticsHarvester.addEvent({actionName: 'ERROR_TEST'});
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('setQoeProvider()', function() {
+    it('should register provider on harvest scheduler', function() {
+      const provider = () => null;
+
+      videoAnalyticsHarvester.setQoeProvider(provider);
+
+      expect(videoAnalyticsHarvester.harvestScheduler.qoeProvider).toBe(provider);
+    });
+
+    it('should auto-initialize when called on uninitialized agent', function() {
+      videoAnalyticsHarvester.isInitialized = false;
+
+      videoAnalyticsHarvester.setQoeProvider(() => null);
+
+      expect(videoAnalyticsHarvester.isInitialized).toBe(true);
     });
   });
 

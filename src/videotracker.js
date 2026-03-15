@@ -1,6 +1,9 @@
 import Log from "./log";
 import Tracker from "./tracker";
 import TrackerState from "./videotrackerstate";
+import { QoEAggregator } from "./qoeAggregator";
+import { videoAnalyticsHarvester } from "./agent";
+import Constants from "./constants";
 import pkg from "../package.json";
 
 /**
@@ -44,6 +47,21 @@ class VideoTracker extends Tracker {
      */
     this._lastBufferType = null;
     this._userId = null;
+
+    /**
+     * QoE aggregator — reads from fully-assembled attributes to compute KPIs.
+     * Created only if qoeAggregate is enabled in config.
+     * @type {QoEAggregator|null}
+     */
+    this.qoeAggregator = null;
+    this._lastContentMetadata = {};
+    this._pendingFinalQoe = null;
+    if (typeof window !== "undefined" && window.NRVIDEO?.config?.qoeAggregate) {
+      this.qoeAggregator = new QoEAggregator();
+      // Register harvest-time provider — QoE events are built at drain time,
+      // not added to the event buffer on every VideoAction.
+      videoAnalyticsHarvester.setQoeProvider((opts) => this._buildQoeEvent(opts));
+    }
 
     options = options || {};
     this.setOptions(options);
@@ -548,28 +566,100 @@ class VideoTracker extends Tracker {
 
     this.state.getStateAttributes(att);
 
-    if(this.state.isStarted && !this.isAd()) {
-      this.state.trackContentBitrateState(att.contentBitrate);
-    }
-
     for (let key in this.customData) {
       att[key] = this.customData[key];
     }
 
-    /**
-     * Adds all the attributes and custom attributes for qoe event
-     */
-    this.addQoeAttributes(att);
-
     return att;
   }
 
-  addQoeAttributes(att) {
-      att = this.state.getQoeAttributes(att);
-      const qoe = att.qoe;
-      for (let key in this.customData) {
-          qoe[key] = this.customData[key];
-      }
+  /**
+   * Cache the latest context/metadata attributes from a content event.
+   * The harvest-time QoE provider uses these to build the QOE_AGGREGATE event.
+   * @private
+   */
+  _cacheQoeMetadata(att) {
+    const metadata = {};
+    for (const key of Constants.QOE_AGGREGATE_KEYS) {
+      if (att[key] !== undefined) metadata[key] = att[key];
+    }
+    this._lastContentMetadata = metadata;
+  }
+
+  /**
+   * Harvest-time QoE provider. Called by the HarvestScheduler at drain time
+   * to produce a fresh QOE_AGGREGATE event (or null if not dirty / no session).
+   * @private
+   */
+  _buildQoeEvent(opts = {}) {
+    // Return cached final QoE event (built at CONTENT_END before reset)
+    if (this._pendingFinalQoe) {
+      const finalEvent = this._pendingFinalQoe;
+      this._pendingFinalQoe = null;
+      return finalEvent;
+    }
+
+    if (!this.qoeAggregator) return null;
+
+    const kpi = this.qoeAggregator.generateAggregateAttributes({
+      force: !!opts.isFinalHarvest,
+    });
+    if (!kpi) return null;
+
+    return this._assembleQoeEvent(kpi);
+  }
+
+  /**
+   * Assemble a QOE_AGGREGATE event object from KPIs + cached metadata.
+   * @private
+   */
+  _assembleQoeEvent(kpi) {
+    // Merge custom data into QoE KPIs
+    const qoeData = { ...kpi };
+    for (const key in this.customData) {
+      qoeData[key] = this.customData[key];
+    }
+
+    return {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      qoeAggregateVersion: "1.0.0",
+      ...qoeData,
+      ...this._lastContentMetadata,
+      timestamp: Date.now(),
+      timeSinceLoad: typeof window !== "undefined" && window.performance
+        ? window.performance.now() / 1000
+        : null,
+    };
+  }
+
+  /**
+   * Pure observer override: delegates to base class, then feeds the QoE aggregator
+   * with the enriched attributes. getAttributes() mutates att in-place, so after
+   * the parent call, att contains all enriched attributes the aggregator needs.
+   * Any new CONTENT_* event is automatically picked up — no per-method wiring needed.
+   */
+  sendVideoAction(event, att) {
+    Tracker.prototype.sendVideoAction.call(this, event, att);
+    if (this.qoeAggregator && event.startsWith("CONTENT_")) {
+      this.qoeAggregator.processAction(event, att, this.state.isPlaying);
+      this._cacheQoeMetadata(att);
+    }
+  }
+
+  sendVideoErrorAction(event, att) {
+    Tracker.prototype.sendVideoErrorAction.call(this, event, att);
+    if (this.qoeAggregator && event.startsWith("CONTENT_")) {
+      this.qoeAggregator.processAction(event, att, this.state.isPlaying);
+      this._cacheQoeMetadata(att);
+    }
+  }
+
+  sendVideoAdAction(event, att) {
+    Tracker.prototype.sendVideoAdAction.call(this, event, att);
+    if (this.qoeAggregator) {
+      this.qoeAggregator.processAdEvent(event, att);
+    }
   }
 
   /**
@@ -633,18 +723,15 @@ class VideoTracker extends Tracker {
         this.state.startAdsTime();
       } else {
         ev = VideoTracker.Events.CONTENT_START;
-        let totalAdsTime = 0;
         if(this.adsTracker) {
           // If ads state is set to playing (ad error) after content start, reset the ad state.
           if(this.adsTracker.state.isPlaying || this.adsTracker.state.isBuffering) {
-            totalAdsTime = this.adsTracker.state.stopAdsTime();
+            this.adsTracker.state.stopAdsTime();
             this.adsTracker.state.isPlaying = false;
             this.adsTracker.state.isBuffering = false;
-          } else {
-            totalAdsTime = this.adsTracker.state.totalAdTime() ?? 0;
           }
         }
-        this.state.setStartupTime(totalAdsTime)
+        // startupTime is now computed by QoEAggregator from attributes
         this.sendVideoAction(ev, att);
       }
       //this.send(ev, att);
@@ -688,6 +775,15 @@ class VideoTracker extends Tracker {
         // reset the states after the view count is up
           if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
           this.state.resetViewIdTrackedState();
+          // Eagerly build final QoE event BEFORE reset (bypasses dirty check).
+          // The provider will return this cached event on the next harvest cycle.
+          if (this.qoeAggregator) {
+            const finalKpi = this.qoeAggregator.generateAggregateAttributes({ force: true });
+            if (finalKpi) {
+              this._pendingFinalQoe = this._assembleQoeEvent(finalKpi);
+            }
+            this.qoeAggregator.reset();
+          }
       }
     }
   }
@@ -878,7 +974,6 @@ class VideoTracker extends Tracker {
     let ev = this.isAd()
       ? VideoTracker.Events.AD_ERROR
       : VideoTracker.Events.CONTENT_ERROR;
-    //this.send(ev, att);
 
     this.sendVideoErrorAction(ev, att);
   }

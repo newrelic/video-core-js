@@ -1,7 +1,6 @@
 import { HarvestScheduler } from "./harvestScheduler.js";
 import { NrVideoEventAggregator } from "./eventAggregator.js";
 import Log from "./log.js";
-import Tracker from "./tracker";
 
 /**
  * Enhanced video analytics agent with HarvestScheduler only.
@@ -48,15 +47,23 @@ class VideoAnalyticsAgent {
     }
 
     try {
-      if(eventObject.actionName && eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
-          // This makes sure that there is only one QOE aggregate event for a harvest cycle
-          return this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, eventObject);
-      }
       return this.eventBuffer.add(eventObject);
     } catch (error) {
       Log.error("Failed to add event to harvesting system:", error.message);
       return false;
     }
+  }
+
+  /**
+   * Registers a QoE provider with the harvest scheduler.
+   * The provider is called at harvest time to produce a fresh QOE_AGGREGATE event.
+   * @param {Function} provider - ({ isFinalHarvest }) => object|null
+   */
+  setQoeProvider(provider) {
+    if (!this.isInitialized) {
+      this.initialize();
+    }
+    this.harvestScheduler.setQoeProvider(provider);
   }
 
   /**
