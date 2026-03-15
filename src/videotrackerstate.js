@@ -104,14 +104,19 @@ class VideoTrackerState {
     this.partialAverageBitrate = 0;
 
     /**
-     * Had Startup Failure: TRUE if CONTENT_ERROR occurs before CONTENT_START.
+     * Total duration (ms) of all closed bitrate segments for weighted average
      */
-    this.hadStartupFailure = false;
+    this._totalBitrateDuration = 0;
 
     /**
-     * Had Playback Failure: TRUE if CONTENT_ERROR occurs during content playback.
+     * Had Startup Error: TRUE if CONTENT_ERROR occurs before CONTENT_START.
      */
-    this.hadPlaybackFailure = false;
+    this.hadStartupError = false;
+
+    /**
+     * Had Playback Error: TRUE if CONTENT_ERROR occurs during content playback.
+     */
+    this.hadPlaybackError = false;
 
     /**
      * The amount of ms the user has been rebuffering during content playback.
@@ -354,8 +359,8 @@ class VideoTrackerState {
           if (this.peakBitrate > 0) {
               kpi["peakBitrate"] = this.peakBitrate;
           }
-          kpi["hadStartupFailure"] = this.hadStartupFailure;
-          kpi["hadPlaybackFailure"] = this.hadPlaybackFailure;
+          kpi["hadStartupError"] = this.hadStartupError;
+          kpi["hadPlaybackError"] = this.hadPlaybackError;
           kpi["totalRebufferingTime"] = this.totalRebufferingTime;
           // Calculate rebuffering ratio as percentage (avoid division by zero)
           kpi["rebufferingRatio"] = this.totalPlaytime > 0
@@ -549,8 +554,10 @@ class VideoTrackerState {
       }
 
       // Accumulate total rebuffering time for content only
+      // Use exact stopped duration (stopTime - startTime) instead of live getDeltaTime()
       if (!this.isAd() && this.initialBufferingHappened) {
-        this.totalRebufferingTime += this.timeSinceBufferBegin.getDeltaTime();
+        this.totalRebufferingTime +=
+            (this.timeSinceBufferBegin.stopTime - this.timeSinceBufferBegin.startTime);
       }
 
       return true;
@@ -670,13 +677,13 @@ class VideoTrackerState {
     } else {
       this.timeSinceLastError.start();
 
-      // Track failure flags for content errors only
-      // Had Startup Failure: error before content started
+      // Track error flags for content errors only
+      // Had Startup Error: error before content started
       if (!this.isStarted) {
-        this.hadStartupFailure = true;
+        this.hadStartupError = true;
       } else {
-        // Had Playback Failure: any content error
-        this.hadPlaybackFailure = true;
+        // Had Playback Error: any content error during playback
+        this.hadPlaybackError = true;
       }
     }
   }
@@ -696,14 +703,57 @@ class VideoTrackerState {
     if (bitrate && typeof bitrate === "number") {
       this.peakBitrate = Math.max(this.peakBitrate, bitrate);
 
-      if(this._lastBitrate === null || this._lastBitrate !== bitrate) {
-        const deltaPlaytime = this._lastBitrateChangeTimestamp === null ? this.totalPlaytime : Date.now() - this._lastBitrateChangeTimestamp;
-        const currentWeightedBitrate = (bitrate * deltaPlaytime);
-        this.partialAverageBitrate += currentWeightedBitrate;
-        this.weightedBitrate = currentWeightedBitrate / deltaPlaytime;
+      const now = Date.now();
+
+      // If not playing (buffering, paused, etc.), close the current segment
+      // so non-play time is excluded from the weighted average
+      if (!this.isPlaying) {
+        if (this._lastBitrate !== null && this._lastBitrateChangeTimestamp !== null) {
+          const segmentDuration = now - this._lastBitrateChangeTimestamp;
+          if (segmentDuration > 0) {
+            this.partialAverageBitrate += this._lastBitrate * segmentDuration;
+            this._totalBitrateDuration += segmentDuration;
+          }
+          this._lastBitrateChangeTimestamp = null; // Mark as paused
+        }
         this._lastBitrate = bitrate;
-        this._lastBitrateChangeTimestamp = Date.now();
+        return;
       }
+
+      // Playing: restart timestamp if returning from non-play state
+      if (this._lastBitrateChangeTimestamp === null && this._lastBitrate !== null) {
+        this._lastBitrateChangeTimestamp = now;
+      }
+
+      // Close the PREVIOUS segment when bitrate changes
+      if (this._lastBitrate !== null && this._lastBitrate !== bitrate
+          && this._lastBitrateChangeTimestamp !== null) {
+        const segmentDuration = now - this._lastBitrateChangeTimestamp;
+        if (segmentDuration > 0) {
+          this.partialAverageBitrate += this._lastBitrate * segmentDuration;
+          this._totalBitrateDuration += segmentDuration;
+        }
+        this._lastBitrateChangeTimestamp = now;
+      }
+
+      // Initialize timestamp on first observation
+      if (this._lastBitrateChangeTimestamp === null) {
+        this._lastBitrateChangeTimestamp = now;
+      }
+
+      this._lastBitrate = bitrate;
+
+      // Compute weighted average including current in-progress segment
+      let totalWeighted = this.partialAverageBitrate;
+      let totalDuration = this._totalBitrateDuration;
+      const currentSegment = now - this._lastBitrateChangeTimestamp;
+      if (currentSegment > 0) {
+        totalWeighted += bitrate * currentSegment;
+        totalDuration += currentSegment;
+      }
+      this.weightedBitrate = totalDuration > 0
+          ? Math.round(totalWeighted / totalDuration)
+          : bitrate;
     }
   }
 
@@ -713,6 +763,7 @@ class VideoTrackerState {
   resetViewIdTrackedState() {
     this.peakBitrate = 0;
     this.partialAverageBitrate = 0;
+    this._totalBitrateDuration = 0;
     this.startupTime = null;
     this._lastBitrate = null;
     this._lastBitrateChangeTimestamp = null;
@@ -720,7 +771,7 @@ class VideoTrackerState {
 
   /** Methods to manage total ads time chrono */
   clearTotalAdsTime() {
-    console.log("clear total ads time", this.totalAdTime);
+    Log.debug("clear total ads time", this.totalAdTime);
     this._totalAdPlaytime.reset();
   }
 
@@ -729,12 +780,12 @@ class VideoTrackerState {
   }
 
   startAdsTime() {
-    console.log("startAdsTime");
+    Log.debug("startAdsTime");
     return this._totalAdPlaytime.start();
   }
 
   stopAdsTime() {
-    console.log("stopAdsTime");
+    Log.debug("stopAdsTime");
     return this._totalAdPlaytime.stop();
   }
 

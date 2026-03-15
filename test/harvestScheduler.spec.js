@@ -287,6 +287,178 @@ describe('HarvestScheduler', function() {
     });
   });
 
+  describe('drainEvents() - QoE cycle handling', function() {
+    beforeEach(function() {
+      scheduler = new HarvestScheduler(mockEventBuffer);
+      scheduler.retryQueueHandler.getQueueSize = sinon.stub().returns(0);
+    });
+
+    it('should re-buffer QoE events on non-QoE cycles instead of losing them', function() {
+      global.window.NRVIDEO.config = { qoeIntervalFactor: 3 };
+
+      const qoeEvent = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000 };
+      const playEvent = { actionName: 'PLAY' };
+      mockEventBuffer.drain.returns([playEvent, qoeEvent]);
+      mockEventBuffer.add = sinon.stub();
+
+      // Cycle 1 is QoE cycle (1-1) % 3 === 0
+      let events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(true);
+      expect(mockEventBuffer.add.called).toBe(false);
+
+      // Cycle 2 is NOT QoE cycle (2-1) % 3 !== 0
+      mockEventBuffer.drain.returns([playEvent, qoeEvent]);
+      events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(false);
+      // QoE should be put back into buffer
+      expect(mockEventBuffer.add.calledWith(qoeEvent)).toBe(true);
+    });
+
+    it('should preserve QoE timestamp from capture time (not override at drain)', function() {
+      const qoeEvent = { actionName: 'QOE_AGGREGATE', timestamp: 1000 };
+      mockEventBuffer.drain.returns([qoeEvent]);
+
+      clock.tick(5000);
+      scheduler.drainEvents();
+
+      expect(qoeEvent.timestamp).toBe(1000); // Timestamp stays from capture time
+    });
+
+    it('should include QoE when forceNextQoeCycle is set', function() {
+      global.window.NRVIDEO.config = { qoeIntervalFactor: 100 };
+
+      const qoeEvent = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000 };
+      mockEventBuffer.drain.returns([{ actionName: 'PLAY' }, qoeEvent]);
+      mockEventBuffer.add = sinon.stub();
+
+      // Force QoE inclusion on non-QoE cycle
+      scheduler.qoeCycleCount = 2; // Not a QoE cycle
+      scheduler.forceNextQoeCycle = true;
+
+      const events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(true);
+      expect(scheduler.forceNextQoeCycle).toBe(false); // Flag reset
+    });
+
+    it('should initialize forceNextQoeCycle to false', function() {
+      expect(scheduler.forceNextQoeCycle).toBe(false);
+    });
+
+    it('should call beforeDrainCallback before draining events', function() {
+      const callback = sinon.stub();
+      scheduler.beforeDrainCallback = callback;
+
+      mockEventBuffer.drain.returns([{ actionName: 'PLAY' }]);
+      scheduler.drainEvents();
+
+      expect(callback.calledOnce).toBe(true);
+      // Callback should be called before drain
+      expect(callback.calledBefore(mockEventBuffer.drain)).toBe(true);
+    });
+
+    it('should refresh QoE KPIs via beforeDrainCallback before sending', function() {
+      const qoeEvent = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000 };
+
+      // Simulate a callback that updates the QoE event's KPIs (as refreshQoeKpis would)
+      scheduler.beforeDrainCallback = function() {
+        // Find QoE in buffer and update it (mimics agent.refreshQoeKpis)
+        const existing = scheduler.eventBuffer.findByActionName('QOE_AGGREGATE');
+        if (existing) {
+          existing.totalPlaytime = 5000;
+          existing.peakBitrate = 4000;
+        }
+      };
+
+      // Use real buffer for this test
+      const { NrVideoEventAggregator } = require('../src/eventAggregator');
+      const realBuffer = new NrVideoEventAggregator();
+      realBuffer.add(qoeEvent);
+      scheduler.eventBuffer = realBuffer;
+
+      const events = scheduler.drainEvents();
+      const sentQoe = events.find(e => e.actionName === 'QOE_AGGREGATE');
+
+      expect(sentQoe).toBeDefined();
+      // KPIs should reflect the refreshed values, not the stale ones
+      expect(sentQoe.totalPlaytime).toBe(5000);
+      expect(sentQoe.peakBitrate).toBe(4000);
+    });
+
+    it('should initialize beforeDrainCallback to null', function() {
+      expect(scheduler.beforeDrainCallback).toBe(null);
+    });
+
+    it('should handle beforeDrainCallback errors gracefully', function() {
+      scheduler.beforeDrainCallback = sinon.stub().throws(new Error('callback error'));
+      mockEventBuffer.drain.returns([{ actionName: 'PLAY' }]);
+
+      // Should not throw, drain should still work
+      const events = scheduler.drainEvents();
+      expect(events.length).toBe(1);
+    });
+
+    it('should not send QoE if KPIs unchanged since last send (cross-cycle dirty check)', function() {
+      const qoe = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000 };
+
+      // Cycle 1: QoE sent (first time, _lastSentQoeKpis is null)
+      mockEventBuffer.drain.returns([{ actionName: 'PLAY' }, { ...qoe }]);
+      let events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(true);
+
+      // Cycle 2: Same KPIs — should NOT send QoE
+      mockEventBuffer.drain.returns([{ actionName: 'PLAY' }, { ...qoe }]);
+      events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(false);
+      expect(events.some(e => e.actionName === 'PLAY')).toBe(true);
+    });
+
+    it('should send QoE when KPIs change from last send', function() {
+      const qoe1 = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000 };
+      const qoe2 = { actionName: 'QOE_AGGREGATE', totalPlaytime: 5000 };
+
+      // Cycle 1: Send first QoE
+      mockEventBuffer.drain.returns([{ ...qoe1 }]);
+      scheduler.drainEvents();
+
+      // Cycle 2: KPIs changed — should send
+      mockEventBuffer.drain.returns([{ ...qoe2 }]);
+      const events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(true);
+      expect(events.find(e => e.actionName === 'QOE_AGGREGATE').totalPlaytime).toBe(5000);
+    });
+
+    it('should initialize _lastSentQoeKpis to null', function() {
+      expect(scheduler._lastSentQoeKpis).toBe(null);
+    });
+
+    it('should always send QoE when forceNextQoeCycle is set even if KPIs unchanged', function() {
+      const qoe = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000 };
+
+      // Cycle 1: Send QoE (first time)
+      mockEventBuffer.drain.returns([{ ...qoe }]);
+      scheduler.drainEvents();
+
+      // Cycle 2: Same KPIs but forced — should still send
+      mockEventBuffer.drain.returns([{ ...qoe }]);
+      scheduler.forceNextQoeCycle = true;
+      const events = scheduler.drainEvents();
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(true);
+    });
+
+    it('should always send QoE on final harvest even if KPIs unchanged', function() {
+      const qoe = { actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000 };
+
+      // Cycle 1: Send QoE (first time)
+      mockEventBuffer.drain.returns([{ ...qoe }]);
+      scheduler.drainEvents();
+
+      // Final harvest: Same KPIs but final — should still send
+      mockEventBuffer.drain.returns([{ ...qoe }]);
+      const events = scheduler.drainEvents({ isFinalHarvest: true });
+      expect(events.some(e => e.actionName === 'QOE_AGGREGATE')).toBe(true);
+    });
+  });
+
   describe('trimEventsToFit()', function() {
     beforeEach(function() {
       scheduler = new HarvestScheduler(mockEventBuffer);
