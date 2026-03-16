@@ -290,8 +290,8 @@ describe("VideoTrackerState", () => {
       expect(state.startupTime).toBeNull();
       expect(state.peakBitrate).toBe(0);
       expect(state.partialAverageBitrate).toBe(0);
-      expect(state.hadStartupFailure).toBe(false);
-      expect(state.hadPlaybackFailure).toBe(false);
+      expect(state.hadStartupError).toBe(false);
+      expect(state.hadPlaybackError).toBe(false);
       expect(state.totalRebufferingTime).toBe(0);
     });
 
@@ -330,14 +330,14 @@ describe("VideoTrackerState", () => {
       expect(state.peakBitrate).toBe(2000);
     });
 
-    it("should not set hadStartupFailure if error occurs after start", () => {
+    it("should not set hadStartupError if error occurs after start", () => {
       state.goRequest();
       state.goStart();
       expect(state.isStarted).toBe(true);
 
       state.goError();
-      expect(state.hadStartupFailure).toBe(false);
-      expect(state.hadPlaybackFailure).toBe(true);
+      expect(state.hadStartupError).toBe(false);
+      expect(state.hadPlaybackError).toBe(true);
     });
 
     it("getQoeAttributes() should return all KPI attributes with correct structure", () => {
@@ -348,8 +348,8 @@ describe("VideoTrackerState", () => {
       state.peakBitrate = 2000;
       state.partialAverageBitrate = 6000;
       state.weightedBitrate = 1200; // Set the weighted bitrate that will be used in averageBitrate
-      state.hadStartupFailure = false;
-      state.hadPlaybackFailure = true;
+      state.hadStartupError = false;
+      state.hadPlaybackError = true;
       state.totalRebufferingTime = 300;
       state.totalPlaytime = 5000;
       state.numberOfErrors = 3;
@@ -361,8 +361,8 @@ describe("VideoTrackerState", () => {
       expect(typeof result.qoe).toBe("object");
       expect(qoeAttrs["startupTime"]).toBe(500);
       expect(qoeAttrs["peakBitrate"]).toBe(2000);
-      expect(qoeAttrs["hadStartupFailure"]).toBe(false);
-      expect(qoeAttrs["hadPlaybackFailure"]).toBe(true);
+      expect(qoeAttrs["hadStartupError"]).toBe(false);
+      expect(qoeAttrs["hadPlaybackError"]).toBe(true);
       expect(qoeAttrs["totalRebufferingTime"]).toBe(300);
       expect(qoeAttrs["rebufferingRatio"]).toBeCloseTo(6, 0);
       expect(qoeAttrs["totalPlaytime"]).toBe(5000);
