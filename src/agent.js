@@ -1,5 +1,6 @@
 import { HarvestScheduler } from "./harvestScheduler.js";
 import { NrVideoEventAggregator } from "./eventAggregator.js";
+import Constants from "./constants.js";
 import Log from "./log.js";
 import Tracker from "./tracker";
 
@@ -49,7 +50,8 @@ class VideoAnalyticsAgent {
 
     try {
       if(eventObject.actionName && eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
-          // This makes sure that there is only one QOE aggregate event for a harvest cycle
+          // Ensure only one QOE_AGGREGATE event exists in buffer per harvest cycle.
+          // Dirty-check dedup happens at drain time in HarvestScheduler._qoeKpisUnchanged().
           return this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, eventObject);
       }
       return this.eventBuffer.add(eventObject);
@@ -70,6 +72,45 @@ class VideoAnalyticsAgent {
     }
 
     this.harvestScheduler.updateHarvestInterval(interval);
+  }
+
+  /**
+   * Forces the next harvest cycle to include QOE_AGGREGATE events.
+   * Called at CONTENT_END to ensure final QoE is sent.
+   */
+  forceNextQoeCycle() {
+    if (this.harvestScheduler) {
+      this.harvestScheduler.forceNextQoeCycle = true;
+    }
+  }
+
+  /**
+   * Sets a callback to be called before each drain to refresh QoE KPIs.
+   * @param {Function|null} callback - Function that refreshes QoE data in the buffer, or null to clear
+   */
+  setBeforeDrainCallback(callback) {
+    if (this.harvestScheduler) {
+      this.harvestScheduler.beforeDrainCallback = callback;
+    }
+  }
+
+  /**
+   * Updates QoE KPI fields on the existing QOE_AGGREGATE event in the buffer.
+   * Uses addOrReplaceByActionName to keep payload size tracking accurate.
+   * @param {object} freshKpis - Object with latest KPI values
+   */
+  refreshQoeKpis(freshKpis) {
+    if (!this.eventBuffer || !freshKpis) return;
+    const existing = this.eventBuffer.findByActionName(Tracker.Events.QOE_AGGREGATE);
+    if (existing) {
+      const updated = { ...existing };
+      for (const key of Constants.QOE_KPI_KEYS) {
+        if (key in freshKpis) {
+          updated[key] = freshKpis[key];
+        }
+      }
+      this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, updated);
+    }
   }
 }
 
