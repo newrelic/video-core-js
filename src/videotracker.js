@@ -1,6 +1,7 @@
 import Log from "./log";
 import Tracker from "./tracker";
 import TrackerState from "./videotrackerstate";
+import { videoAnalyticsHarvester } from "./agent";
 import pkg from "../package.json";
 
 /**
@@ -637,15 +638,23 @@ class VideoTracker extends Tracker {
         if(this.adsTracker) {
           // If ads state is set to playing (ad error) after content start, reset the ad state.
           if(this.adsTracker.state.isPlaying || this.adsTracker.state.isBuffering) {
-            totalAdsTime = this.adsTracker.state.stopAdsTime();
+            this.adsTracker.state.stopAdsTime();
             this.adsTracker.state.isPlaying = false;
             this.adsTracker.state.isBuffering = false;
-          } else {
-            totalAdsTime = this.adsTracker.state.totalAdTime() ?? 0;
           }
+          // Always use totalAdTime() which includes accumulator across all ads
+          totalAdsTime = this.adsTracker.state.totalAdTime() ?? 0;
         }
         this.state.setStartupTime(totalAdsTime)
         this.sendVideoAction(ev, att);
+
+        // Register callback to refresh QoE KPIs with latest state before each drain
+        videoAnalyticsHarvester.setBeforeDrainCallback(() => {
+          if (this.state) {
+            const freshKpis = this.state.getQoeAttributes({}).qoe;
+            videoAnalyticsHarvester.refreshQoeKpis(freshKpis);
+          }
+        });
       }
       //this.send(ev, att);
       this.startHeartbeat();
@@ -685,6 +694,11 @@ class VideoTracker extends Tracker {
       this.state.goViewCountUp();
       this.state.totalPlaytime = 0;
       if(!this.isAd()) {
+        // Force QoE to be included in the next harvest cycle at content end
+          videoAnalyticsHarvester.forceNextQoeCycle();
+        // Clear the before-drain callback so the next harvest doesn't overwrite
+        // the final QoE (already in buffer) with zeroed-out state values
+          videoAnalyticsHarvester.setBeforeDrainCallback(null);
         // reset the states after the view count is up
           if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
           this.state.resetViewIdTrackedState();

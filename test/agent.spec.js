@@ -111,4 +111,90 @@ describe('videoAnalyticsHarvester', function() {
       expect(videoAnalyticsHarvester.harvestScheduler.harvestCycle).toBe(20000);
     });
   });
+
+  describe('forceNextQoeCycle()', function() {
+    it('should set forceNextQoeCycle flag on harvest scheduler', function() {
+      expect(videoAnalyticsHarvester.harvestScheduler.forceNextQoeCycle).toBe(false);
+
+      videoAnalyticsHarvester.forceNextQoeCycle();
+
+      expect(videoAnalyticsHarvester.harvestScheduler.forceNextQoeCycle).toBe(true);
+    });
+  });
+
+  describe('QOE_AGGREGATE buffer management', function() {
+    beforeEach(function() {
+      if (videoAnalyticsHarvester.eventBuffer) {
+        videoAnalyticsHarvester.eventBuffer.clear();
+      }
+    });
+
+    it('should always replace QOE_AGGREGATE in buffer (dedup happens at drain time)', function() {
+      const qoe1 = {actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000};
+      const qoe2 = {actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000, timestamp: 9999};
+
+      videoAnalyticsHarvester.addEvent(qoe1);
+      videoAnalyticsHarvester.addEvent(qoe2);
+
+      const events = videoAnalyticsHarvester.eventBuffer.drain();
+      expect(events.length).toBe(1);
+      // Should have the latest event (replaced)
+      expect(events[0].timestamp).toBe(9999);
+    });
+
+    it('should replace QOE_AGGREGATE when KPIs differ', function() {
+      const qoe1 = {actionName: 'QOE_AGGREGATE', totalPlaytime: 1000};
+      const qoe2 = {actionName: 'QOE_AGGREGATE', totalPlaytime: 5000};
+
+      videoAnalyticsHarvester.addEvent(qoe1);
+      videoAnalyticsHarvester.addEvent(qoe2);
+
+      const events = videoAnalyticsHarvester.eventBuffer.drain();
+      expect(events.length).toBe(1);
+      expect(events[0].totalPlaytime).toBe(5000);
+    });
+  });
+
+  describe('setBeforeDrainCallback()', function() {
+    it('should set beforeDrainCallback on harvest scheduler', function() {
+      const callback = function() {};
+      videoAnalyticsHarvester.setBeforeDrainCallback(callback);
+
+      expect(videoAnalyticsHarvester.harvestScheduler.beforeDrainCallback).toBe(callback);
+    });
+  });
+
+  describe('refreshQoeKpis()', function() {
+    beforeEach(function() {
+      if (videoAnalyticsHarvester.eventBuffer) {
+        videoAnalyticsHarvester.eventBuffer.clear();
+      }
+    });
+
+    it('should update KPI fields on existing QOE_AGGREGATE in buffer', function() {
+      const qoe = {actionName: 'QOE_AGGREGATE', totalPlaytime: 1000, peakBitrate: 2000};
+      videoAnalyticsHarvester.addEvent(qoe);
+
+      // Refresh with updated KPIs
+      videoAnalyticsHarvester.refreshQoeKpis({totalPlaytime: 5000, peakBitrate: 3000});
+
+      const events = videoAnalyticsHarvester.eventBuffer.drain();
+      expect(events.length).toBe(1);
+      expect(events[0].totalPlaytime).toBe(5000);
+      expect(events[0].peakBitrate).toBe(3000);
+      // actionName should be preserved
+      expect(events[0].actionName).toBe('QOE_AGGREGATE');
+    });
+
+    it('should do nothing if no QOE_AGGREGATE exists in buffer', function() {
+      videoAnalyticsHarvester.addEvent({actionName: 'PLAY'});
+
+      // Should not throw
+      videoAnalyticsHarvester.refreshQoeKpis({totalPlaytime: 5000});
+
+      const events = videoAnalyticsHarvester.eventBuffer.drain();
+      expect(events.length).toBe(1);
+      expect(events[0].actionName).toBe('PLAY');
+    });
+  });
 });
