@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.2] - 2026/03/18
+
+### Fix
+
+- **QoE aggregate improvements - KPI accuracy**
+  Fixed startup time, average bitrate, and rebuffering time calculations for more accurate QoE KPI reporting
+
+- **QoE harvest lifecycle and dedup**
+  Improved harvest cycle management with state refresh before drain, forced QoE at `CONTENT_END`, cross-cycle dirty check to skip unchanged KPIs.
+
 ## [4.1.0] - 2026/02/18
 
 ### Feat
