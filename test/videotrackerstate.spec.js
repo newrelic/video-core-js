@@ -290,8 +290,8 @@ describe("VideoTrackerState", () => {
       expect(state.startupTime).toBeNull();
       expect(state.peakBitrate).toBe(0);
       expect(state.partialAverageBitrate).toBe(0);
-      expect(state.hadStartupFailure).toBe(false);
-      expect(state.hadPlaybackFailure).toBe(false);
+      expect(state.hadStartupError).toBe(false);
+      expect(state.hadPlaybackError).toBe(false);
       expect(state.totalRebufferingTime).toBe(0);
     });
 
@@ -316,7 +316,8 @@ describe("VideoTrackerState", () => {
       expect(state.startupTime).toBe(0);
     });
 
-    it("should track peakBitrate correctly (max value over time)", () => {
+    it("should track peakBitrate correctly even when not playing", () => {
+      // peakBitrate updates regardless of play state
       state.trackContentBitrateState(1000);
       expect(state.peakBitrate).toBe(1000);
 
@@ -324,20 +325,99 @@ describe("VideoTrackerState", () => {
       expect(state.peakBitrate).toBe(1500);
 
       state.trackContentBitrateState(800);
-      expect(state.peakBitrate).toBe(1500); 
+      expect(state.peakBitrate).toBe(1500);
 
       state.trackContentBitrateState(2000);
       expect(state.peakBitrate).toBe(2000);
     });
 
-    it("should not set hadStartupFailure if error occurs after start", () => {
+    it("should compute time-weighted average bitrate only during play state", () => {
+      const dateNowSpy = jest.spyOn(Date, 'now');
+      let currentTime = 1000;
+      dateNowSpy.mockImplementation(() => currentTime);
+
+      // Simulate playing state
+      state.isPlaying = true;
+
+      // First bitrate observation at t=1000
+      state.trackContentBitrateState(2000000);
+      expect(state.peakBitrate).toBe(2000000);
+      expect(state.weightedBitrate).toBe(2000000); // First observation = bitrate itself
+
+      // Change bitrate at t=11000 (after 10s at 2Mbps)
+      currentTime = 11000;
+      state.trackContentBitrateState(4000000);
+
+      // Previous segment: 2Mbps * 10000ms = 20000000000
+      // New segment: just started, 0 duration
+      // Average = 20000000000 / 10000 = 2000000 (only the closed segment)
+      expect(state.peakBitrate).toBe(4000000);
+      // At the same instant of change, only the closed segment contributes
+      expect(state.weightedBitrate).toBe(2000000);
+
+      // Read at t=31000 (after 20s at 4Mbps)
+      currentTime = 31000;
+      state.trackContentBitrateState(4000000); // Same bitrate, no segment close
+
+      // Closed: 2M*10000 = 20000000000
+      // In-progress: 4M*20000 = 80000000000
+      // Total: 100000000000 / 30000 ≈ 3333333
+      expect(state.weightedBitrate).toBe(Math.round(100000000000 / 30000));
+
+      dateNowSpy.mockRestore();
+    });
+
+    it("should exclude buffering time from average bitrate calculation", () => {
+      const dateNowSpy = jest.spyOn(Date, 'now');
+      let currentTime = 1000;
+      dateNowSpy.mockImplementation(() => currentTime);
+
+      state.isPlaying = true;
+
+      // Play at 2Mbps for 10s
+      state.trackContentBitrateState(2000000);
+      currentTime = 11000;
+
+      // Buffer starts at t=11000 — closes play segment (10s at 2Mbps)
+      state.isPlaying = false;
+      state.trackContentBitrateState(2000000);
+
+      // Buffer for 5s (this time should NOT count)
+      currentTime = 16000;
+
+      // Resume playing at t=16000 — restarts segment
+      state.isPlaying = true;
+
+      // Play at 4Mbps for 10s
+      state.trackContentBitrateState(4000000);
+      currentTime = 26000;
+      state.trackContentBitrateState(4000000);
+
+      // Only play time: 2M*10000 + 4M*10000 = 60000000000 / 20000 = 3000000
+      // Buffer time (5s) is excluded
+      expect(state.weightedBitrate).toBe(3000000);
+
+      dateNowSpy.mockRestore();
+    });
+
+    it("should initialize _totalBitrateDuration to 0", () => {
+      expect(state._totalBitrateDuration).toBe(0);
+    });
+
+    it("should reset _totalBitrateDuration in resetViewIdTrackedState", () => {
+      state._totalBitrateDuration = 5000;
+      state.resetViewIdTrackedState();
+      expect(state._totalBitrateDuration).toBe(0);
+    });
+
+    it("should not set hadStartupError if error occurs after start", () => {
       state.goRequest();
       state.goStart();
       expect(state.isStarted).toBe(true);
 
       state.goError();
-      expect(state.hadStartupFailure).toBe(false);
-      expect(state.hadPlaybackFailure).toBe(true);
+      expect(state.hadStartupError).toBe(false);
+      expect(state.hadPlaybackError).toBe(true);
     });
 
     it("getQoeAttributes() should return all KPI attributes with correct structure", () => {
@@ -348,8 +428,8 @@ describe("VideoTrackerState", () => {
       state.peakBitrate = 2000;
       state.partialAverageBitrate = 6000;
       state.weightedBitrate = 1200; // Set the weighted bitrate that will be used in averageBitrate
-      state.hadStartupFailure = false;
-      state.hadPlaybackFailure = true;
+      state.hadStartupError = false;
+      state.hadPlaybackError = true;
       state.totalRebufferingTime = 300;
       state.totalPlaytime = 5000;
       state.numberOfErrors = 3;
@@ -361,8 +441,8 @@ describe("VideoTrackerState", () => {
       expect(typeof result.qoe).toBe("object");
       expect(qoeAttrs["startupTime"]).toBe(500);
       expect(qoeAttrs["peakBitrate"]).toBe(2000);
-      expect(qoeAttrs["hadStartupFailure"]).toBe(false);
-      expect(qoeAttrs["hadPlaybackFailure"]).toBe(true);
+      expect(qoeAttrs["hadStartupError"]).toBe(false);
+      expect(qoeAttrs["hadPlaybackError"]).toBe(true);
       expect(qoeAttrs["totalRebufferingTime"]).toBe(300);
       expect(qoeAttrs["rebufferingRatio"]).toBeCloseTo(6, 0);
       expect(qoeAttrs["totalPlaytime"]).toBe(5000);

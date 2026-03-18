@@ -588,7 +588,8 @@ describe("recordEvent", () => {
       expect(qoeEvent.viewId).toBe("view-789");
       expect(qoeEvent.playerName).toBe("CustomPlayer");
       expect(qoeEvent.actionName).toBe(Tracker.Events.QOE_AGGREGATE);
-      expect(qoeEvent).not.toHaveProperty("contentDuration");
+      expect(qoeEvent.contentDuration).toBe(120);
+      expect(qoeEvent).toHaveProperty("contentDuration");
       expect(qoeEvent).not.toHaveProperty("playerState");
     });
 

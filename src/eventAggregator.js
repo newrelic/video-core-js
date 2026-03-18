@@ -56,6 +56,16 @@ export class NrVideoEventAggregator {
     }
 
   /**
+   * Returns the existing event in buffer matching the given actionName, or null.
+   * @param {string} actionName
+   * @returns {object|null}
+   */
+  findByActionName(actionName) {
+      const event = this.buffer.find(e => e.actionName === actionName);
+      return event || null;
+  }
+
+  /**
    * Adds an event to the unified buffer.
    * All events are treated equally in FIFO order.
    * @param {object} eventObject - The event to add

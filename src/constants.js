@@ -42,6 +42,12 @@ Constants.MAX_BEACON_SIZE = 61440; // 60KB = 60 × 1024 bytes
 Constants.MAX_EVENTS_PER_BATCH = 1000;
 Constants.INTERVAL = 10000; //10 seconds
 
+Constants.QOE_KPI_KEYS = [
+    "startupTime", "peakBitrate", "averageBitrate", "totalPlaytime",
+    "totalRebufferingTime", "rebufferingRatio", "hadStartupError",
+    "hadPlaybackError", "numberOfErrors"
+];
+
 Constants.QOE_AGGREGATE_KEYS = [
     "coreVersion", "instrumentation.name",
     "instrumentation.provider", "instrumentation.version", "isBackgroundEvent", "playerName", "playerVersion",

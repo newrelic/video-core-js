@@ -3,6 +3,7 @@ import { RetryQueueHandler } from "./retryQueueHandler";
 import { OptimizedHttpClient } from "./optimizedHttpClient";
 import { buildUrl, dataSize } from "./utils";
 import Constants from "./constants";
+import Tracker from "./tracker";
 import Log from "./log";
 
 /**
@@ -32,6 +33,9 @@ export class HarvestScheduler {
     this.harvestCycle = Constants.INTERVAL;
     this.isHarvesting = false;
     this.qoeCycleCount = 1;
+    this.forceNextQoeCycle = false;
+    this.beforeDrainCallback = null;
+    this._lastSentQoeKpis = null;
 
     // Page lifecycle handling
     this.setupPageLifecycleHandlers();
@@ -247,17 +251,53 @@ export class HarvestScheduler {
   drainEvents(options = {}) {
     // Determine if this cycle should include the QOE_AGGREGATE event
     const multiplier = window.NRVIDEO?.config?.qoeIntervalFactor ?? 1;
+    const isForced = !!options.isFinalHarvest || this.forceNextQoeCycle;
     const isQoeCycle =
-      (this.qoeCycleCount - 1) % multiplier === 0 ||
-      !!options.isFinalHarvest;
+      (this.qoeCycleCount - 1) % multiplier === 0 || isForced;
+
+    // Reset force flag after use
+    if (this.forceNextQoeCycle) this.forceNextQoeCycle = false;
+
+    // Refresh QoE KPIs with latest tracker state before draining
+    if (this.beforeDrainCallback && typeof this.beforeDrainCallback === 'function') {
+      try {
+        this.beforeDrainCallback();
+      } catch (e) {
+        Log.error("Before drain callback failed:", e.message);
+      }
+    }
 
     // Always drain fresh events first (priority approach)
     const freshEvents = this.eventBuffer.drain();
-    const filteredFreshEvents = isQoeCycle
-      ? freshEvents
-      : freshEvents.filter((e) => e.actionName !== "QOE_AGGREGATE");
+    let filteredFreshEvents;
+    if (isQoeCycle) {
+      filteredFreshEvents = freshEvents;
+    } else {
+      // On non-QoE cycles, put QoE events back into buffer instead of losing them
+      filteredFreshEvents = [];
+      for (const e of freshEvents) {
+        if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
+          this.eventBuffer.add(e);
+        } else {
+          filteredFreshEvents.push(e);
+        }
+      }
+    }
 
     this.qoeCycleCount++;
+
+    // Cross-cycle dirty check: skip QoE if KPIs unchanged since last send
+    // Forced cycles (CONTENT_END, page unload) always send QoE
+    for (let i = filteredFreshEvents.length - 1; i >= 0; i--) {
+      const e = filteredFreshEvents[i];
+      if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
+        if (!isForced && this._qoeKpisUnchanged(e)) {
+          filteredFreshEvents.splice(i, 1);
+        } else {
+          this._saveQoeKpis(e);
+        }
+      }
+    }
 
     let events = [...filteredFreshEvents];
     let currentPayloadSize = dataSize(filteredFreshEvents);
@@ -427,5 +467,31 @@ export class HarvestScheduler {
     window.addEventListener("beforeunload", () => {
       triggerFinalHarvest();
     });
+  }
+
+  /**
+   * Checks if QoE KPIs are unchanged since last send.
+   * @param {object} event - QoE event to compare
+   * @returns {boolean} True if KPIs are identical to last sent
+   * @private
+   */
+  _qoeKpisUnchanged(event) {
+    if (!this._lastSentQoeKpis) return false;
+    for (const key of Constants.QOE_KPI_KEYS) {
+      if (event[key] !== this._lastSentQoeKpis[key]) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Saves QoE KPI values after sending.
+   * @param {object} event - QoE event that was sent
+   * @private
+   */
+  _saveQoeKpis(event) {
+    this._lastSentQoeKpis = {};
+    for (const key of Constants.QOE_KPI_KEYS) {
+      this._lastSentQoeKpis[key] = event[key];
+    }
   }
 }

@@ -103,19 +103,19 @@ describe("VideoTracker", () => {
       // Before content starts (only request sent)
       tracker.sendRequest();
       let attrsBeforeStart = tracker.getAttributes();
-      expect(attrsBeforeStart.contentBitrate).to.be.undefined;
-      expect(attrsBeforeStart.contentRenditionBitrate).to.be.undefined;
+      expect(attrsBeforeStart.contentBitrate).toBeUndefined();
+      expect(attrsBeforeStart.contentRenditionBitrate).toBeUndefined();
 
       // After content starts
       tracker.sendStart();
       let attrsAfterStart = tracker.getAttributes();
-      expect(attrsAfterStart.contentBitrate).to.equal(5000000);
-      expect(attrsAfterStart.contentRenditionBitrate).to.equal(4000000);
+      expect(attrsAfterStart.contentBitrate).toBe(5000000);
+      expect(attrsAfterStart.contentRenditionBitrate).toBe(4000000);
 
       // Other rendition attributes should still be included (even if null) before start
-      expect(attrsBeforeStart).to.have.property("contentRenditionName");
-      expect(attrsBeforeStart).to.have.property("contentRenditionHeight");
-      expect(attrsBeforeStart).to.have.property("contentRenditionWidth");
+      expect(attrsBeforeStart).toHaveProperty("contentRenditionName");
+      expect(attrsBeforeStart).toHaveProperty("contentRenditionHeight");
+      expect(attrsBeforeStart).toHaveProperty("contentRenditionWidth");
 
       // Cleanup
       delete global.window;
@@ -138,19 +138,19 @@ describe("VideoTracker", () => {
       // Before ad starts (only request sent)
       tracker.sendRequest();
       let attrsBeforeStart = tracker.getAttributes();
-      expect(attrsBeforeStart.adBitrate).to.be.undefined;
-      expect(attrsBeforeStart.adRenditionBitrate).to.be.undefined;
+      expect(attrsBeforeStart.adBitrate).toBeUndefined();
+      expect(attrsBeforeStart.adRenditionBitrate).toBeUndefined();
 
       // After ad starts
       tracker.sendStart();
       let attrsAfterStart = tracker.getAttributes();
-      expect(attrsAfterStart.adBitrate).to.equal(3000000);
-      expect(attrsAfterStart.adRenditionBitrate).to.equal(2500000);
+      expect(attrsAfterStart.adBitrate).toBe(3000000);
+      expect(attrsAfterStart.adRenditionBitrate).toBe(2500000);
 
       // Other rendition attributes should still be included (even if null) before start
-      expect(attrsBeforeStart).to.have.property("adRenditionName");
-      expect(attrsBeforeStart).to.have.property("adRenditionHeight");
-      expect(attrsBeforeStart).to.have.property("adRenditionWidth");
+      expect(attrsBeforeStart).toHaveProperty("adRenditionName");
+      expect(attrsBeforeStart).toHaveProperty("adRenditionHeight");
+      expect(attrsBeforeStart).toHaveProperty("adRenditionWidth");
 
       // Cleanup
       delete global.window;

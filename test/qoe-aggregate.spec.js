@@ -33,8 +33,8 @@ describe("QOE_AGGREGATE Buffer Management", () => {
       actionName: Tracker.Events.QOE_AGGREGATE,
       qoeAggregateVersion: "1.0.0",
       "kpi.totalPlaytime": 1000,
-      "kpi.hadStartupFailure": false,
-      "kpi.hadPlaybackFailure": false
+      "kpi.hadStartupError": false,
+      "kpi.hadPlaybackError": false
     };
 
     const result = videoAnalyticsHarvester.addEvent(qoeEvent);
@@ -51,22 +51,22 @@ describe("QOE_AGGREGATE Buffer Management", () => {
     const qoeEvent1 = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 1000
+      totalPlaytime: 1000
     };
 
     const qoeEvent2 = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 2000
+      totalPlaytime: 2000
     };
 
     const qoeEvent3 = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 3000
+      totalPlaytime: 3000
     };
 
-    // Add multiple QOE events
+    // Add multiple QOE events (each has different KPIs so dirty check allows replace)
     videoAnalyticsHarvester.addEvent(qoeEvent1);
     videoAnalyticsHarvester.addEvent(qoeEvent2);
     videoAnalyticsHarvester.addEvent(qoeEvent3);
@@ -76,27 +76,27 @@ describe("QOE_AGGREGATE Buffer Management", () => {
 
     const events = videoAnalyticsHarvester.eventBuffer.drain();
     expect(events.length).toBe(1);
-    expect(events[0]["kpi.totalPlaytime"]).toBe(3000); // Latest value
+    expect(events[0].totalPlaytime).toBe(3000); // Latest value
   });
 
   it("should correctly adjust payload size when replacing QOE_AGGREGATE", () => {
     const smallQoeEvent = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 1000
+      totalPlaytime: 1000
     };
 
     const largeQoeEvent = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 2000,
-      "kpi.peakBitrate": 2000,
-      "kpi.averageBitrate": 1800,
-      "kpi.totalRebufferingTime": 500,
-      "kpi.rebufferingRatio": 5.5,
-      "kpi.hadStartupFailure": false,
-      "kpi.hadPlaybackFailure": true,
-      "kpi.startupTime": 300
+      totalPlaytime: 2000,
+      peakBitrate: 2000,
+      averageBitrate: 1800,
+      totalRebufferingTime: 500,
+      rebufferingRatio: 5.5,
+      hadStartupError: false,
+      hadPlaybackError: true,
+      startupTime: 300
     };
 
     // Add small event
@@ -148,19 +148,19 @@ describe("QOE_AGGREGATE Buffer Management", () => {
     const qoeEvent1 = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 1000
+      totalPlaytime: 1000
     };
 
     const qoeEvent2 = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 2000
+      totalPlaytime: 2000
     };
 
     const qoeEvent3 = {
       eventType: "VideoAction",
       actionName: Tracker.Events.QOE_AGGREGATE,
-      "kpi.totalPlaytime": 3000
+      totalPlaytime: 3000
     };
 
     videoAnalyticsHarvester.addEvent(qoeEvent1);
@@ -171,6 +171,61 @@ describe("QOE_AGGREGATE Buffer Management", () => {
 
     videoAnalyticsHarvester.addEvent(qoeEvent3);
     expect(videoAnalyticsHarvester.eventBuffer.totalEvents).toBe(1);
+  });
+
+  it("should always replace QOE_AGGREGATE in buffer (dedup happens at drain time in scheduler)", () => {
+    const qoeEvent1 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      totalPlaytime: 5000,
+      peakBitrate: 2000,
+      averageBitrate: 1500,
+      timestamp: 1000
+    };
+
+    const qoeEvent2 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      totalPlaytime: 5000,
+      peakBitrate: 2000,
+      averageBitrate: 1500,
+      timestamp: 2000
+    };
+
+    videoAnalyticsHarvester.addEvent(qoeEvent1);
+    expect(videoAnalyticsHarvester.eventBuffer.size()).toBe(1);
+
+    // Same KPIs, different timestamp — should replace (agent no longer does dirty check)
+    videoAnalyticsHarvester.addEvent(qoeEvent2);
+    expect(videoAnalyticsHarvester.eventBuffer.size()).toBe(1);
+
+    const events = videoAnalyticsHarvester.eventBuffer.drain();
+    // Should have the latest timestamp (replaced)
+    expect(events[0].timestamp).toBe(2000);
+  });
+
+  it("should replace QOE_AGGREGATE when KPIs change", () => {
+    const qoeEvent1 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      totalPlaytime: 5000,
+      peakBitrate: 2000
+    };
+
+    const qoeEvent2 = {
+      eventType: "VideoAction",
+      actionName: Tracker.Events.QOE_AGGREGATE,
+      totalPlaytime: 8000,
+      peakBitrate: 3000
+    };
+
+    videoAnalyticsHarvester.addEvent(qoeEvent1);
+    videoAnalyticsHarvester.addEvent(qoeEvent2);
+
+    expect(videoAnalyticsHarvester.eventBuffer.size()).toBe(1);
+    const events = videoAnalyticsHarvester.eventBuffer.drain();
+    expect(events[0].totalPlaytime).toBe(8000);
+    expect(events[0].peakBitrate).toBe(3000);
   });
 
 });
