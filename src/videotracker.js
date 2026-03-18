@@ -567,8 +567,10 @@ class VideoTracker extends Tracker {
 
   addQoeAttributes(att) {
       att = this.state.getQoeAttributes(att);
-      // QOE events should only contain KPIs from state and whitelisted metadata
-      // from QOE_AGGREGATE_KEYS — custom attributes are intentionally excluded.
+      const qoe = att.qoe;
+      for (let key in this.customData) {
+          qoe[key] = this.customData[key];
+      }
   }
 
   /**
