@@ -11,6 +11,15 @@ All notable changes to this project will be documented in this file.
 - **QoE harvest lifecycle and dedup**
   Improved harvest cycle management with state refresh before drain, forced QoE at `CONTENT_END`, cross-cycle dirty check to skip unchanged KPIs.
 
+- **Rename QOE playback failure attrs to error**
+  Renamed `hadStartupFailure` and `hadPlaybackFailure` properties to `hadStartupError` and `hadPlaybackError` in `videotrackerstate.js` to align with error terminology.
+
+## [4.1.1] - 2026/03/13
+
+### Fix
+- Added bitrate related changes](d588f72)
+- Added qoe harvest cycle multiplier
+
 ## [4.1.0] - 2026/02/18
 
 ### Feat
