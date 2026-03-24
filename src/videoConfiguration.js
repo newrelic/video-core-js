@@ -92,14 +92,37 @@ class VideoConfiguration {
       return false;
     }
 
-    const { qoeAggregate } = config;
+    const { qoeAggregate, obfuscate } = config;
 
     if (qoeAggregate !== undefined && typeof qoeAggregate !== "boolean") {
       Log.error("qoeAggregate must be a boolean");
       return false;
     }
 
+    if (obfuscate !== undefined && !Array.isArray(obfuscate)) {
+      Log.error("obfuscate must be an array");
+      return false;
+    }
+
     return true;
+  }
+
+  /**
+   * Filters obfuscation rules, warning about and removing invalid ones.
+   * @param {Array} rules - Raw obfuscation rules
+   * @returns {Array} Valid rules only
+   */
+  filterObfuscateRules(rules) {
+    if (!rules) return [];
+    return rules.filter((rule) => {
+      const hasRegex = rule.regex !== undefined && (typeof rule.regex === "string" || rule.regex instanceof RegExp);
+      const hasReplacement = rule.replacement !== undefined && typeof rule.replacement === "string";
+      if (!hasRegex || !hasReplacement) {
+        Log.warn("obfuscate rule missing required 'regex' (string|RegExp) and/or 'replacement' (string), skipping:", rule);
+        return false;
+      }
+      return true;
+    });
   }
 
   /**
@@ -141,6 +164,7 @@ class VideoConfiguration {
       config: {
         qoeAggregate: config?.qoeAggregate ?? false,
         qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
+        obfuscate: this.filterObfuscateRules(config?.obfuscate),
       }
     };
   }
