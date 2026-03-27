@@ -56,6 +56,44 @@ export class NrVideoEventAggregator {
     }
 
   /**
+   * If an event with the specified actionName and viewId already exists in the buffer, it will be replaced.
+   * Otherwise, the event will be added as a new entry.
+   * @param {string} actionName - The actionName to search for in the buffer
+   * @param {string} viewId - The viewId to scope the lookup to
+   * @param {object} eventObject - The event object to add or use as replacement.
+   * @returns {boolean} True if the operation succeeded, false if an error occurred
+   */
+  addOrReplaceByActionNameAndViewId(actionName, viewId, eventObject) {
+      const i = this.buffer.findIndex(
+          e => e.actionName === actionName && e.viewId === viewId
+      );
+      try {
+          if (i === -1) {
+              this.add(eventObject);
+          } else {
+              this.add(eventObject, i);
+          }
+          return true;
+      } catch (error) {
+          Log.error("Failed to set or replace the event to buffer:", error.message);
+          return false;
+      }
+  }
+
+  /**
+   * Returns the existing event in buffer matching the given actionName and viewId, or null.
+   * @param {string} actionName
+   * @param {string} viewId
+   * @returns {object|null}
+   */
+  findByActionNameAndViewId(actionName, viewId) {
+      const event = this.buffer.find(
+          e => e.actionName === actionName && e.viewId === viewId
+      );
+      return event || null;
+  }
+
+  /**
    * Returns the existing event in buffer matching the given actionName, or null.
    * @param {string} actionName
    * @returns {object|null}

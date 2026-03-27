@@ -652,7 +652,7 @@ class VideoTracker extends Tracker {
         videoAnalyticsHarvester.setBeforeDrainCallback(() => {
           if (this.state) {
             const freshKpis = this.state.getQoeAttributes({}).qoe;
-            videoAnalyticsHarvester.refreshQoeKpis(freshKpis);
+            videoAnalyticsHarvester.refreshQoeKpis(freshKpis, this.getViewId());
           }
         });
       }
