@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.3] - 2026/03/24
+
+### Fix
+
+- **Bitrate attributes default to 0 instead of null**
+  Updated `getAttributes()` in `videotracker.js` to fallback bitrate values (`contentBitrate`, `contentRenditionBitrate`, `contentManifestBitrate`, `contentMeasuredBitrate`, `contentDownloadBitrate`) to `0` when null, preventing attributes from being dropped by `cleanData`.
+
 ## [4.1.2] - 2026/03/18
 
 ### Fix
