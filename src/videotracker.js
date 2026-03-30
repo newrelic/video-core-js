@@ -485,10 +485,8 @@ class VideoTracker extends Tracker {
       // Only add bitrate attributes after ad has started
       if (this.state.isStarted) {
         att.adBitrate =
-          this.getBitrate() ||
-          this.getWebkitBitrate() ||
-          this.getRenditionBitrate();
-        att.adRenditionBitrate = this.getRenditionBitrate();
+          this.getBitrate() || 0;
+        att.adRenditionBitrate = this.getRenditionBitrate() || 0;
       }
 
       att.adRenditionName = this.getRenditionName();
@@ -516,14 +514,11 @@ class VideoTracker extends Tracker {
 
       // Only add bitrate attributes after content has started
       if (this.state.isStarted) {
-        att.contentBitrate =
-          this.getBitrate() ||
-          this.getWebkitBitrate() ||
-          this.getRenditionBitrate();
-        att.contentRenditionBitrate = this.getRenditionBitrate();
-        att.contentManifestBitrate = this.getManifestBitrate();
-        att.contentMeasuredBitrate = this.getMeasuredBitrate();
-        att.contentDownloadBitrate = this.getDownloadBitrate();
+        att.contentBitrate = this.getBitrate()|| 0;
+        att.contentRenditionBitrate = this.getRenditionBitrate() || 0;
+        att.contentManifestBitrate = this.getManifestBitrate() || 0;
+        att.contentMeasuredBitrate = this.getMeasuredBitrate() || 0;
+        att.contentDownloadBitrate = this.getDownloadBitrate() || 0;
       }
 
       att.contentRenditionName = this.getRenditionName();
