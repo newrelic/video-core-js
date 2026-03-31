@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.4] - 2026/03/31
+
+### Feat
+
+- **Add obfuscation rules support for pre-harvest payload masking**
+  Introduces regex-based obfuscation rules that mask sensitive data in event payloads before they are sent to New Relic. Allows configuration of custom regex patterns with replacement strings to protect PII and sensitive tokens. Rules are applied in order to the serialized JSON payload, with invalid regex patterns logged as warnings and skipped.
+
 ## [4.1.3] - 2026/03/24
 
 ### Fix
