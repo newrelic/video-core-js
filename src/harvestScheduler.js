@@ -35,7 +35,7 @@ export class HarvestScheduler {
     this.qoeCycleCount = 1;
     this.forceNextQoeCycle = false;
     this.beforeDrainCallback = null;
-    this._lastSentQoeKpis = null;
+    this._lastSentQoeKpis = {};
 
     // Page lifecycle handling
     this.setupPageLifecycleHandlers();
@@ -476,22 +476,24 @@ export class HarvestScheduler {
    * @private
    */
   _qoeKpisUnchanged(event) {
-    if (!this._lastSentQoeKpis) return false;
+    const snapshot = this._lastSentQoeKpis[event.viewId];
+    if (!snapshot) return false;
     for (const key of Constants.QOE_KPI_KEYS) {
-      if (event[key] !== this._lastSentQoeKpis[key]) return false;
+      if (event[key] !== snapshot[key]) return false;
     }
     return true;
   }
 
   /**
-   * Saves QoE KPI values after sending.
+   * Saves QoE KPI values after sending, keyed by viewId to support multiple players.
    * @param {object} event - QoE event that was sent
    * @private
    */
   _saveQoeKpis(event) {
-    this._lastSentQoeKpis = {};
+    const snapshot = {};
     for (const key of Constants.QOE_KPI_KEYS) {
-      this._lastSentQoeKpis[key] = event[key];
+      snapshot[key] = event[key];
     }
+    this._lastSentQoeKpis[event.viewId] = snapshot;
   }
 }

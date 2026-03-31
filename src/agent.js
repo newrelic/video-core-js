@@ -50,8 +50,16 @@ class VideoAnalyticsAgent {
 
     try {
       if(eventObject.actionName && eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
-          // Ensure only one QOE_AGGREGATE event exists in buffer per harvest cycle.
+          // Ensure only one QOE_AGGREGATE event per (actionName + viewId) in buffer per harvest cycle.
+          // Each player has a unique viewId, so multi-player scenarios are handled correctly.
           // Dirty-check dedup happens at drain time in HarvestScheduler._qoeKpisUnchanged().
+          if (eventObject.viewId) {
+              return this.eventBuffer.addOrReplaceByActionNameAndViewId(
+                  Tracker.Events.QOE_AGGREGATE,
+                  eventObject.viewId,
+                  eventObject
+              );
+          }
           return this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, eventObject);
       }
       return this.eventBuffer.add(eventObject);
@@ -96,12 +104,15 @@ class VideoAnalyticsAgent {
 
   /**
    * Updates QoE KPI fields on the existing QOE_AGGREGATE event in the buffer.
-   * Uses addOrReplaceByActionName to keep payload size tracking accurate.
+   * Scoped to a specific viewId to support multiple players on the same page.
    * @param {object} freshKpis - Object with latest KPI values
+   * @param {string} [viewId] - The viewId of the player whose QoE event to update
    */
-  refreshQoeKpis(freshKpis) {
+  refreshQoeKpis(freshKpis, viewId) {
     if (!this.eventBuffer || !freshKpis) return;
-    const existing = this.eventBuffer.findByActionName(Tracker.Events.QOE_AGGREGATE);
+    const existing = viewId
+      ? this.eventBuffer.findByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId)
+      : this.eventBuffer.findByActionName(Tracker.Events.QOE_AGGREGATE);
     if (existing) {
       const updated = { ...existing };
       for (const key of Constants.QOE_KPI_KEYS) {
@@ -109,7 +120,11 @@ class VideoAnalyticsAgent {
           updated[key] = freshKpis[key];
         }
       }
-      this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, updated);
+      if (viewId) {
+        this.eventBuffer.addOrReplaceByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId, updated);
+      } else {
+        this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, updated);
+      }
     }
   }
 }
