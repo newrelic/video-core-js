@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "Bash(node --version)",
+      "Bash(npm --version:*)",
+      "Bash(npm pack:*)",
+      "Bash(cat:*)",
+      "Bash(npm view:*)",
+      "Bash(git log:*)",
+      "Bash(tar:*)",
+      "Bash(md5sum:*)",
+      "Bash(node:*)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

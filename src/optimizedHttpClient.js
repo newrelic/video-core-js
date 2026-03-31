@@ -1,5 +1,6 @@
-import { dataSize, shouldRetry } from "./utils";
+import { shouldRetry } from "./utils";
 import Log from "./log";
+import { applyObfuscationRules } from "./obfuscate";
 
 /**
  * Optimized HTTP client for video analytics data transmission with
@@ -50,7 +51,10 @@ export class OptimizedHttpClient {
     const startTime = Date.now();
 
     try {
-      const requestBody = JSON.stringify(payload.body);
+      const requestBody = applyObfuscationRules(
+        JSON.stringify(payload.body),
+        window.NRVIDEO?.config?.obfuscate
+      );
 
       // Handle final harvest with sendBeacon
       if (options.isFinalHarvest && navigator.sendBeacon) {

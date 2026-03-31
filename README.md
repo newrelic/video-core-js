@@ -34,6 +34,73 @@ const tracker = new VideoSpecificTracker(player, options);
 
 - **qoeIntervalFactor** (number, optional, default: `1`): Controls how frequently QoE aggregate events are included in harvest cycles. A value of `1` includes them on every cycle; a value of `N` includes them once every N cycles. Must be a positive integer — invalid values default to `1`. QoE events are always included on the first and final harvest cycles regardless of this setting.
 
+- **obfuscate** (array, optional): A list of regex-based obfuscation rules applied to event payloads before they are sent to the New Relic collector. See [Obfuscation Rules](#obfuscation-rules) below.
+
+
+## Obfuscation Rules
+
+Video trackers can capture rich telemetry (content URLs, titles, ad metadata, etc.) that may inadvertently contain PII or sensitive tokens. The `obfuscate` config option lets you define regex-based rules that mask sensitive data in the serialized event payload **before** it is sent to the New Relic collector.
+
+This matches the approach used by the New Relic Browser Agent.
+
+### Configuration
+
+Pass an `obfuscate` array in the `config` parameter of `setVideoConfig` (or the tracker options). Each rule must have:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `regex` | `string` \| `RegExp` | Pattern to match in the serialized payload |
+| `replacement` | `string` | String to replace each match with |
+
+```javascript
+const options = {
+  info: {
+    licenseKey: "xxxxxxxxxxx",
+    beacon: "xxxxxxxxxx",
+    applicationId: "xxxxxxx",
+  },
+  config: {
+    obfuscate: [
+      { regex: /\/user\/\d+/, replacement: "/user/[REDACTED]" },
+    ],
+  },
+};
+
+const tracker = new VideoSpecificTracker(player, options);
+```
+
+### Examples
+
+**Mask user IDs in content URLs:**
+
+```javascript
+obfuscate: [
+  { regex: /\/user\/[^\/?"]+/, replacement: "/user/[REDACTED]" }
+]
+// "https://cdn.example.com/user/john.doe/video.mp4"
+// → "https://cdn.example.com/user/[REDACTED]/video.mp4"
+```
+
+**Mask auth tokens in query strings:**
+
+```javascript
+obfuscate: [
+  { regex: /token=[^&"]+/, replacement: "token=[MASKED]" }
+]
+// "https://cdn.example.com/stream.m3u8?token=eyJhbGci..."
+// → "https://cdn.example.com/stream.m3u8?token=[MASKED]"
+```
+
+### Rule ordering
+
+Rules are applied in array order. The output of one rule is the input for the next, so ordering matters when rules overlap.
+
+### Edge cases
+
+- **Invalid regex**: The rule is skipped and a warning is logged via `Log.warn`. Other rules continue to apply normally.
+- **Empty replacement**: Setting `replacement: ""` deletes the matched content entirely.
+- **RegExp flags**: The global flag (`g`) is always applied so all occurrences in the payload are replaced. Other flags (`i`, `m`, etc.) on `RegExp` objects are preserved.
+
 
 ## APIs
 
