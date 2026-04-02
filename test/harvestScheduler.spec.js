@@ -427,8 +427,8 @@ describe('HarvestScheduler', function() {
       expect(events.find(e => e.actionName === 'QOE_AGGREGATE').totalPlaytime).toBe(5000);
     });
 
-    it('should initialize _lastSentQoeKpis to null', function() {
-      expect(scheduler._lastSentQoeKpis).toBe(null);
+    it('should initialize _lastSentQoeKpis to empty object', function() {
+      expect(scheduler._lastSentQoeKpis).toEqual({});
     });
 
     it('should always send QoE when forceNextQoeCycle is set even if KPIs unchanged', function() {
