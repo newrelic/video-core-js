@@ -246,12 +246,12 @@ class VideoTracker extends Tracker {
   }
 
   /** Override to return the measured network bitrate in bps (Observed Bitrate). */
-  getMeasuredBitrate() {
+  getSegmentDownloadBitrate() {
     return null;
   }
 
   /** Override to return the download throughput in bps. */
-  getDownloadBitrate() {
+  getNetworkDownloadBitrate() {
     return null;
   }
 
@@ -486,7 +486,6 @@ class VideoTracker extends Tracker {
       if (this.state.isStarted) {
         att.adBitrate =
           this.getBitrate() || 0;
-        att.adRenditionBitrate = this.getRenditionBitrate() || 0;
       }
 
       att.adRenditionName = this.getRenditionName();
@@ -515,10 +514,9 @@ class VideoTracker extends Tracker {
       // Only add bitrate attributes after content has started
       if (this.state.isStarted) {
         att.contentBitrate = this.getBitrate()|| 0;
-        att.contentRenditionBitrate = this.getRenditionBitrate() || 0;
         att.contentManifestBitrate = this.getManifestBitrate() || 0;
-        att.contentMeasuredBitrate = this.getMeasuredBitrate() || 0;
-        att.contentDownloadBitrate = this.getDownloadBitrate() || 0;
+        att.contentSegmentDownloadBitrate = this.getSegmentDownloadBitrate() || 0;
+        att.contentNetworkDownloadBitrate = this.getNetworkDownloadBitrate() || 0;
       }
 
       att.contentRenditionName = this.getRenditionName();

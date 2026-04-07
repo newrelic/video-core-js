@@ -1,6 +1,25 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.5] - 2026/04/08
+
+### Changed
+
+- **Bitrate attribute and method renaming**
+  Renamed bitrate attributes and their corresponding getter methods for better clarity:
+  - Attribute: `contentMeasuredBitrate` → `contentSegmentDownloadBitrate`
+  - Method: `getMeasuredBitrate()` → `getSegmentDownloadBitrate()`
+  - Attribute: `contentDownloadBitrate` → `contentNetworkDownloadBitrate`
+  - Method: `getDownloadBitrate()` → `getNetworkDownloadBitrate()`
+
+### Removed
+
+- **Deprecated rendition bitrate attributes**
+  Removed `contentRenditionBitrate` and `adRenditionBitrate` attributes from `getAttributes()` in `videotracker.js`. These attributes are no longer included in video events.
+
+- **Updated data model documentation**
+  Updated `DATAMODEL.md` to reflect the removal of rendition bitrate attributes and the renaming of download bitrate attributes.
+
 ## [4.1.4] - 2026/03/31
 
 ### Feat
