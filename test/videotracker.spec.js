@@ -104,13 +104,11 @@ describe("VideoTracker", () => {
       tracker.sendRequest();
       let attrsBeforeStart = tracker.getAttributes();
       expect(attrsBeforeStart.contentBitrate).toBeUndefined();
-      expect(attrsBeforeStart.contentRenditionBitrate).toBeUndefined();
 
       // After content starts
       tracker.sendStart();
       let attrsAfterStart = tracker.getAttributes();
       expect(attrsAfterStart.contentBitrate).toBe(5000000);
-      expect(attrsAfterStart.contentRenditionBitrate).toBe(4000000);
 
       // Other rendition attributes should still be included (even if null) before start
       expect(attrsBeforeStart).toHaveProperty("contentRenditionName");
@@ -139,13 +137,11 @@ describe("VideoTracker", () => {
       tracker.sendRequest();
       let attrsBeforeStart = tracker.getAttributes();
       expect(attrsBeforeStart.adBitrate).toBeUndefined();
-      expect(attrsBeforeStart.adRenditionBitrate).toBeUndefined();
 
       // After ad starts
       tracker.sendStart();
       let attrsAfterStart = tracker.getAttributes();
       expect(attrsAfterStart.adBitrate).toBe(3000000);
-      expect(attrsAfterStart.adRenditionBitrate).toBe(2500000);
 
       // Other rendition attributes should still be included (even if null) before start
       expect(attrsBeforeStart).toHaveProperty("adRenditionName");

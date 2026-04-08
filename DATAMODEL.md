@@ -43,9 +43,11 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | contentId                | The ID of the video.                                                                                                                               |
 | contentTitle             | The title of the video.                                                                                                                            |
 | contentIsLive            | True if the video is live.                                                                                                                         |
-| contentBitrate           | Bitrate (in bits) of the video.                                                                                                                    |
-| contentRenditionName     | Name of the rendition (e.g., 1080p).                                                                                                               |
-| contentRenditionBitrate  | Target Bitrate of the rendition.                                                                                                                   |
+| contentBitrate                 | Bitrate (in bits) of the video.                                                                                                                    |
+| contentManifestBitrate         | Bitrate (in bits per second) from the manifest/playlist file.                                                                                      |
+| contentSegmentDownloadBitrate  | Measured bitrate (in bits per second) based on segment download performance.                                                                       |
+| contentNetworkDownloadBitrate  | Network download bitrate (in bits per second) measured during content delivery.                                                                    |
+| contentRenditionName           | Name of the rendition (e.g., 1080p).                                                                                                               |
 | contentRenditionHeight   | Rendition actual Height (before re-scaling).                                                                                                       |
 | contentRenditionWidth    | Rendition actual Width (before re-scaling).                                                                                                        |
 | contentDuration          | Duration of the video, in ms.                                                                                                                      |
@@ -124,7 +126,6 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | adTitle                  | The title of the video.                                                                                                                            |
 | adBitrate                | Bitrate (in bits) of the video.                                                                                                                    |
 | adRenditionName          | Name of the rendition (e.g., 1080p).                                                                                                               |
-| adRenditionBitrate       | Target Bitrate of the rendition.                                                                                                                   |
 | adRenditionHeight        | Rendition actual Height (before re-scaling).                                                                                                       |
 | adRenditionWidth         | Rendition actual Width (before re-scaling).                                                                                                        |
 | adDuration               | Duration of the video, in ms.                                                                                                                      |
