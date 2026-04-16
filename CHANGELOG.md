@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.6] - 2026/04/16
+
+### Chore
+
+- **README.md overhaul**
+  Rewrote `README.md` with comprehensive documentation including table of contents, installation instructions, quick start guide, configuration reference, exposed API details, custom tracker guide, getter methods reference, QoE section, obfuscation rules, build & development instructions, and distribution formats.
+
 ## [4.1.5] - 2026/04/08
 
 ### Changed
