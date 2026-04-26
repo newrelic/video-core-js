@@ -9,9 +9,27 @@ name: Publish Module
 # This workflow will create a new git tag for the module version, along with
 # a new GitHub release. It will then publish the new module version to npmjs.org.
 #
-# This workflow will _only_ ever be triggered manually by utilizing the GitHub Actions interface.
+# This workflow can be triggered automatically when a release is published,
+# or manually via the GitHub Actions interface.
 on:
+  # Trigger automatically when a new release is published
+  release:
+    types:
+      - published
 
+  # Manual trigger with optional S3 upload
+  workflow_dispatch:
+    inputs:
+      s3-path:
+        description: 'Path within the S3 bucket (optional)'
+        required: false
+        type: string
+      file-to-upload:
+        description: 'Specific file to upload to S3 (optional)'
+        required: false
+        type: string
+
+  # Reusable workflow for other workflows to call
   workflow_call:
     inputs:
       s3-path:
@@ -30,13 +48,6 @@ on:
         description: 'AWS Secret Access Key'
         required: false
 
-  pull_request:
-    branches:
-    - stable
-    - stable-beta
-    types:
-    - closed
-
 permissions:
   # In order to create the git tag, we must have write permissions.
   contents: write
@@ -45,9 +56,24 @@ permissions:
 
 jobs:
   publish_and_deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true || github.event_name == 'workflow_call' }}
+    # Run when: release published, manually triggered, or called by another workflow
+    if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
     runs-on: ubuntu-latest
     steps:
+    - name: Log trigger event
+      run: |
+        echo "## NPM Publish Triggered" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "- **Trigger**: Automatic (Release published)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Tag**: ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "- **Trigger**: Manual" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Trigger**: Workflow call" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+
     - name: Checkout code
       uses: actions/checkout@v5
       with:
@@ -123,3 +149,22 @@ jobs:
         cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
         aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
         aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
+
+    - name: Publish Summary
+      run: |
+        echo "## ✅ Publish Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package**: @newrelic/video-core" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **NPM Tag**: ${{ env.NPM_TAG }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **NPM URL**: https://www.npmjs.com/package/@newrelic/video-core/v/${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.s3-path }}" != "" ]; then
+          echo "### S3 Upload" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Files uploaded to S3" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Installation" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "npm install @newrelic/video-core@${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
