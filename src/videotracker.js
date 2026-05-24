@@ -45,6 +45,7 @@ class VideoTracker extends Tracker {
      */
     this._lastBufferType = null;
     this._userId = null;
+    this._src = null;
 
     options = options || {};
     this.setOptions(options);
@@ -83,6 +84,9 @@ class VideoTracker extends Tracker {
       }
       if (typeof options.isAd === "boolean") {
         this.setIsAd(options.isAd);
+      }
+      if (options.src !== undefined) {
+        this._src = options.src;
       }
       Tracker.prototype.setOptions.apply(this, arguments);
     }
@@ -465,7 +469,7 @@ class VideoTracker extends Tracker {
     att["instrumentation.name"] = this.getInstrumentationName();
     att["instrumentation.version"] = this.getInstrumentationVersion();
     att["enduser.id"] = this._userId;
-    att["src"] = "Browser";
+    att["src"] = this._src || "Browser";
 
     if (type === "customAction") return att;
 
