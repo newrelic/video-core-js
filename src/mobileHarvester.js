@@ -67,6 +67,7 @@ export default class MobileHarvester {
     this.dataToken = null; // REQ-VH-5
     this.isHarvesting = false;
     this.intervalId = null;
+    this.isDisposed = false;
 
     // QoE state (REQ-VH-22..25)
     this.qoeCycleCount = 1;
@@ -98,6 +99,9 @@ export default class MobileHarvester {
    */
   async initialise() {
     await this.fetchDataTokens();
+    // Defensive guard: if dispose() ran while fetchDataTokens was awaiting,
+    // do not start an interval that will outlive the harvester.
+    if (this.isDisposed) return;
     if (this.dataToken) {
       this.startHarvestInterval();
     }
@@ -155,7 +159,7 @@ export default class MobileHarvester {
    * Starts the periodic harvest timer. (REQ-VH-12)
    */
   startHarvestInterval() {
-    if (this.intervalId) return;
+    if (this.intervalId || this.isDisposed) return;
     this.intervalId = setInterval(
       () => this.sendBufferedEvents(),
       this.harvestInterval
@@ -328,6 +332,7 @@ export default class MobileHarvester {
    * @returns {Promise<void>}
    */
   async dispose() {
+    this.isDisposed = true;
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
