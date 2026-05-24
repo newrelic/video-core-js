@@ -11,6 +11,8 @@ import { RetryQueueHandler } from "./retryQueueHandler";
 import { OptimizedHttpClient } from "./optimizedHttpClient";
 import { HarvestScheduler } from "./harvestScheduler";
 import { recordEvent } from "./recordEvent";
+import MobileHarvester from "./mobileHarvester";
+import { vegaAnalyticsHarvester } from "./vegaAgent";
 import { version } from "../package.json";
 
 const nrvideo = {
@@ -26,18 +28,24 @@ const nrvideo = {
   version,
 
   // Enhanced video analytics components (new)
- 
+
   NrVideoEventAggregator,
   RetryQueueHandler,
   OptimizedHttpClient,
   HarvestScheduler,
 
-
+  // Vega pipeline (REQ-IE-1)
+  MobileHarvester,
+  vegaAnalyticsHarvester,
 
   // Enhanced event recording
   recordEvent,
 
 
 };
+
+// Named exports for tree-shaking-friendly imports.
+export { default as MobileHarvester } from "./mobileHarvester";
+export { vegaAnalyticsHarvester } from "./vegaAgent";
 
 export default nrvideo;

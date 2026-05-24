@@ -14,9 +14,11 @@ class Core {
    * @param {object} options Configuration options including video analytics settings.
    */
   static addTracker(tracker, options) {
-    // Set video analytics configuration
+    // Set video analytics configuration. The optional `options.src` field
+    // selects the pipeline: `'Vega'` writes globalThis.__NRVIDEO_VEGA__,
+    // anything else writes window.NRVIDEO. (REQ-CO-1)
     if (options?.info) {
-      setVideoConfig(options.info, options?.config);
+      setVideoConfig(options.info, options?.config, options?.src);
     }
     
     if (tracker.on && tracker.emit) {

@@ -15,15 +15,41 @@ class VideoConfiguration {
    * @returns {boolean} True if configuration is valid and set
    */
 
-  setConfiguration(userInfo, config) {
-    if (!this.validateRequiredFields(userInfo)) {
+  setConfiguration(userInfo, config, src) {
+    // Validation branches by `src`. The Vega pipeline uses `applicationToken`
+    // + `endpoint`; the existing NR pipeline uses `licenseKey`. (REQ-CO-5 b)
+    const validated = src === "Vega"
+      ? this.validateVegaFields(userInfo)
+      : this.validateRequiredFields(userInfo);
+    if (!validated) {
       return false;
     }
     if (!this.validateConfigFields(config)) {
       return false;
     }
-    this.initializeGlobalConfig(userInfo, config);
+    this.initializeGlobalConfig(userInfo, config, src);
     Log.notice("Video analytics configuration initialized successfully");
+    return true;
+  }
+
+  /**
+   * Validates required Vega configuration fields. (REQ-CO-5 b)
+   * @param {object} info
+   * @returns {boolean} True if valid
+   */
+  validateVegaFields(info) {
+    if (!info || typeof info !== "object") {
+      Log.error("Configuration must be an object");
+      return false;
+    }
+    if (!info.applicationToken) {
+      Log.error("applicationToken is required");
+      return false;
+    }
+    if (!["US", "EU", "staging"].includes(info.endpoint)) {
+      Log.error("Invalid endpoint (must be US, EU, or staging)");
+      return false;
+    }
     return true;
   }
 
@@ -142,8 +168,28 @@ class VideoConfiguration {
    * @param {object} userInfo - User provided configuration
    * @param {object} [config] - Optional configuration object
    */
-  initializeGlobalConfig(userInfo, config) {
+  initializeGlobalConfig(userInfo, config, src) {
+    // Vega path: write `globalThis.__NRVIDEO_VEGA__` with info+config only.
+    // The harvester is owned by `vegaAgent.js` as a module singleton — no
+    // harvester field on this global. (REQ-CO-5 c)
+    if (src === "Vega") {
+      globalThis.__NRVIDEO_VEGA__ = {
+        info: {
+          accountId: userInfo.accountId,
+          applicationToken: userInfo.applicationToken,
+          endpoint: userInfo.endpoint,
+          ...(userInfo.appName ? { appName: userInfo.appName } : {}),
+          ...(userInfo.applicationID ? { applicationID: userInfo.applicationID } : {}),
+        },
+        config: {
+          qoeAggregate: config?.qoeAggregate ?? false,
+          qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
+        },
+      };
+      return;
+    }
 
+    // NR path — unchanged.
     let { licenseKey, appName, region, beacon, applicationID } = userInfo;
 
     if (region === "US") {
@@ -179,8 +225,8 @@ const videoConfiguration = new VideoConfiguration();
  * @param {object} [config] - Optional configuration object
  * @returns {boolean} True if configuration was set successfully
  */
-export function setVideoConfig(info, config) {
-  return videoConfiguration.setConfiguration(info, config);
+export function setVideoConfig(info, config, src) {
+  return videoConfiguration.setConfiguration(info, config, src);
 }
 
 export { videoConfiguration };
