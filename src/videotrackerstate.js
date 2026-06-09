@@ -96,6 +96,12 @@ class VideoTrackerState {
     this._bitrateAvg = new WeightedAverage();
 
     /**
+     * Time-weighted download-rate accumulator. Tracker code calls
+     * `trackDownloadRateState(bps)` whenever it has a fresh throughput sample.
+     */
+    this._downloadRateAvg = new WeightedAverage();
+
+    /**
      * Had Startup Error: TRUE if CONTENT_ERROR occurs before CONTENT_START.
      */
     this.hadStartupError = false;
@@ -356,6 +362,11 @@ class VideoTrackerState {
           kpi["totalPlaytime"] = this.totalPlaytime;
           kpi["averageBitrate"] = this.weightedBitrate;
           kpi["numberOfErrors"] = this.numberOfErrors;
+          if (this._downloadRateAvg.hasObservations()) {
+              kpi["avgDownloadRate"] = this._downloadRateAvg.weighted;
+              kpi["minDownloadRate"] = this._downloadRateAvg.min;
+              kpi["maxDownloadRate"] = this._downloadRateAvg.max;
+          }
       } catch (error) {
           Log.error("Failed to add attributes for QOE KPIs", error.message);
       }
@@ -699,12 +710,25 @@ class VideoTrackerState {
   }
 
   /**
+   * Records a network download-rate observation.
+   * Pause/buffer time is excluded from the weighted avg via the isPlaying gate;
+   * min/max still capture raw observations regardless of play state.
+   * Invalid inputs (zero, null, undefined, NaN, non-number, negative) are
+   * silently ignored by the helper guard.
+   * @param {number} bps Throughput observation in bits per second.
+   */
+  trackDownloadRateState(bps) {
+    this._downloadRateAvg.observe(bps, this.isPlaying);
+  }
+
+  /**
    * Resets tracked variable for view id change
    * */
   resetViewIdTrackedState() {
     this.peakBitrate = 0;
     this.startupTime = null;
     this._bitrateAvg.reset();
+    this._downloadRateAvg.reset();
   }
 
   /** Methods to manage total ads time chrono */

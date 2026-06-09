@@ -463,11 +463,120 @@ describe("VideoTrackerState", () => {
         },
         configurable: true
       });
-      
+
       const result = state.getQoeAttributes();
 
       expect(typeof result).toBe("object");
       expect(typeof result.qoe).toBe("object");
+    });
+
+    describe("download-rate tracking (Feature 02)", () => {
+      it("should initialize _downloadRateAvg with no observations", () => {
+        expect(state._downloadRateAvg.hasObservations()).toBe(false);
+        expect(state._downloadRateAvg.weighted).toBe(0);
+        expect(state._downloadRateAvg.min).toBeNull();
+        expect(state._downloadRateAvg.max).toBeNull();
+      });
+
+      it("trackDownloadRateState() forwards to _downloadRateAvg.observe with isPlaying", () => {
+        state.isPlaying = true;
+        state.trackDownloadRateState(5_000_000);
+        expect(state._downloadRateAvg.hasObservations()).toBe(true);
+        expect(state._downloadRateAvg.min).toBe(5_000_000);
+        expect(state._downloadRateAvg.max).toBe(5_000_000);
+        expect(state._downloadRateAvg.weighted).toBe(5_000_000);
+      });
+
+      it("trackDownloadRateState() ignores invalid inputs (zero/null/undefined/NaN/negative)", () => {
+        state.isPlaying = true;
+        state.trackDownloadRateState(0);
+        state.trackDownloadRateState(null);
+        state.trackDownloadRateState(undefined);
+        state.trackDownloadRateState(NaN);
+        state.trackDownloadRateState(-1000);
+        state.trackDownloadRateState("1000");
+        expect(state._downloadRateAvg.hasObservations()).toBe(false);
+      });
+
+      it("getQoeAttributes() omits avg/min/maxDownloadRate when no observations", () => {
+        const qoe = state.getQoeAttributes().qoe;
+        expect(qoe).not.toHaveProperty("avgDownloadRate");
+        expect(qoe).not.toHaveProperty("minDownloadRate");
+        expect(qoe).not.toHaveProperty("maxDownloadRate");
+      });
+
+      it("getQoeAttributes() emits all three fields after at least one observation", () => {
+        state.isPlaying = true;
+        state.trackDownloadRateState(8_000_000);
+        const qoe = state.getQoeAttributes().qoe;
+        expect(qoe.avgDownloadRate).toBe(8_000_000);
+        expect(qoe.minDownloadRate).toBe(8_000_000);
+        expect(qoe.maxDownloadRate).toBe(8_000_000);
+      });
+
+      it("computes a time-weighted avg, NOT an arithmetic mean", () => {
+        const dateNowSpy = jest.spyOn(Date, "now");
+        let now = 1_000_000;
+        dateNowSpy.mockImplementation(() => now);
+
+        state.isPlaying = true;
+        state.trackDownloadRateState(10_000_000);
+        now += 10_000; // 10s at 10 Mbps
+        state.trackDownloadRateState(1_000_000);
+        now += 600_000; // 600s at 1 Mbps
+        state.trackDownloadRateState(1_000_000);
+
+        const qoe = state.getQoeAttributes().qoe;
+        // Σ(v×Δt) / Σ(Δt) ≈ 1.1475 Mbps; arithmetic mean would be 5.5 Mbps
+        expect(qoe.avgDownloadRate).toBeGreaterThanOrEqual(1_100_000);
+        expect(qoe.avgDownloadRate).toBeLessThanOrEqual(1_200_000);
+        expect(qoe.avgDownloadRate).toBeLessThan(5_000_000);
+        expect(qoe.minDownloadRate).toBe(1_000_000);
+        expect(qoe.maxDownloadRate).toBe(10_000_000);
+
+        dateNowSpy.mockRestore();
+      });
+
+      it("excludes paused time from avgDownloadRate (delegates to helper gate)", () => {
+        const dateNowSpy = jest.spyOn(Date, "now");
+        let now = 1_000_000;
+        dateNowSpy.mockImplementation(() => now);
+
+        state.isPlaying = true;
+        state.trackDownloadRateState(2_000_000);
+        now += 1_000; // 1s playing @ 2 Mbps
+
+        state.isPlaying = false;
+        state.trackDownloadRateState(2_000_000); // pause closes segment
+        now += 60_000; // 60s paused — must not contribute
+
+        state.isPlaying = true;
+        state.trackDownloadRateState(4_000_000);
+        now += 1_000; // 1s playing @ 4 Mbps
+        state.trackDownloadRateState(4_000_000);
+
+        const qoe = state.getQoeAttributes().qoe;
+        // (2M×1000 + 4M×1000) / 2000 = 3 Mbps
+        expect(qoe.avgDownloadRate).toBe(3_000_000);
+
+        dateNowSpy.mockRestore();
+      });
+
+      it("resetViewIdTrackedState() clears _downloadRateAvg", () => {
+        state.isPlaying = true;
+        state.trackDownloadRateState(7_000_000);
+        expect(state._downloadRateAvg.hasObservations()).toBe(true);
+
+        state.resetViewIdTrackedState();
+        expect(state._downloadRateAvg.hasObservations()).toBe(false);
+        expect(state._downloadRateAvg.weighted).toBe(0);
+        expect(state._downloadRateAvg.min).toBeNull();
+        expect(state._downloadRateAvg.max).toBeNull();
+
+        // After reset, attribute is again omitted.
+        const qoe = state.getQoeAttributes().qoe;
+        expect(qoe).not.toHaveProperty("avgDownloadRate");
+      });
     });
   });
 });
