@@ -1,5 +1,6 @@
 import Chrono from "./chrono";
 import Log from "./log";
+import WeightedAverage from "./WeightedAverage";
 
 /**
  * State machine for a VideoTracker and its monitored video.
@@ -89,24 +90,10 @@ class VideoTrackerState {
     this.peakBitrate = 0;
 
     /**
-     * Last tracked bitrate
+     * Time-weighted bitrate accumulator. Holds running min/max/weighted-avg
+     * across content playback; non-play time is excluded from the weighted avg.
      */
-    this._lastBitrate = null;
-
-    /**
-     * Tracks the last updated timestamp for bitrate
-     * */
-    this._lastBitrateChangeTimestamp = null;
-
-    /**
-     * total bitrate partial value for average weighted average bitrate
-     */
-    this.partialAverageBitrate = 0;
-
-    /**
-     * Total duration (ms) of all closed bitrate segments for weighted average
-     */
-    this._totalBitrateDuration = 0;
+    this._bitrateAvg = new WeightedAverage();
 
     /**
      * Had Startup Error: TRUE if CONTENT_ERROR occurs before CONTENT_START.
@@ -696,64 +683,18 @@ class VideoTrackerState {
   }
 
   /**
-   * Updates peak bitrate with current bitrate value (content only).
+   * Updates peak bitrate and time-weighted average bitrate (content only).
    * @param {number} bitrate Current content bitrate in bps.
    */
   trackContentBitrateState(bitrate) {
     if (bitrate && typeof bitrate === "number") {
-      this.peakBitrate = Math.max(this.peakBitrate, bitrate);
-
-      const now = Date.now();
-
-      // If not playing (buffering, paused, etc.), close the current segment
-      // so non-play time is excluded from the weighted average
-      if (!this.isPlaying) {
-        if (this._lastBitrate !== null && this._lastBitrateChangeTimestamp !== null) {
-          const segmentDuration = now - this._lastBitrateChangeTimestamp;
-          if (segmentDuration > 0) {
-            this.partialAverageBitrate += this._lastBitrate * segmentDuration;
-            this._totalBitrateDuration += segmentDuration;
-          }
-          this._lastBitrateChangeTimestamp = null; // Mark as paused
-        }
-        this._lastBitrate = bitrate;
-        return;
+      this._bitrateAvg.observe(bitrate, this.isPlaying);
+      this.peakBitrate = this._bitrateAvg.max ?? 0;
+      // Mirror original semantics: only assign weightedBitrate while playing
+      // (the original returned early on the non-playing branch without touching it).
+      if (this.isPlaying) {
+        this.weightedBitrate = this._bitrateAvg.weighted;
       }
-
-      // Playing: restart timestamp if returning from non-play state
-      if (this._lastBitrateChangeTimestamp === null && this._lastBitrate !== null) {
-        this._lastBitrateChangeTimestamp = now;
-      }
-
-      // Close the PREVIOUS segment when bitrate changes
-      if (this._lastBitrate !== null && this._lastBitrate !== bitrate
-          && this._lastBitrateChangeTimestamp !== null) {
-        const segmentDuration = now - this._lastBitrateChangeTimestamp;
-        if (segmentDuration > 0) {
-          this.partialAverageBitrate += this._lastBitrate * segmentDuration;
-          this._totalBitrateDuration += segmentDuration;
-        }
-        this._lastBitrateChangeTimestamp = now;
-      }
-
-      // Initialize timestamp on first observation
-      if (this._lastBitrateChangeTimestamp === null) {
-        this._lastBitrateChangeTimestamp = now;
-      }
-
-      this._lastBitrate = bitrate;
-
-      // Compute weighted average including current in-progress segment
-      let totalWeighted = this.partialAverageBitrate;
-      let totalDuration = this._totalBitrateDuration;
-      const currentSegment = now - this._lastBitrateChangeTimestamp;
-      if (currentSegment > 0) {
-        totalWeighted += bitrate * currentSegment;
-        totalDuration += currentSegment;
-      }
-      this.weightedBitrate = totalDuration > 0
-          ? Math.round(totalWeighted / totalDuration)
-          : bitrate;
     }
   }
 
@@ -762,11 +703,8 @@ class VideoTrackerState {
    * */
   resetViewIdTrackedState() {
     this.peakBitrate = 0;
-    this.partialAverageBitrate = 0;
-    this._totalBitrateDuration = 0;
     this.startupTime = null;
-    this._lastBitrate = null;
-    this._lastBitrateChangeTimestamp = null;
+    this._bitrateAvg.reset();
   }
 
   /** Methods to manage total ads time chrono */

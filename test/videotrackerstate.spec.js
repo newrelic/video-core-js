@@ -291,7 +291,8 @@ describe("VideoTrackerState", () => {
     it("should initialize QOE state variables to correct defaults", () => {
       expect(state.startupTime).toBeNull();
       expect(state.peakBitrate).toBe(0);
-      expect(state.partialAverageBitrate).toBe(0);
+      expect(state._bitrateAvg.hasObservations()).toBe(false);
+      expect(state._bitrateAvg.weighted).toBe(0);
       expect(state.hadStartupError).toBe(false);
       expect(state.hadPlaybackError).toBe(false);
       expect(state.totalRebufferingTime).toBe(0);
@@ -402,14 +403,17 @@ describe("VideoTrackerState", () => {
       dateNowSpy.mockRestore();
     });
 
-    it("should initialize _totalBitrateDuration to 0", () => {
-      expect(state._totalBitrateDuration).toBe(0);
+    it("should initialize bitrate accumulator with zero total duration", () => {
+      expect(state._bitrateAvg._totalDuration).toBe(0);
     });
 
-    it("should reset _totalBitrateDuration in resetViewIdTrackedState", () => {
-      state._totalBitrateDuration = 5000;
+    it("should reset bitrate accumulator in resetViewIdTrackedState", () => {
+      state._bitrateAvg._totalDuration = 5000;
+      state._bitrateAvg._partialSum = 1_000_000_000;
       state.resetViewIdTrackedState();
-      expect(state._totalBitrateDuration).toBe(0);
+      expect(state._bitrateAvg._totalDuration).toBe(0);
+      expect(state._bitrateAvg._partialSum).toBe(0);
+      expect(state._bitrateAvg.hasObservations()).toBe(false);
     });
 
     it("should not set hadStartupError if error occurs after start", () => {
