@@ -126,15 +126,15 @@ class VideoConfiguration {
   }
 
   /**
-   * Sanitizes qoeIntervalFactor, defaulting to 1 if the value is not a positive integer.
+   * Sanitizes qoeIntervalFactor, defaulting to 2 if the value is not a positive integer.
    * @param {*} value
    * @returns {number}
    */
   sanitizeQoeIntervalFactor(value) {
-    if (value === undefined || value === null) return 1;
+    if (value === undefined || value === null) return 2;
     if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
-    console.warn(`[nrvideo] Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 1.`);
-    return 1;
+    Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 2.`);
+    return 2;
   }
 
   /**
@@ -162,7 +162,7 @@ class VideoConfiguration {
         ...(applicationID ? {} : { appName }), // Only include appName when no applicationID
       },
       config: {
-        qoeAggregate: config?.qoeAggregate ?? false,
+        qoeAggregate: config?.qoeAggregate ?? true,
         qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
         obfuscate: this.filterObfuscateRules(config?.obfuscate),
       }

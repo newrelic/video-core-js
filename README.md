@@ -158,8 +158,8 @@ info: {
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `qoeAggregate` | `boolean` | `false` | Enable Quality of Experience event aggregation. |
-| `qoeIntervalFactor` | `number` | `1` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
+| `qoeAggregate` | `boolean` | `true` | Enable Quality of Experience event aggregation. QoE is enabled out of the box; set to `false` to disable. |
+| `qoeIntervalFactor` | `number` | `2` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
 | `obfuscate` | `array` | `[]` | Regex-based rules to mask sensitive data before transmission. See [Obfuscation Rules](#obfuscation-rules). |
 
 ---
@@ -409,7 +409,7 @@ These methods return `null` by default. Override them in your tracker to provide
 
 ## Quality of Experience (QoE)
 
-When `qoeAggregate` is enabled, the library tracks and reports QoE KPI metrics as `QOE_AGGREGATE` events:
+QoE tracking is **enabled by default**. The library tracks and reports QoE KPI metrics as `QOE_AGGREGATE` events. To disable, set `qoeAggregate: false` in the config object. The harvest interval multiplier can be configured via `qoeIntervalFactor` (default: `2`).
 
 | KPI | Description |
 |---|---|
