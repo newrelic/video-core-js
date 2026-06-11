@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [4.1.7] - 2026/06/11
+
+### Changed
+
+- **QoE enabled by default**
+  Flipped the default of `qoeAggregate` from `false` to `true` and `qoeIntervalFactor` from `1` to `2` in `videoConfiguration.js`. QoE aggregate tracking is now on out of the box; set `qoeAggregate: false` to opt out. README and configuration reference updated accordingly.
+
+### Fix
+
+- **Use `Log.warn` in `sanitizeQoeIntervalFactor`**
+  Replaced `console.warn` with the library's `Log.warn` when sanitizing an invalid `qoeIntervalFactor`, so the warning respects the configured log level.
+
 ## [4.1.6] - 2026/04/16
 
 ### Chore
