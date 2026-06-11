@@ -133,7 +133,7 @@ class VideoConfiguration {
   sanitizeQoeIntervalFactor(value) {
     if (value === undefined || value === null) return 2;
     if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
-    console.warn(`[nrvideo] Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 2.`);
+    Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 2.`);
     return 2;
   }
 
