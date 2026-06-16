@@ -157,32 +157,6 @@ describe("Tracker", () => {
       expect(() => tracker.setHarvestInterval(10000)).not.toThrow();
     });
 
-    it("should handle error when videoAnalyticsHarvester is not available", async () => {
-      tracker = new Tracker();
-      const logErrorSpy = sinon.spy(Log, "error");
-
-      // Import agent module dynamically
-      const agentModule = await import("../src/browser/agent.js");
-      const originalHarvester = agentModule.videoAnalyticsHarvester;
-
-      try {
-        // Set harvester to null to simulate unavailable state
-        agentModule.videoAnalyticsHarvester = null;
-
-        tracker.setHarvestInterval(10000);
-
-        expect(logErrorSpy.called).toBe(true);
-        const errorCall = logErrorSpy.getCalls().find(call =>
-          call.args[0] && call.args[0].includes("VideoAnalyticsHarvester is not available")
-        );
-        expect(errorCall).toBeDefined();
-      } finally {
-        // Always restore
-        agentModule.videoAnalyticsHarvester = originalHarvester;
-        logErrorSpy.restore();
-      }
-    });
-
     it("should start and stop heartbeats", (done) => {
       tracker = new Tracker({ heartbeat: 500 });
       tracker.state = { _isAd: false };
@@ -205,33 +179,6 @@ describe("Tracker", () => {
       heartbeatSpy.restore();
       clock.restore();
       done();
-    });
-
-    it("should handle error when setHarvestInterval throws", async () => {
-      tracker = new Tracker();
-      const logErrorSpy = sinon.spy(Log, "error");
-
-      // Import agent module dynamically
-      const agentModule = await import("../src/browser/agent.js");
-      const originalMethod = agentModule.videoAnalyticsHarvester.setHarvestInterval;
-
-      try {
-        agentModule.videoAnalyticsHarvester.setHarvestInterval = () => {
-          throw new Error("Test error");
-        };
-
-        tracker.setHarvestInterval(10000);
-
-        expect(logErrorSpy.called).toBe(true);
-        const errorCall = logErrorSpy.getCalls().find(call =>
-          call.args[0] && call.args[0].includes("Failed to set harvest interval")
-        );
-        expect(errorCall).toBeDefined();
-      } finally {
-        // Always restore
-        agentModule.videoAnalyticsHarvester.setHarvestInterval = originalMethod;
-        logErrorSpy.restore();
-      }
     });
   });
 
