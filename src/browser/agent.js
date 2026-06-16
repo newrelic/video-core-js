@@ -1,8 +1,9 @@
 import { HarvestScheduler } from "./harvestScheduler.js";
-import { NrVideoEventAggregator } from "./eventAggregator.js";
-import Constants from "./constants.js";
-import Log from "./log.js";
-import Tracker from "./tracker";
+import { NrVideoEventAggregator } from "../eventAggregator.js";
+import Constants from "../constants.js";
+import Log from "../log.js";
+import Tracker from "../tracker";
+import { registerHarvester } from "../recordEvent.js";
 
 /**
  * Enhanced video analytics agent with HarvestScheduler only.
@@ -131,6 +132,10 @@ class VideoAnalyticsAgent {
 
 // Create singleton instance
 const videoAnalyticsAgent = new VideoAnalyticsAgent();
+
+// Self-register for the 'Browser' routing key. Importing this module is what
+// makes the Browser pipeline reachable in the consumer's bundle.
+registerHarvester("Browser", videoAnalyticsAgent);
 
 // Enhanced video analytics harvester
 export const videoAnalyticsHarvester = videoAnalyticsAgent;

@@ -1,10 +1,10 @@
-import { NrVideoEventAggregator } from "./eventAggregator";
-import { RetryQueueHandler } from "./retryQueueHandler";
-import { OptimizedHttpClient } from "./optimizedHttpClient";
-import { buildUrl, dataSize } from "./utils";
-import Constants from "./constants";
-import Tracker from "./tracker";
-import Log from "./log";
+import { NrVideoEventAggregator } from "../eventAggregator";
+import { RetryQueueHandler } from "../retryQueueHandler";
+import { OptimizedHttpClient } from "../optimizedHttpClient";
+import { buildUrl, dataSize } from "../utils";
+import Constants from "../constants";
+import Tracker from "../tracker";
+import Log from "../log";
 
 /**
  * Enhanced harvest scheduler that orchestrates the video analytics data collection,

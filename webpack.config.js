@@ -50,12 +50,16 @@ module.exports = [
     ],
   },
   // CommonJS Build
+  // No `library` name — `commonjs2` then sets module.exports = entry's
+  // exports namespace directly. With `library: "nrvideo"`, webpack would
+  // wrap as `module.exports.nrvideo = ...`, which combined with babel's
+  // _interopRequireDefault on consumers leaves `_videoCore.default.VideoTracker`
+  // undefined and crashes at class-extends time.
   {
     entry: "./src/index.js",
     output: {
       path: path.resolve(__dirname, "./dist/cjs"),
       filename: "index.js",
-      library: "nrvideo",
       libraryTarget: "commonjs2", // CommonJS format
     },
     devtool: "source-map",
@@ -119,6 +123,118 @@ module.exports = [
         banner: license,
         entryOnly: true,
       }),
+    ],
+  },
+  // ============ BROWSER ENTRY ============
+  // CommonJS Build
+  {
+    entry: "./src/browser/index.js",
+    output: {
+      path: path.resolve(__dirname, "./dist/cjs/browser"),
+      filename: "index.js",
+      libraryTarget: "commonjs2",
+    },
+    devtool: "source-map",
+    module: {
+      rules: [
+        {
+          test: /\.(js|mjs|cjs)$/,
+          exclude: [/node_modules/, /test/],
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: [["@babel/preset-env", { targets: "defaults" }]],
+            },
+          },
+        },
+      ],
+    },
+    plugins: [
+      new webpack.BannerPlugin({ banner: license, entryOnly: true }),
+    ],
+  },
+  // ES Module Build
+  {
+    entry: "./src/browser/index.js",
+    output: {
+      path: path.resolve(__dirname, "./dist/esm/browser"),
+      filename: "index.js",
+      library: { type: "module" },
+    },
+    experiments: { outputModule: true },
+    devtool: "source-map",
+    module: {
+      rules: [
+        {
+          test: /\.(js|mjs|cjs)$/,
+          exclude: [/node_modules/, /test/],
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: [["@babel/preset-env", { targets: "defaults" }]],
+            },
+          },
+        },
+      ],
+    },
+    plugins: [
+      new webpack.BannerPlugin({ banner: license, entryOnly: true }),
+    ],
+  },
+  // ============ VEGA ENTRY ============
+  // CommonJS Build
+  {
+    entry: "./src/connectedDevice/index.js",
+    output: {
+      path: path.resolve(__dirname, "./dist/cjs/vega"),
+      filename: "index.js",
+      libraryTarget: "commonjs2",
+    },
+    devtool: "source-map",
+    module: {
+      rules: [
+        {
+          test: /\.(js|mjs|cjs)$/,
+          exclude: [/node_modules/, /test/],
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: [["@babel/preset-env", { targets: "defaults" }]],
+            },
+          },
+        },
+      ],
+    },
+    plugins: [
+      new webpack.BannerPlugin({ banner: license, entryOnly: true }),
+    ],
+  },
+  // ES Module Build
+  {
+    entry: "./src/connectedDevice/index.js",
+    output: {
+      path: path.resolve(__dirname, "./dist/esm/vega"),
+      filename: "index.js",
+      library: { type: "module" },
+    },
+    experiments: { outputModule: true },
+    devtool: "source-map",
+    module: {
+      rules: [
+        {
+          test: /\.(js|mjs|cjs)$/,
+          exclude: [/node_modules/, /test/],
+          use: {
+            loader: "babel-loader",
+            options: {
+              presets: [["@babel/preset-env", { targets: "defaults" }]],
+            },
+          },
+        },
+      ],
+    },
+    plugins: [
+      new webpack.BannerPlugin({ banner: license, entryOnly: true }),
     ],
   },
 ];

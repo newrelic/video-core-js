@@ -2,14 +2,14 @@ import sinon from "sinon";
 import Log from "../src/log";
 
 /**
- * VegaAnalyticsAgent unit tests. Covers T-VA-1..4 from vega-spec.md.
+ * ConnectedDeviceAnalyticsAgent unit tests. Covers T-VA-1..4 from vega-spec.md.
  *
- * Each test re-imports `vegaAgent` via `jest.isolateModules` so the
+ * Each test re-imports `connectedDeviceAgent` via `jest.isolateModules` so the
  * module-level singleton constructor runs in a fresh state. This is
  * required because the singleton is created at module-load time
  * (REQ-CO-7 part d) and persists across tests otherwise.
  */
-describe("VegaAnalyticsAgent / vegaAnalyticsHarvester", () => {
+describe("ConnectedDeviceAnalyticsAgent / connectedDeviceAnalyticsHarvester", () => {
   let stubs = [];
   let fetchStub;
 
@@ -33,25 +33,25 @@ describe("VegaAnalyticsAgent / vegaAnalyticsHarvester", () => {
   beforeEach(() => {
     fetchStub = makeConnectFetch();
     global.fetch = fetchStub;
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     stubs = [];
   });
 
   afterEach(() => {
     stubs.forEach((s) => s.restore && s.restore());
     stubs = [];
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     delete global.fetch;
   });
 
   // ====== T-VA-1 — module singleton identity ======
 
-  it("T-VA-1: vegaAnalyticsHarvester is the same instance across multiple imports", () => {
+  it("T-VA-1: connectedDeviceAnalyticsHarvester is the same instance across multiple imports", () => {
     let firstRef;
     let secondRef;
     jest.isolateModules(() => {
-      firstRef = require("../src/vegaAgent").vegaAnalyticsHarvester;
-      secondRef = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      firstRef = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
+      secondRef = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
     });
     expect(firstRef).toBe(secondRef); // same reference within a module realm
   });
@@ -79,28 +79,28 @@ describe("VegaAnalyticsAgent / vegaAnalyticsHarvester", () => {
     };
 
     jest.isolateModules(() => {
-      agent = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      agent = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
     });
 
     expect(agent.isInitialized).toBe(false);
     expect(agent.harvester).toBe(null);
     expect(setIntervalCalls).toBe(0);
     expect(fetchCalls).toBe(0);
-    expect(globalThis.__NRVIDEO_VEGA__).toBeUndefined();
+    expect(globalThis.__NRVIDEO_CD__).toBeUndefined();
 
     global.setInterval = realSetInterval;
   });
 
   // ====== T-VA-3 — first addEvent triggers initialize ======
 
-  it("T-VA-3: first addEvent triggers initialize() which reads globalThis.__NRVIDEO_VEGA__.info and constructs MobileHarvester; second addEvent does NOT re-initialize", () => {
+  it("T-VA-3: first addEvent triggers initialize() which reads globalThis.__NRVIDEO_CD__.info and constructs ConnectedDeviceHarvester; second addEvent does NOT re-initialize", () => {
     let agent;
     jest.isolateModules(() => {
-      agent = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      agent = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
     });
 
     // Pre-populate the global slot (mimic what setVideoConfig does).
-    globalThis.__NRVIDEO_VEGA__ = {
+    globalThis.__NRVIDEO_CD__ = {
       info: {
         accountId: "acct",
         applicationToken: "tok-1",
@@ -126,28 +126,28 @@ describe("VegaAnalyticsAgent / vegaAnalyticsHarvester", () => {
 
   // ====== T-VA-4 — defensive guard when info is missing ======
 
-  it("T-VA-4: when globalThis.__NRVIDEO_VEGA__.info is missing on first addEvent, drops silently and does NOT flip isInitialized; subsequent addEvent (after info populated) initializes successfully", () => {
+  it("T-VA-4: when globalThis.__NRVIDEO_CD__.info is missing on first addEvent, drops silently and does NOT flip isInitialized; subsequent addEvent (after info populated) initializes successfully", () => {
     let agent;
     jest.isolateModules(() => {
-      agent = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      agent = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
     });
 
     // No global set.
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     const result1 = agent.addEvent({ actionName: "CONTENT_START" });
     expect(result1).toBe(false);
     expect(agent.isInitialized).toBe(false);
     expect(agent.harvester).toBe(null);
 
     // Now populate the global and try again.
-    globalThis.__NRVIDEO_VEGA__ = {
+    globalThis.__NRVIDEO_CD__ = {
       info: { applicationToken: "tok-1", endpoint: "US" },
       config: {},
     };
     const result2 = agent.addEvent({ actionName: "CONTENT_START" });
     expect(agent.isInitialized).toBe(true);
     expect(agent.harvester).not.toBe(null);
-    // result2 reflects the underlying MobileHarvester.addEvent return.
+    // result2 reflects the underlying ConnectedDeviceHarvester.addEvent return.
     expect(typeof result2).toBe("boolean");
 
     agent.harvester.dispose();

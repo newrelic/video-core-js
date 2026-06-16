@@ -9,14 +9,19 @@ import VideoTrackerState from "./videotrackerstate";
 import { NrVideoEventAggregator } from "./eventAggregator";
 import { RetryQueueHandler } from "./retryQueueHandler";
 import { OptimizedHttpClient } from "./optimizedHttpClient";
-import { HarvestScheduler } from "./harvestScheduler";
-import { recordEvent } from "./recordEvent";
-import MobileHarvester from "./mobileHarvester";
-import { vegaAnalyticsHarvester } from "./vegaAgent";
+import { HarvestScheduler } from "./browser/harvestScheduler";
+import { recordEvent, getRegisteredHarvester } from "./recordEvent";
 import { version } from "../package.json";
 
+// Harvesters are exported as NAMED exports only — never added to the `nrvideo`
+// default-namespace object. This is the load-bearing detail for tree-shaking:
+// each tracker imports the named binding for its own harvester (e.g.,
+// `import { videoAnalyticsHarvester } from '@newrelic/video-core'`), which
+// triggers that harvester module's self-registration in `recordEvent`'s
+// registry. A consumer who doesn't import a given binding gets the entire
+// harvester chain dropped from their bundle (with `sideEffects: false` set).
+
 const nrvideo = {
-  // Core components (existing)
   Constants,
   Chrono,
   Log,
@@ -27,25 +32,16 @@ const nrvideo = {
   Core,
   version,
 
-  // Enhanced video analytics components (new)
-
   NrVideoEventAggregator,
   RetryQueueHandler,
   OptimizedHttpClient,
   HarvestScheduler,
 
-  // Vega pipeline (REQ-IE-1)
-  MobileHarvester,
-  vegaAnalyticsHarvester,
-
-  // Enhanced event recording
   recordEvent,
-
-
 };
 
-// Named exports for tree-shaking-friendly imports.
-export { default as MobileHarvester } from "./mobileHarvester";
-export { vegaAnalyticsHarvester } from "./vegaAgent";
+export { videoAnalyticsHarvester } from "./browser/agent";
+export { connectedDeviceAnalyticsHarvester } from "./connectedDevice/connectedDeviceAgent";
+export { getRegisteredHarvester } from "./recordEvent";
 
 export default nrvideo;

@@ -1,42 +1,67 @@
-import { videoAnalyticsHarvester } from "./agent.js";
-import { vegaAnalyticsHarvester } from "./vegaAgent.js";
 import Constants from "./constants.js";
 import Log from "./log.js";
 import Tracker from "./tracker";
-import {getObjectEntriesForKeys} from "./utils";
+import { getObjectEntriesForKeys } from "./utils";
 
 /**
- * Enhanced record event function with validation, enrichment, and unified handling.
+ * Registry-based recordEvent (split build).
  *
- * Routes by per-event `attributes.src`:
- *   - `'Vega'`    -> vegaAnalyticsHarvester  (mobile collector)
- *   - anything else -> videoAnalyticsHarvester (browser collector)
+ * No static harvester imports. Each harvester self-registers under a key
+ * (`'Browser'` or `'Vega'`) at module load time via `registerHarvester`.
  *
- * Both harvesters are module-level singletons; routing is a direct dispatch
- * via the imported reference. The two pipelines have parallel info/config
- * stores: `globalThis.__NRVIDEO_VEGA__.{info,config}` for Vega vs
- * `window.NRVIDEO.{info,config}` for browser. (REQ-CO-3)
- *
- * @param {string} eventType - Type of event to record
- * @param {object} attributes - Event attributes
+ * For Html5Tracker-only builds, only `agent.js` is statically reachable from
+ * the import graph; `connectedDeviceAgent.js` and the rest of the Vega chain
+ * are unreachable and tree-shaken.
  */
+const harvesters = Object.create(null);
+
+/**
+ * Register a harvester implementation under a routing key.
+ * Called by `agent.js` (key `'Browser'`) and `connectedDeviceAgent.js`
+ * (key `'Vega'`) at module load time.
+ *
+ * @param {string} key  Routing key matching `attributes.src`.
+ * @param {{ addEvent: function }} harvester
+ */
+export function registerHarvester(key, harvester) {
+  harvesters[key] = harvester;
+}
+
+/**
+ * Look up a harvester registered under a routing key. Returns `undefined` if
+ * no module has registered for that key in this build (e.g. on the `/browser`
+ * subpath, the 'Vega' key is never registered because `connectedDeviceAgent.js`
+ * is unreachable from that entry's import graph).
+ *
+ * Trackers use this getter — instead of importing the harvester binding by
+ * name — so the same `tracker.js` / `vegaTracker.js` source files compile
+ * unchanged across all three core entry points (main, /browser, /vega) when
+ * the html5 webpack build aliases `@newrelic/video-core` to a specific
+ * subpath. Without this, parent-class file `tracker.js` would carry an
+ * unconditional `import { videoAnalyticsHarvester }` that fails to resolve
+ * against the `/vega` subpath.
+ *
+ * @param {string} key
+ * @returns {{ addEvent: function }|undefined}
+ */
+export function getRegisteredHarvester(key) {
+  return harvesters[key];
+}
+
 export function recordEvent(eventType, attributes = {}) {
   try {
-    // Validate event type
     if (!Constants.VALID_EVENT_TYPES.includes(eventType)) {
       Log.warn("Invalid event type provided to recordEvent", { eventType });
       return false;
     }
 
-    // (a) Per-event discriminator
     const isVega = attributes.src === "Vega";
+    const routingKey = isVega ? "Vega" : "Browser";
 
-    // (b) Pick info source from the right global
     const info = isVega
-      ? globalThis.__NRVIDEO_VEGA__?.info
+      ? globalThis.__NRVIDEO_CD__?.info
       : window?.NRVIDEO?.info;
 
-    // (c) Single gate covers both pipelines
     if (!info) return;
 
     const { appName, applicationID } = info;
@@ -45,14 +70,12 @@ export function recordEvent(eventType, attributes = {}) {
     const qoeAttrs = qoe ? { ...qoe } : {};
 
     const otherAttrs = {
-        // appName/applicationID enrichment is identical for both pipelines.
-        ...(applicationID ? {} : { appName }), // Only include appName when no applicationID
-        timestamp: Date.now(),
-        // (d) NR-only enrichment skipped on Vega path (no window.performance there).
-        ...(isVega
-            ? {}
-            : { timeSinceLoad: window.performance ? window.performance.now() / 1000 : null }),
-    }
+      ...(applicationID ? {} : { appName }),
+      timestamp: Date.now(),
+      ...(isVega
+        ? {}
+        : { timeSinceLoad: window.performance ? window.performance.now() / 1000 : null }),
+    };
 
     const eventObject = {
       ...eventAttributes,
@@ -60,33 +83,35 @@ export function recordEvent(eventType, attributes = {}) {
       ...otherAttrs,
     };
 
-    const metadataAttributes = getObjectEntriesForKeys(Constants.QOE_AGGREGATE_KEYS, attributes)
+    const metadataAttributes = getObjectEntriesForKeys(Constants.QOE_AGGREGATE_KEYS, attributes);
 
     let qoeEventObject = null;
-    if(eventType === "VideoAction") {
-        qoeEventObject = {
-            eventType: "VideoAction",
-            actionName: Tracker.Events.QOE_AGGREGATE,
-            qoeAggregateVersion: '1.0.0',
-            ...qoeAttrs,
-            ...metadataAttributes,
-            ...otherAttrs,
-        }
+    if (eventType === "VideoAction") {
+      qoeEventObject = {
+        eventType: "VideoAction",
+        actionName: Tracker.Events.QOE_AGGREGATE,
+        qoeAggregateVersion: '1.0.0',
+        ...qoeAttrs,
+        ...metadataAttributes,
+        ...otherAttrs,
+      };
     }
 
-    // (e) Pick destination harvester via direct module import — no global-slot
-    // lookup for the harvester reference. (REQ-CO-3 part e, mirror of agent.js)
-    const harvester = isVega ? vegaAnalyticsHarvester : videoAnalyticsHarvester;
+    const harvester = harvesters[routingKey];
+    if (!harvester) {
+      Log.warn("No harvester registered for routing key", { routingKey });
+      return false;
+    }
+
     const success = harvester.addEvent(eventObject);
 
-    // (f) QoE gate read from the right global.
     const qoeEnabled = isVega
-      ? globalThis.__NRVIDEO_VEGA__?.config?.qoeAggregate
+      ? globalThis.__NRVIDEO_CD__?.config?.qoeAggregate
       : window?.NRVIDEO?.config?.qoeAggregate;
 
-    if(qoeEventObject && qoeEnabled) {
-        const successQoe = harvester.addEvent(qoeEventObject);
-        return success && successQoe;
+    if (qoeEventObject && qoeEnabled) {
+      const successQoe = harvester.addEvent(qoeEventObject);
+      return success && successQoe;
     }
 
     return success;

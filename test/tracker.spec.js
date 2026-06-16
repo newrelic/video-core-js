@@ -162,7 +162,7 @@ describe("Tracker", () => {
       const logErrorSpy = sinon.spy(Log, "error");
 
       // Import agent module dynamically
-      const agentModule = await import("../src/agent.js");
+      const agentModule = await import("../src/browser/agent.js");
       const originalHarvester = agentModule.videoAnalyticsHarvester;
 
       try {
@@ -212,7 +212,7 @@ describe("Tracker", () => {
       const logErrorSpy = sinon.spy(Log, "error");
 
       // Import agent module dynamically
-      const agentModule = await import("../src/agent.js");
+      const agentModule = await import("../src/browser/agent.js");
       const originalMethod = agentModule.videoAnalyticsHarvester.setHarvestInterval;
 
       try {

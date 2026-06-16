@@ -1,5 +1,5 @@
 import sinon from 'sinon';
-import { HarvestScheduler } from '../src/harvestScheduler';
+import { HarvestScheduler } from '../src/browser/harvestScheduler';
 import { NrVideoEventAggregator } from '../src/eventAggregator';
 import { RetryQueueHandler } from '../src/retryQueueHandler';
 import Constants from '../src/constants';

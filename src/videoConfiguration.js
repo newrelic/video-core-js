@@ -169,17 +169,18 @@ class VideoConfiguration {
    * @param {object} [config] - Optional configuration object
    */
   initializeGlobalConfig(userInfo, config, src) {
-    // Vega path: write `globalThis.__NRVIDEO_VEGA__` with info+config only.
-    // The harvester is owned by `vegaAgent.js` as a module singleton — no
+    // Vega path: write `globalThis.__NRVIDEO_CD__` with info+config only.
+    // The harvester is owned by `connectedDeviceAgent.js` as a module singleton — no
     // harvester field on this global. (REQ-CO-5 c)
     if (src === "Vega") {
-      globalThis.__NRVIDEO_VEGA__ = {
+      globalThis.__NRVIDEO_CD__ = {
         info: {
           accountId: userInfo.accountId,
           applicationToken: userInfo.applicationToken,
           endpoint: userInfo.endpoint,
           ...(userInfo.appName ? { appName: userInfo.appName } : {}),
           ...(userInfo.applicationID ? { applicationID: userInfo.applicationID } : {}),
+          ...(userInfo.deviceInfo ? { deviceInfo: userInfo.deviceInfo } : {}),
         },
         config: {
           qoeAggregate: config?.qoeAggregate ?? false,

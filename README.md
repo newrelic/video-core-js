@@ -154,6 +154,50 @@ info: {
 | Staging | `staging-bam-cell.nr-data.net` |
 | GOV | `gov-bam.nr-data.net` |
 
+**Mode 3 — Vega / Connected-Device pipeline:**
+
+When importing from the `/vega` subpath (`@newrelic/video-core/vega` or any player package's `/vega`), the `info` object uses a different shape — `applicationToken` + `endpoint` instead of license key + beacon, plus an optional `deviceInfo` block carrying runtime device identity:
+
+```javascript
+info: {
+  accountId:        '1',                   // Required
+  applicationToken: 'AA...NRMA',           // Required — NRMA token for mobile collector
+  endpoint:         'US',                  // Required — 'US' | 'EU' | 'staging'
+  deviceInfo: {                            // Optional — all sub-fields optional
+    uuid:               'AQVV01P',         // device identifier
+    osVersion:          '1.4.0',           // OS version string
+    deviceModel:        'AQVV01P',         // device model code
+    deviceManufacturer: 'Amazon',
+    osBuild:            'PS7649/1976N',    // OS build identifier
+    appBuild:           '601646782',       // app build number
+    architecture:       'aarch64',
+  },
+}
+```
+
+The `deviceInfo` sub-fields populate slot [1] (`CD_DEVICE_INFO`) and slot [8] (`CD_METADATA`) of the `/v3/data` payload. Each field is optional — missing values fall back to the static defaults in `connectedDeviceConstants.js`. Extra fields the customer passes are ignored.
+
+On Kepler, source these from `@amazon-devices/react-native-device-info`:
+
+```js
+import {
+  getDeviceId, getSystemVersion, getModel, getBrand,
+  getBuildIdSync, getBuildNumber,
+} from '@amazon-devices/react-native-device-info';
+
+const deviceInfo = {
+  uuid:               getDeviceId(),
+  osVersion:          getSystemVersion(),
+  deviceModel:        getModel(),
+  deviceManufacturer: getBrand(),
+  osBuild:            getBuildIdSync(),    // OS build
+  appBuild:           getBuildNumber(),    // app build
+  architecture:       'aarch64',
+};
+```
+
+`osBuild` is the OS image build (`getBuildIdSync()`); `appBuild` is the consumer app's build number (`getBuildNumber()`) — these are semantically distinct and ship in different fields of the wire payload.
+
 ### Config Object (Optional)
 
 | Option | Type | Default | Description |
@@ -190,7 +234,6 @@ Static class managing tracker registration and event dispatch.
 | `Core.getTrackers()` | Returns the array of currently registered trackers. |
 | `Core.send(eventType, actionName, data)` | Sends an event to the collector. Called internally by event handlers. |
 | `Core.sendError(att)` | Sends a `VideoErrorAction` with `actionName: "ERROR"`. For external/app-level errors. |
-| `Core.forceHarvest()` | Forces an immediate harvest of all pending events. Returns a `Promise`. |
 
 ### VideoTracker
 

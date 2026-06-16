@@ -1,5 +1,5 @@
 import { recordEvent } from "../src/recordEvent.js";
-import { videoAnalyticsHarvester } from "../src/agent.js";
+import { videoAnalyticsHarvester } from "../src/browser/agent.js";
 import Constants from "../src/constants.js";
 import Log from "../src/log.js";
 import Tracker from "../src/tracker.js";

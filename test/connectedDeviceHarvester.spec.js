@@ -1,30 +1,30 @@
 import sinon from "sinon";
 import fs from "fs";
 import path from "path";
-import MobileHarvester from "../src/mobileHarvester";
+import ConnectedDeviceHarvester from "../src/connectedDevice/connectedDeviceHarvester";
 import {
   MOBILE_ENDPOINT,
   STAGING_MOBILE_ENDPOINT,
-  VEGA_DEVICE_INFO,
-  VEGA_METADATA,
-} from "../src/vegaConstants";
+  CD_DEVICE_INFO,
+  CD_METADATA,
+} from "../src/connectedDevice/connectedDeviceConstants";
 import Tracker from "../src/tracker";
 import Log from "../src/log";
 
 /**
- * MobileHarvester unit tests. Covers T-VH-1..18, T-VH-26 from vega-spec.md.
+ * ConnectedDeviceHarvester unit tests. Covers T-CDH-1..18, T-CDH-26 from vega-spec.md.
  *
  * Each test stubs `global.fetch` before constructing the harvester so the
  * fire-and-forget `initialise()` call in the constructor doesn't make real
  * network requests.
  */
-describe("MobileHarvester", () => {
+describe("ConnectedDeviceHarvester", () => {
   let stubs = [];
   let fetchStub;
 
   /** Build a harvester with sane defaults. */
   function makeHarvester(overrides = {}) {
-    return new MobileHarvester({
+    return new ConnectedDeviceHarvester({
       accountId: "acct-1",
       applicationToken: "tok-1",
       endpoint: "US",
@@ -52,29 +52,29 @@ describe("MobileHarvester", () => {
   beforeEach(() => {
     fetchStub = makeConnectFetch();
     global.fetch = fetchStub;
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     stubs = [];
   });
 
   afterEach(() => {
     stubs.forEach((s) => s.restore && s.restore());
     stubs = [];
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     delete global.fetch;
   });
 
-  // ====== T-VH-1, T-VH-2 — constructor validation ======
+  // ====== T-CDH-1, T-CDH-2 — constructor validation ======
 
   describe("constructor", () => {
-    it("T-VH-1: throws when applicationToken is missing", () => {
+    it("T-CDH-1: throws when applicationToken is missing", () => {
       expect(() =>
-        new MobileHarvester({ accountId: "x", endpoint: "US" })
+        new ConnectedDeviceHarvester({ accountId: "x", endpoint: "US" })
       ).toThrow(/applicationToken is required/);
     });
 
-    it("T-VH-2: throws on invalid endpoint", () => {
+    it("T-CDH-2: throws on invalid endpoint", () => {
       expect(() =>
-        new MobileHarvester({ applicationToken: "t", endpoint: "INVALID" })
+        new ConnectedDeviceHarvester({ applicationToken: "t", endpoint: "INVALID" })
       ).toThrow(/Invalid endpoint/);
     });
 
@@ -85,10 +85,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-3, T-VH-4, T-VH-19 — connect URL + headers ======
+  // ====== T-CDH-3, T-CDH-4, T-CDH-19 — connect URL + headers ======
 
   describe("fetchDataTokens", () => {
-    it("T-VH-3: POSTs to prod /v5/connect with correct headers when endpoint=US", async () => {
+    it("T-CDH-3: POSTs to prod /v5/connect with correct headers when endpoint=US", async () => {
       const h = makeHarvester({ endpoint: "US" });
       // Wait for the fire-and-forget initialise.
       await Promise.resolve();
@@ -102,7 +102,7 @@ describe("MobileHarvester", () => {
       h.dispose();
     });
 
-    it("T-VH-4 / T-VH-19: POSTs to staging /v5/connect when endpoint=staging", async () => {
+    it("T-CDH-4 / T-CDH-19: POSTs to staging /v5/connect when endpoint=staging", async () => {
       const h = makeHarvester({ endpoint: "staging" });
       await Promise.resolve();
       await Promise.resolve();
@@ -112,7 +112,7 @@ describe("MobileHarvester", () => {
       h.dispose();
     });
 
-    it("T-VH-5: stores data_token from response body", async () => {
+    it("T-CDH-5: stores data_token from response body", async () => {
       fetchStub = makeConnectFetch(["A", "B", "C"]);
       global.fetch = fetchStub;
       const h = makeHarvester();
@@ -123,10 +123,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-6 — exp-backoff retry up to 10 attempts ======
+  // ====== T-CDH-6 — exp-backoff retry up to 10 attempts ======
 
   describe("connect retry behavior", () => {
-    it("T-VH-6: retries with exp-backoff on 500, marks exhausted after 10", async () => {
+    it("T-CDH-6: retries with exp-backoff on 500, marks exhausted after 10", async () => {
       jest.useFakeTimers();
       const failingFetch = sinon
         .stub()
@@ -142,7 +142,7 @@ describe("MobileHarvester", () => {
         await Promise.resolve();
       }
 
-      expect(failingFetch.callCount).toBe(10); // T-VH-11: gives up after 10
+      expect(failingFetch.callCount).toBe(10); // T-CDH-11: gives up after 10
       expect(h._connectExhausted).toBe(true);
       expect(h.dataToken).toBe(null);
 
@@ -151,10 +151,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-7 — addEvent appends with timestamp ======
+  // ====== T-CDH-7 — addEvent appends with timestamp ======
 
   describe("addEvent", () => {
-    it("T-VH-7: appends non-QoE event with a timestamp field", async () => {
+    it("T-CDH-7: appends non-QoE event with a timestamp field", async () => {
       const h = makeHarvester();
       h.addEvent({ actionName: "CONTENT_START", foo: "bar" });
       const buffered = h.eventBuffer.drain();
@@ -165,7 +165,7 @@ describe("MobileHarvester", () => {
       h.dispose();
     });
 
-    it("T-VH-14: dedupes QOE_AGGREGATE by viewId", async () => {
+    it("T-CDH-14: dedupes QOE_AGGREGATE by viewId", async () => {
       const h = makeHarvester();
       h.addEvent({
         actionName: Tracker.Events.QOE_AGGREGATE,
@@ -192,10 +192,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-8, T-VH-9 — sendBufferedEvents guards ======
+  // ====== T-CDH-8, T-CDH-9 — sendBufferedEvents guards ======
 
   describe("sendBufferedEvents guards", () => {
-    it("T-VH-8: no-ops when dataToken is null", async () => {
+    it("T-CDH-8: no-ops when dataToken is null", async () => {
       const h = makeHarvester();
       h.dataToken = null;
       h.addEvent({ actionName: "CONTENT_START" });
@@ -205,7 +205,7 @@ describe("MobileHarvester", () => {
       h.dispose();
     });
 
-    it("T-VH-9: no-ops when buffer is empty", async () => {
+    it("T-CDH-9: no-ops when buffer is empty", async () => {
       const h = makeHarvester();
       h.dataToken = ["t1"];
       const beforeCalls = fetchStub.callCount;
@@ -215,10 +215,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-10 — 10-tuple body ======
+  // ====== T-CDH-10 — 10-tuple body ======
 
   describe("/v3/data wire format", () => {
-    it("T-VH-10: POSTs 10-tuple body in correct positional order", async () => {
+    it("T-CDH-10: POSTs 10-tuple body in correct positional order", async () => {
       const h = makeHarvester();
       h.dataToken = ["TKN"];
       h.addEvent({ actionName: "CONTENT_START" });
@@ -238,10 +238,10 @@ describe("MobileHarvester", () => {
       expect(Array.isArray(body)).toBe(true);
       expect(body).toHaveLength(10);
       expect(body[0]).toEqual(["TKN"]); // dataToken
-      expect(body[1]).toEqual(VEGA_DEVICE_INFO); // device info
+      expect(body[1]).toEqual(CD_DEVICE_INFO); // device info
       expect(body[2]).toBe(0);
       expect(body[3]).toEqual([]);
-      expect(body[8]).toEqual(VEGA_METADATA); // session metadata
+      expect(body[8]).toEqual(CD_METADATA); // session metadata
       expect(Array.isArray(body[9])).toBe(true); // events
       expect(body[9]).toHaveLength(1);
       expect(body[9][0].actionName).toBe("CONTENT_START");
@@ -249,10 +249,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-11 — re-queue on failure ======
+  // ====== T-CDH-11 — re-queue on failure ======
 
   describe("send failure handling", () => {
-    it("T-VH-11: re-queues drained events on /v3/data failure", async () => {
+    it("T-CDH-11: re-queues drained events on /v3/data failure", async () => {
       const h = makeHarvester();
       h.dataToken = ["TKN"];
       h.addEvent({ actionName: "CONTENT_START" });
@@ -274,10 +274,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-12 — dispose ======
+  // ====== T-CDH-12 — dispose ======
 
   describe("dispose", () => {
-    it("T-VH-12: clearInterval + best-effort final send", async () => {
+    it("T-CDH-12: clearInterval + best-effort final send", async () => {
       const h = makeHarvester();
       h.dataToken = ["TKN"];
       h.intervalId = setInterval(() => {}, 1000);
@@ -297,12 +297,12 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-13 — grep test (no banned DOM APIs) ======
+  // ====== T-CDH-13 — grep test (no banned DOM APIs) ======
 
-  describe("REQ-VH-20 (no DOM APIs)", () => {
-    it("T-VH-13: source contains no document, window.location, sendBeacon, localStorage, or addEventListener (outside JSDoc comments)", () => {
+  describe("REQ-CDH-20 (no DOM APIs)", () => {
+    it("T-CDH-13: source contains no document, window.location, sendBeacon, localStorage, or addEventListener (outside JSDoc comments)", () => {
       const src = fs.readFileSync(
-        path.resolve(__dirname, "../src/mobileHarvester.js"),
+        path.resolve(__dirname, "../src/connectedDevice/connectedDeviceHarvester.js"),
         "utf8"
       );
       // Strip JSDoc comment blocks before grepping.
@@ -321,17 +321,17 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-15, T-VH-16, T-VH-17 — QoE cycle filter, dirty check, force flag ======
+  // ====== T-CDH-15, T-CDH-16, T-CDH-17 — QoE cycle filter, dirty check, force flag ======
 
   describe("QoE cycle filter and dirty check", () => {
     function setupQoeGlobal(qoeIntervalFactor) {
-      globalThis.__NRVIDEO_VEGA__ = {
+      globalThis.__NRVIDEO_CD__ = {
         info: { applicationToken: "tok-1", endpoint: "US" },
         config: { qoeAggregate: true, qoeIntervalFactor },
       };
     }
 
-    it("T-VH-15: ships QOE_AGGREGATE only on cycles 1, N+1, 2N+1 when qoeIntervalFactor=N", async () => {
+    it("T-CDH-15: ships QOE_AGGREGATE only on cycles 1, N+1, 2N+1 when qoeIntervalFactor=N", async () => {
       setupQoeGlobal(3);
       const h = makeHarvester();
       h.dataToken = ["TKN"];
@@ -368,7 +368,7 @@ describe("MobileHarvester", () => {
       h.dispose();
     });
 
-    it("T-VH-16: skips QoE when KPIs unchanged across cycles", async () => {
+    it("T-CDH-16: skips QoE when KPIs unchanged across cycles", async () => {
       setupQoeGlobal(1);
       const h = makeHarvester();
       h.dataToken = ["TKN"];
@@ -399,7 +399,7 @@ describe("MobileHarvester", () => {
       h.dispose();
     });
 
-    it("T-VH-17: forceQoeNextHarvest forces ship regardless of multiplier or dirty check", async () => {
+    it("T-CDH-17: forceQoeNextHarvest forces ship regardless of multiplier or dirty check", async () => {
       setupQoeGlobal(10); // would normally skip
       const h = makeHarvester();
       h.dataToken = ["TKN"];
@@ -424,10 +424,10 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-18 — before-drain callback ======
+  // ====== T-CDH-18 — before-drain callback ======
 
   describe("setBeforeDrainCallback", () => {
-    it("T-VH-18: callback runs before drain on every send cycle", async () => {
+    it("T-CDH-18: callback runs before drain on every send cycle", async () => {
       const h = makeHarvester();
       h.dataToken = ["TKN"];
       const cb = sinon.spy();
@@ -449,20 +449,20 @@ describe("MobileHarvester", () => {
     });
   });
 
-  // ====== T-VH-26 — lazy construction marker ======
+  // ====== T-CDH-26 — lazy construction marker ======
 
-  describe("REQ-VH-26 lazy construction (drives integration with VegaAgent)", () => {
-    it("T-VH-26: MobileHarvester constructor IS callable without globalThis.__NRVIDEO_VEGA__ — confirming the class is decoupled from the Vega global", () => {
-      // The Vega-specific lazy-init lives in VegaAgent (T-VA-3), not the
+  describe("REQ-CDH-26 lazy construction (drives integration with ConnectedDeviceAnalyticsAgent)", () => {
+    it("T-CDH-26: ConnectedDeviceHarvester constructor IS callable without globalThis.__NRVIDEO_CD__ — confirming the class is decoupled from the Vega global", () => {
+      // The Vega-specific lazy-init lives in ConnectedDeviceAnalyticsAgent (T-VA-3), not the
       // harvester. Construction here works as long as info is passed
       // directly. This guards against future refactors that might
-      // accidentally inline a __NRVIDEO_VEGA__ read into the constructor.
-      delete globalThis.__NRVIDEO_VEGA__;
-      const h = new MobileHarvester({
+      // accidentally inline a __NRVIDEO_CD__ read into the constructor.
+      delete globalThis.__NRVIDEO_CD__;
+      const h = new ConnectedDeviceHarvester({
         applicationToken: "tok",
         endpoint: "US",
       });
-      expect(h).toBeInstanceOf(MobileHarvester);
+      expect(h).toBeInstanceOf(ConnectedDeviceHarvester);
       h.dispose();
     });
   });

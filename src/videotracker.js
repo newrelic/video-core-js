@@ -1,7 +1,6 @@
 import Log from "./log";
 import Tracker from "./tracker";
 import TrackerState from "./videotrackerstate";
-import { videoAnalyticsHarvester } from "./agent";
 import pkg from "../package.json";
 
 /**
@@ -645,11 +644,14 @@ class VideoTracker extends Tracker {
         this.state.setStartupTime(totalAdsTime)
         this.sendVideoAction(ev, att);
 
-        // Register callback to refresh QoE KPIs with latest state before each drain
-        videoAnalyticsHarvester.setBeforeDrainCallback(() => {
+        // Register callback to refresh QoE KPIs with latest state before each drain.
+        // Routes to whichever harvester this tracker subclass declares via
+        // `getHarvester()` — Browser for Html5Tracker, Vega for VegaTracker.
+        const harvester = this.getHarvester?.();
+        harvester?.setBeforeDrainCallback(() => {
           if (this.state) {
             const freshKpis = this.state.getQoeAttributes({}).qoe;
-            videoAnalyticsHarvester.refreshQoeKpis(freshKpis, this.getViewId());
+            harvester.refreshQoeKpis(freshKpis, this.getViewId());
           }
         });
       }
@@ -691,14 +693,15 @@ class VideoTracker extends Tracker {
       this.state.goViewCountUp();
       this.state.totalPlaytime = 0;
       if(!this.isAd()) {
+        const harvester = this.getHarvester?.();
         // Force QoE to be included in the next harvest cycle at content end
-          videoAnalyticsHarvester.forceNextQoeCycle();
+        harvester?.forceNextQoeCycle?.();
         // Clear the before-drain callback so the next harvest doesn't overwrite
         // the final QoE (already in buffer) with zeroed-out state values
-          videoAnalyticsHarvester.setBeforeDrainCallback(null);
+        harvester?.setBeforeDrainCallback?.(null);
         // reset the states after the view count is up
-          if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
-          this.state.resetViewIdTrackedState();
+        if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
+        this.state.resetViewIdTrackedState();
       }
     }
   }

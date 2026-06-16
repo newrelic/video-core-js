@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 import Core from "../src/core";
 import { recordEvent } from "../src/recordEvent";
 import { setVideoConfig, videoConfiguration } from "../src/videoConfiguration";
-import { videoAnalyticsHarvester } from "../src/agent";
+import { videoAnalyticsHarvester } from "../src/browser/agent";
 import VideoTracker from "../src/videotracker";
 import Log from "../src/log";
 
@@ -38,7 +38,7 @@ describe("Vega core wiring", () => {
       json: () => Promise.resolve({ data_token: ["TKN"] }),
     });
     global.fetch = fetchStub;
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     delete global.window.NRVIDEO;
     stubs = [];
   });
@@ -46,7 +46,7 @@ describe("Vega core wiring", () => {
   afterEach(() => {
     stubs.forEach((s) => s.restore && s.restore());
     stubs = [];
-    delete globalThis.__NRVIDEO_VEGA__;
+    delete globalThis.__NRVIDEO_CD__;
     delete global.window.NRVIDEO;
     delete global.fetch;
   });
@@ -110,29 +110,29 @@ describe("Vega core wiring", () => {
 
     beforeEach(() => {
       // Spy the two harvesters' addEvent methods.
-      // Use jest.isolateModules to grab a fresh vegaAgent (its module-level
+      // Use jest.isolateModules to grab a fresh connectedDeviceAgent (its module-level
       // singleton is created at module load).
       jest.isolateModules(() => {
-        agent = require("../src/vegaAgent").vegaAnalyticsHarvester;
+        agent = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       });
-      // Note: the production recordEvent imports its own vegaAgent reference.
+      // Note: the production recordEvent imports its own connectedDeviceAgent reference.
       // We test routing by inspecting which harvester was called via direct
       // references read from the same module graph.
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       vegaAddEventSpy = sinon.spy(live, "addEvent");
       videoAddEventSpy = sinon.spy(videoAnalyticsHarvester, "addEvent");
       stubs.push(vegaAddEventSpy, videoAddEventSpy);
     });
 
     afterEach(() => {
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       live.addEvent.restore && live.addEvent.restore();
       videoAnalyticsHarvester.addEvent.restore &&
         videoAnalyticsHarvester.addEvent.restore();
     });
 
-    it("T-CO-3: routes to vegaAnalyticsHarvester when attributes.src === 'Vega'", () => {
-      globalThis.__NRVIDEO_VEGA__ = {
+    it("T-CO-3: routes to connectedDeviceAnalyticsHarvester when attributes.src === 'Vega'", () => {
+      globalThis.__NRVIDEO_CD__ = {
         info: { applicationToken: "tok", endpoint: "US" },
         config: {},
       };
@@ -145,7 +145,7 @@ describe("Vega core wiring", () => {
 
       recordEvent("VideoAction", { src: "Vega", actionName: "CONTENT_START" });
 
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       expect(live.addEvent.called).toBe(true);
       expect(videoAnalyticsHarvester.addEvent.called).toBe(false);
     });
@@ -162,12 +162,12 @@ describe("Vega core wiring", () => {
       recordEvent("VideoAction", { src: "Browser", actionName: "CONTENT_END" });
       expect(videoAnalyticsHarvester.addEvent.calledTwice).toBe(true);
 
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       expect(live.addEvent.called).toBe(false);
     });
 
-    it("T-CO-5: reads info from globalThis.__NRVIDEO_VEGA__.info on Vega path", () => {
-      globalThis.__NRVIDEO_VEGA__ = {
+    it("T-CO-5: reads info from globalThis.__NRVIDEO_CD__.info on Vega path", () => {
+      globalThis.__NRVIDEO_CD__ = {
         info: {
           applicationToken: "tok",
           endpoint: "US",
@@ -178,20 +178,20 @@ describe("Vega core wiring", () => {
 
       recordEvent("VideoAction", { src: "Vega", actionName: "CONTENT_START" });
 
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       const sentEvent = live.addEvent.firstCall.args[0];
       expect(sentEvent.appName).toBe("vega-app");
     });
 
-    it("T-CO-6: builds QoE companion when globalThis.__NRVIDEO_VEGA__.config.qoeAggregate is true on Vega path", () => {
-      globalThis.__NRVIDEO_VEGA__ = {
+    it("T-CO-6: builds QoE companion when globalThis.__NRVIDEO_CD__.config.qoeAggregate is true on Vega path", () => {
+      globalThis.__NRVIDEO_CD__ = {
         info: { applicationToken: "tok", endpoint: "US" },
         config: { qoeAggregate: true },
       };
 
       recordEvent("VideoAction", { src: "Vega", actionName: "CONTENT_START" });
 
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       // Should be called twice: main event + QOE_AGGREGATE companion.
       expect(live.addEvent.calledTwice).toBe(true);
       const second = live.addEvent.secondCall.args[0];
@@ -199,7 +199,7 @@ describe("Vega core wiring", () => {
     });
 
     it("T-CO-7: skips timeSinceLoad enrichment on Vega path; includes it on browser path", () => {
-      globalThis.__NRVIDEO_VEGA__ = {
+      globalThis.__NRVIDEO_CD__ = {
         info: { applicationToken: "tok", endpoint: "US" },
         config: {},
       };
@@ -209,7 +209,7 @@ describe("Vega core wiring", () => {
       };
 
       recordEvent("VideoAction", { src: "Vega", actionName: "CONTENT_START" });
-      const live = require("../src/vegaAgent").vegaAnalyticsHarvester;
+      const live = require("../src/connectedDevice/connectedDeviceAgent").connectedDeviceAnalyticsHarvester;
       const vegaEvent = live.addEvent.firstCall.args[0];
       expect(vegaEvent.timeSinceLoad).toBeUndefined();
 
@@ -229,8 +229,8 @@ describe("Vega core wiring", () => {
         "Vega"
       );
       expect(ok).toBe(true);
-      expect(globalThis.__NRVIDEO_VEGA__).toBeDefined();
-      expect(globalThis.__NRVIDEO_VEGA__.info.applicationToken).toBe("tok");
+      expect(globalThis.__NRVIDEO_CD__).toBeDefined();
+      expect(globalThis.__NRVIDEO_CD__.info.applicationToken).toBe("tok");
 
       const fail = setVideoConfig({ endpoint: "US" }, {}, "Vega");
       expect(fail).toBe(false);
@@ -265,7 +265,7 @@ describe("Vega core wiring", () => {
       expect(global.window.NRVIDEO).toBeDefined();
     });
 
-    it("T-CO-11: when src === 'Vega', writes globalThis.__NRVIDEO_VEGA__ with info+config only (no harvester field, not window.NRVIDEO)", () => {
+    it("T-CO-11: when src === 'Vega', writes globalThis.__NRVIDEO_CD__ with info+config only (no harvester field, not window.NRVIDEO)", () => {
       setVideoConfig(
         {
           accountId: "acct",
@@ -278,7 +278,7 @@ describe("Vega core wiring", () => {
         "Vega"
       );
 
-      const g = globalThis.__NRVIDEO_VEGA__;
+      const g = globalThis.__NRVIDEO_CD__;
       expect(g).toBeDefined();
       expect(g.info).toEqual({
         accountId: "acct",
@@ -302,7 +302,7 @@ describe("Vega core wiring", () => {
       );
       expect(global.window.NRVIDEO).toBeDefined();
       expect(global.window.NRVIDEO.info.licenseKey).toBe("lk");
-      expect(globalThis.__NRVIDEO_VEGA__).toBeUndefined();
+      expect(globalThis.__NRVIDEO_CD__).toBeUndefined();
     });
 
     it("T-CO-13: when src === 'Vega' and global is already set, info/config are last-wins; global never carries a harvester field", () => {
@@ -311,17 +311,17 @@ describe("Vega core wiring", () => {
         { qoeAggregate: false },
         "Vega"
       );
-      expect(globalThis.__NRVIDEO_VEGA__.info.applicationToken).toBe("tok-1");
+      expect(globalThis.__NRVIDEO_CD__.info.applicationToken).toBe("tok-1");
 
       setVideoConfig(
         { applicationToken: "tok-2", endpoint: "EU" },
         { qoeAggregate: true, qoeIntervalFactor: 3 },
         "Vega"
       );
-      expect(globalThis.__NRVIDEO_VEGA__.info.applicationToken).toBe("tok-2");
-      expect(globalThis.__NRVIDEO_VEGA__.info.endpoint).toBe("EU");
-      expect(globalThis.__NRVIDEO_VEGA__.config.qoeIntervalFactor).toBe(3);
-      expect("harvester" in globalThis.__NRVIDEO_VEGA__).toBe(false);
+      expect(globalThis.__NRVIDEO_CD__.info.applicationToken).toBe("tok-2");
+      expect(globalThis.__NRVIDEO_CD__.info.endpoint).toBe("EU");
+      expect(globalThis.__NRVIDEO_CD__.config.qoeIntervalFactor).toBe(3);
+      expect("harvester" in globalThis.__NRVIDEO_CD__).toBe(false);
     });
   });
 

@@ -15,7 +15,7 @@ class Core {
    */
   static addTracker(tracker, options) {
     // Set video analytics configuration. The optional `options.src` field
-    // selects the pipeline: `'Vega'` writes globalThis.__NRVIDEO_VEGA__,
+    // selects the pipeline: `'Vega'` writes globalThis.__NRVIDEO_CD__,
     // anything else writes window.NRVIDEO. (REQ-CO-1)
     if (options?.info) {
       setVideoConfig(options.info, options?.config, options?.src);
@@ -84,22 +84,6 @@ class Core {
     });
   }
 
-  
-  
-
-  /**
-   * Forces an immediate harvest of all pending events.
-   * @returns {Promise<object>} Harvest result
-   */
-  static async forceHarvest() {
-    try {
-      const { videoAnalyticsHarvester } = require("./agent"); // lazy loading for dynamic import
-      return await videoAnalyticsHarvester.forceHarvest();
-    } catch (error) {
-      Log.error("Failed to force harvest:", error.message);
-      return { success: false, error: error.message };
-    }
-  }
 }
 
 let trackers = [];
