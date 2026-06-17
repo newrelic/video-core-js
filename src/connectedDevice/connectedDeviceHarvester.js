@@ -1,7 +1,4 @@
 import { NrVideoEventAggregator } from "../eventAggregator";
-import Constants from "../constants";
-import Log from "../log";
-import Tracker from "../tracker";
 import {
   MOBILE_ENDPOINT,
   STAGING_MOBILE_ENDPOINT,
@@ -11,7 +8,14 @@ import {
   CD_DATA_TOKENS_PAYLOAD,
   CD_DEVICE_INFO,
   CD_METADATA,
-} from "./connectedDeviceConstants";
+} from "../constants";
+import {
+  bufferEventWithQoeDedup,
+  refreshQoeKpisInBuffer,
+  partitionByQoeCycle,
+  applyQoeDirtyFilter,
+} from "../utils/qoeFilters";
+import Log from "../log";
 
 /**
  * Generic NR mobile-collector harvester implementing the CAF protocol
@@ -237,26 +241,11 @@ export default class ConnectedDeviceHarvester {
    * @returns {boolean}
    */
   addEvent(eventObject) {
-    if (!eventObject) return false;
-
     try {
-      // REQ-CDH-21
-      if (eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
-        if (eventObject.viewId) {
-          return this.eventBuffer.addOrReplaceByActionNameAndViewId(
-            Tracker.Events.QOE_AGGREGATE,
-            eventObject.viewId,
-            eventObject
-          );
-        }
-        return this.eventBuffer.addOrReplaceByActionName(
-          Tracker.Events.QOE_AGGREGATE,
-          eventObject
-        );
-      }
-
-      // REQ-CDH-13
-      return this.eventBuffer.add({ ...eventObject, timestamp: Date.now() });
+      // REQ-CDH-21 — shared QOE_AGGREGATE dedup + non-QoE append. Timestamp
+      // is preserved from `recordEvent.js` (emit-time), matching the Browser
+      // pipeline. Cross-pipeline analytics produce consistent timestamps.
+      return bufferEventWithQoeDedup(this.eventBuffer, eventObject);
     } catch (err) {
       Log.error("ConnectedDeviceHarvester.addEvent failed:", err.message);
       return false;
@@ -292,20 +281,7 @@ export default class ConnectedDeviceHarvester {
    * @param {string} [viewId] - The viewId of the player whose QoE event to update
    */
   refreshQoeKpis(freshKpis, viewId) {
-    if (!this.eventBuffer || !freshKpis) return;
-    const existing = viewId
-      ? this.eventBuffer.findByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId)
-      : this.eventBuffer.findByActionName(Tracker.Events.QOE_AGGREGATE);
-    if (!existing) return;
-    const updated = { ...existing };
-    for (const key of Constants.QOE_KPI_KEYS) {
-      if (key in freshKpis) updated[key] = freshKpis[key];
-    }
-    if (viewId) {
-      this.eventBuffer.addOrReplaceByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId, updated);
-    } else {
-      this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, updated);
-    }
+    refreshQoeKpisInBuffer(this.eventBuffer, freshKpis, viewId);
   }
 
   /**
@@ -362,33 +338,11 @@ export default class ConnectedDeviceHarvester {
       (this.qoeCycleCount - 1) % multiplier === 0 || isForced;
     if (this.forceQoeNextCycle) this.forceQoeNextCycle = false;
 
-    let filtered;
-    if (isQoeCycle) {
-      filtered = drained;
-    } else {
-      // On non-QoE cycles, re-buffer QOE_AGGREGATE events instead of dropping them.
-      filtered = [];
-      for (const e of drained) {
-        if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
-          this.eventBuffer.add(e);
-        } else {
-          filtered.push(e);
-        }
-      }
-    }
+    const filtered = partitionByQoeCycle(drained, isQoeCycle, this.eventBuffer);
     this.qoeCycleCount++;
 
-    // REQ-CDH-23: cross-cycle dirty check (mirror of harvestScheduler.js:289-298)
-    for (let i = filtered.length - 1; i >= 0; i--) {
-      const e = filtered[i];
-      if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
-        if (!isForced && this._qoeKpisUnchanged(e)) {
-          filtered.splice(i, 1);
-        } else {
-          this._saveQoeKpis(e);
-        }
-      }
-    }
+    // REQ-CDH-23: cross-cycle dirty check
+    applyQoeDirtyFilter(filtered, this._lastSentQoeKpis, isForced);
 
     if (filtered.length === 0) {
       this.isHarvesting = false;
@@ -518,34 +472,5 @@ export default class ConnectedDeviceHarvester {
       this.intervalId = null;
     }
     return this.sendBufferedEvents();
-  }
-
-  /**
-   * Checks if QoE KPIs are unchanged since the last successful send.
-   * Per-viewId to support multiple players sharing one harvester. (REQ-CDH-23)
-   * @param {object} event
-   * @returns {boolean}
-   * @private
-   */
-  _qoeKpisUnchanged(event) {
-    const snapshot = this._lastSentQoeKpis[event.viewId];
-    if (!snapshot) return false;
-    for (const key of Constants.QOE_KPI_KEYS) {
-      if (event[key] !== snapshot[key]) return false;
-    }
-    return true;
-  }
-
-  /**
-   * Stores the QoE KPI snapshot for the given event's viewId. (REQ-CDH-23)
-   * @param {object} event
-   * @private
-   */
-  _saveQoeKpis(event) {
-    const snapshot = {};
-    for (const key of Constants.QOE_KPI_KEYS) {
-      snapshot[key] = event[key];
-    }
-    this._lastSentQoeKpis[event.viewId] = snapshot;
   }
 }

@@ -2,6 +2,10 @@ import { NrVideoEventAggregator } from "../eventAggregator";
 import { RetryQueueHandler } from "../retryQueueHandler";
 import { OptimizedHttpClient } from "../optimizedHttpClient";
 import { buildUrl, dataSize } from "../utils";
+import {
+  partitionByQoeCycle,
+  applyQoeDirtyFilter,
+} from "../utils/qoeFilters";
 import Constants from "../constants";
 import Tracker from "../tracker";
 import Log from "../log";
@@ -269,35 +273,17 @@ export class HarvestScheduler {
 
     // Always drain fresh events first (priority approach)
     const freshEvents = this.eventBuffer.drain();
-    let filteredFreshEvents;
-    if (isQoeCycle) {
-      filteredFreshEvents = freshEvents;
-    } else {
-      // On non-QoE cycles, put QoE events back into buffer instead of losing them
-      filteredFreshEvents = [];
-      for (const e of freshEvents) {
-        if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
-          this.eventBuffer.add(e);
-        } else {
-          filteredFreshEvents.push(e);
-        }
-      }
-    }
+    let filteredFreshEvents = partitionByQoeCycle(
+      freshEvents,
+      isQoeCycle,
+      this.eventBuffer
+    );
 
     this.qoeCycleCount++;
 
-    // Cross-cycle dirty check: skip QoE if KPIs unchanged since last send
-    // Forced cycles (CONTENT_END, page unload) always send QoE
-    for (let i = filteredFreshEvents.length - 1; i >= 0; i--) {
-      const e = filteredFreshEvents[i];
-      if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
-        if (!isForced && this._qoeKpisUnchanged(e)) {
-          filteredFreshEvents.splice(i, 1);
-        } else {
-          this._saveQoeKpis(e);
-        }
-      }
-    }
+    // Cross-cycle dirty check: skip QoE if KPIs unchanged since last send.
+    // Forced cycles (CONTENT_END, page unload) always send QoE.
+    applyQoeDirtyFilter(filteredFreshEvents, this._lastSentQoeKpis, isForced);
 
     let events = [...filteredFreshEvents];
     let currentPayloadSize = dataSize(filteredFreshEvents);
@@ -469,31 +455,4 @@ export class HarvestScheduler {
     });
   }
 
-  /**
-   * Checks if QoE KPIs are unchanged since last send.
-   * @param {object} event - QoE event to compare
-   * @returns {boolean} True if KPIs are identical to last sent
-   * @private
-   */
-  _qoeKpisUnchanged(event) {
-    const snapshot = this._lastSentQoeKpis[event.viewId];
-    if (!snapshot) return false;
-    for (const key of Constants.QOE_KPI_KEYS) {
-      if (event[key] !== snapshot[key]) return false;
-    }
-    return true;
-  }
-
-  /**
-   * Saves QoE KPI values after sending, keyed by viewId to support multiple players.
-   * @param {object} event - QoE event that was sent
-   * @private
-   */
-  _saveQoeKpis(event) {
-    const snapshot = {};
-    for (const key of Constants.QOE_KPI_KEYS) {
-      snapshot[key] = event[key];
-    }
-    this._lastSentQoeKpis[event.viewId] = snapshot;
-  }
 }

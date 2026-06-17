@@ -7,7 +7,7 @@ import {
   STAGING_MOBILE_ENDPOINT,
   CD_DEVICE_INFO,
   CD_METADATA,
-} from "../src/connectedDevice/connectedDeviceConstants";
+} from "../src/constants";
 import Tracker from "../src/tracker";
 import Log from "../src/log";
 
@@ -151,17 +151,18 @@ describe("ConnectedDeviceHarvester", () => {
     });
   });
 
-  // ====== T-CDH-7 — addEvent appends with timestamp ======
+  // ====== T-CDH-7 — addEvent preserves emit-time timestamp ======
 
   describe("addEvent", () => {
-    it("T-CDH-7: appends non-QoE event with a timestamp field", async () => {
+    it("T-CDH-7: appends non-QoE event preserving the recordEvent-stage timestamp", async () => {
       const h = makeHarvester();
-      h.addEvent({ actionName: "CONTENT_START", foo: "bar" });
+      const emitTimestamp = 1700000000000;
+      h.addEvent({ actionName: "CONTENT_START", foo: "bar", timestamp: emitTimestamp });
       const buffered = h.eventBuffer.drain();
       expect(buffered).toHaveLength(1);
       expect(buffered[0].actionName).toBe("CONTENT_START");
       expect(buffered[0].foo).toBe("bar");
-      expect(typeof buffered[0].timestamp).toBe("number");
+      expect(buffered[0].timestamp).toBe(emitTimestamp);
       h.dispose();
     });
 

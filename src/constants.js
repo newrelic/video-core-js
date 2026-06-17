@@ -58,4 +58,116 @@ Constants.QOE_AGGREGATE_KEYS = [
     "contentFps", "asnOrganization", "asnLongitude", "asnLatitude", "asn", "timeSinceRequested", "timeSinceStarted"
 ]
 
+// =====================================================================
+// Connected-device pipeline constants (Vega / CAF mobile collector)
+// =====================================================================
+// Endpoint URLs, request payload templates, and harvest defaults for the
+// connected-device pipeline (`/v5/connect` + `/v3/data`). Wire format
+// mirrors `@newrelic/video-caf-js@3.1.0`.
+//
+// These are NAMED exports (not `Constants.*` properties) so consumers
+// importing only `Constants` don't pull this Vega-specific data into
+// their bundle. Only `connectedDeviceHarvester.js` imports these,
+// keeping the Browser bundle lean.
+
+/** Production mobile collector base URL. */
+export const MOBILE_ENDPOINT = "https://mobile-collector.newrelic.com/mobile";
+
+/** Staging mobile collector base URL. */
+export const STAGING_MOBILE_ENDPOINT =
+  "https://staging-mobile-collector.newrelic.com/mobile";
+
+/**
+ * Endpoint region selector. Both `US` and `EU` resolve to the same prod URL
+ * (matches CAF). `STAGING` switches to the staging host.
+ */
+export const NR_ENDPOINT = {
+  US: "US",
+  EU: "EU",
+  STAGING: "staging",
+};
+
+/** Default harvest cadence in ms. */
+export const DEFAULT_HARVEST_TIME = 60_000;
+
+/** Default in-memory event-buffer cap (informational; aggregator enforces
+ *  MAX_EVENTS_PER_BATCH / MAX_PAYLOAD_SIZE). */
+export const DEFAULT_BUFFER_SIZE = 100;
+
+/**
+ * Positional 2-tuple sent as the body of `POST /v5/connect`.
+ *   [
+ *     appInfo[3]    = [appName, appVersion, bundleId],
+ *     deviceInfo[10] = [osName, osVersion, deviceModel, agentName,
+ *                       agentVersion, deviceUuid, "", "",
+ *                       manufacturer, sizeMeta]
+ *   ]
+ *
+ * Mirrors `@newrelic/video-caf-js@3.1.0`'s DATA_TOKENS_PAYLOAD shape.
+ * Empty strings are rejected with a 401 — every slot must carry a
+ * non-empty token. CAF uses `osName='Android'` + `agentName='AndroidAgent'`
+ * for collector auth; the real device identity is recorded in slot [1] /
+ * slot [8] of `/v3/data`.
+ */
+export const CD_DATA_TOKENS_PAYLOAD = [
+  // appInfo
+  [
+    "newrelic_mobile_example", // appName
+    "1.1", // appVersion
+    "com.newrelic.newrelic_mobile_example", // bundleId
+  ],
+  // deviceInfo
+  [
+    "Android", // osName       (collector expects a recognized osName here)
+    "14", // osVersion         TODO(OQ-1)
+    "sdk_gphone64_arm64", // deviceModel       TODO(OQ-1)
+    "AndroidAgent", // agentName     (collector expects a recognized agentName)
+    "7.4.0-alpha01", // agentVersion  TODO(OQ-1)
+    "b797aee6-aa69-4879-9ba3-1f4aed1a7777", // deviceUuid TODO(OQ-1)
+    "",
+    "",
+    "Google", // manufacturer
+    {
+      size: "normal",
+      platform: "Flutter",
+      platformVersion: "1.0.8", // TODO(OQ-1)
+    },
+  ],
+];
+
+/**
+ * Slot [1] of the `POST /v3/data` 10-tuple. Real device identity tuple
+ * (Vega + Amazon by default). Customer-supplied `info.deviceInfo` overrides
+ * the runtime fields; static slots (osName, agentName, etc.) stay fixed.
+ */
+export const CD_DEVICE_INFO = [
+  "Vega", // osName
+  "1.0", // osVersion         TODO(OQ-1)
+  "VegaDevice", // deviceModel       TODO(OQ-1)
+  "VegaAgent", // agentName
+  "1.0.0", // agentVersion      TODO(OQ-1)
+  "00000000-0000-0000-0000-000000000000", // deviceUuid TODO(OQ-1)
+  "",
+  "",
+  "Amazon", // manufacturer
+  {
+    size: "normal",
+    platform: "Native",
+    platformVersion: "1.0.0", // TODO(OQ-1)
+  },
+];
+
+/**
+ * Slot [8] of the `POST /v3/data` 10-tuple. Session metadata. Device-identity
+ * fields (osVersion, deviceModel, deviceManufacturer, osMajorVersion) are
+ * NOT duplicated here — they ship in slot [1] (`CD_DEVICE_INFO`).
+ */
+export const CD_METADATA = {
+  osBuild: "1",
+  osName: "Vega",
+  platform: "Native",
+  appBuild: "1",
+  architecture: "aarch64",
+};
+
 export default Constants;
