@@ -3,7 +3,10 @@
 [![npm version](https://img.shields.io/npm/v/@newrelic/video-core.svg)](https://www.npmjs.com/package/@newrelic/video-core)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-The **New Relic Video Core** library (`@newrelic/video-core`) is the foundational framework for all browser-based video trackers in the New Relic ecosystem. It provides the core classes, state management, event harvesting, and data transmission pipeline that player-specific trackers extend.
+The **New Relic Video Core** library (`@newrelic/video-core`) is the foundational framework for video trackers in the New Relic ecosystem. It provides the core classes, state management, event harvesting, and data transmission pipeline that player-specific trackers extend. The library supports two harvester pipelines:
+
+- **Browser pipeline** — ships events to `bam.nr-data.net` via the standard Browser collector (license key auth). Used by web-based players.
+- **Connected-device pipeline** — ships events to `mobile-collector.newrelic.com` via the mobile collector. Used by Vega apps and other connected-device platforms.
 
 Events are categorized into four distinct types:
 
@@ -175,9 +178,7 @@ info: {
 }
 ```
 
-The `deviceInfo` sub-fields populate slot [1] (`CD_DEVICE_INFO`) and slot [8] (`CD_METADATA`) of the `/v3/data` payload. Each field is optional — missing values fall back to the static defaults in `connectedDeviceConstants.js`. Extra fields the customer passes are ignored.
-
-On Kepler, source these from `@amazon-devices/react-native-device-info`:
+On Vega, source these from `@amazon-devices/react-native-device-info`:
 
 ```js
 import {
@@ -196,7 +197,6 @@ const deviceInfo = {
 };
 ```
 
-`osBuild` is the OS image build (`getBuildIdSync()`); `appBuild` is the consumer app's build number (`getBuildNumber()`) — these are semantically distinct and ship in different fields of the wire payload.
 
 ### Config Object (Optional)
 
@@ -349,15 +349,32 @@ nrvideo.Log.level = nrvideo.Log.Levels.DEBUG; // ALL, DEBUG, NOTICE, WARNING, ER
 
 ### Constants
 
+**General constants** (used by both pipelines):
+
 | Constant | Value | Description |
 |---|---|---|
 | `Constants.AdPositions` | `{ PRE, MID, POST }` | Ad position enum. |
-| `Constants.COLLECTOR` | Object | Beacon endpoint URLs by region. |
+| `Constants.COLLECTOR` | Object | Browser beacon endpoint URLs by region. |
 | `Constants.VALID_EVENT_TYPES` | Array | `['VideoAction', 'VideoAdAction', 'VideoErrorAction', 'VideoCustomAction']` |
 | `Constants.MAX_PAYLOAD_SIZE` | `1048576` | Maximum payload size (1 MB). |
 | `Constants.MAX_BEACON_SIZE` | `61440` | Maximum beacon size (60 KB). |
 | `Constants.MAX_EVENTS_PER_BATCH` | `1000` | Maximum events per batch. |
 | `Constants.INTERVAL` | `10000` | Default harvest interval (10s). |
+| `Constants.QOE_KPI_KEYS` | Array | KPI field names tracked in QoE aggregates. |
+| `Constants.QOE_AGGREGATE_KEYS` | Array | Metadata field names included in QoE events. |
+
+**Connected-device constants** (named exports from `constants.js`, used by the `/vega` subpath):
+
+| Export | Description |
+|---|---|
+| `MOBILE_ENDPOINT` | Production mobile collector URL (`mobile-collector.newrelic.com`). |
+| `STAGING_MOBILE_ENDPOINT` | Staging mobile collector URL. |
+| `NR_ENDPOINT` | Endpoint region enum: `{ US, EU, STAGING }`. |
+| `DEFAULT_HARVEST_TIME` | Default harvest cadence: `60_000` ms. |
+| `DEFAULT_BUFFER_SIZE` | Default buffer cap: `100` events (informational). |
+| `CD_DATA_TOKENS_PAYLOAD` | `/v5/connect` request body template (positional 2-tuple). |
+| `CD_DEVICE_INFO` | `/v3/data`  device-identity tuple (default Vega values). |
+| `CD_METADATA` | `/v3/data` session-metadata object (default Vega values). |
 
 ---
 
@@ -515,13 +532,32 @@ npm run clean
 
 ## Distribution Formats
 
-The build produces three output formats:
+The build produces multiple output formats including subpath exports for tree-shaking:
 
 | Format | Path | Usage |
 |---|---|---|
 | **UMD** | `dist/umd/nrvideo.min.js` | `<script>` tag → `window.nrvideo` |
-| **CommonJS** | `dist/cjs/index.js` | `require('@newrelic/video-core')` |
-| **ES Module** | `dist/esm/index.js` | `import nrvideo from '@newrelic/video-core'` |
+| **CommonJS** | `dist/cjs/index.js` | `require('@newrelic/video-core')` — both pipelines |
+| **ES Module** | `dist/esm/index.js` | `import nrvideo from '@newrelic/video-core'` — both pipelines |
+| **CJS Browser** | `dist/cjs/browser/index.js` | `require('@newrelic/video-core/browser')` — Browser pipeline only |
+| **CJS Connected-Device** | `dist/cjs/vega/index.js` | `require('@newrelic/video-core/vega')` — connected-device pipeline only |
+| **ESM Browser** | `dist/esm/browser/index.js` | `import ... from '@newrelic/video-core/browser'` |
+| **ESM Connected-Device** | `dist/esm/vega/index.js` | `import ... from '@newrelic/video-core/vega'` |
+
+### Subpath imports
+
+Import the specific subpath to ship only the harvester chain you need. The unused pipeline is tree-shaken from the bundle.
+
+```javascript
+// Browser pipeline only — tree-shakes out the connected-device chain
+import nrvideo from '@newrelic/video-core/browser';
+
+// Connected-device pipeline only — tree-shakes out Browser harvester and harvestScheduler
+import nrvideo from '@newrelic/video-core/vega';
+
+// Both pipelines — use with the default entry
+import nrvideo from '@newrelic/video-core';
+```
 
 ## Testing
 
