@@ -56,7 +56,8 @@ export function recordEvent(eventType, attributes = {}) {
 
     const isVega = attributes.src === "Vega";
     const routingKey = isVega ? "Vega" : "Browser";
-    const info = isVega ? globalThis.__NRVIDEO_CD__?.info : window?.NRVIDEO?.info;
+    const w = typeof window !== "undefined" ? window : undefined;
+    const info = isVega ? globalThis.__NRVIDEO_CD__?.info : w?.NRVIDEO?.info;
     if (!info) return;
 
     const harvester = harvesters[routingKey];
@@ -67,7 +68,7 @@ export function recordEvent(eventType, attributes = {}) {
 
     const qoeEnabled = isVega
       ? globalThis.__NRVIDEO_CD__?.config?.qoeAggregate
-      : window?.NRVIDEO?.config?.qoeAggregate;
+      : w?.NRVIDEO?.config?.qoeAggregate;
 
     return dispatchRecordEvent(
       eventType, attributes, info, harvester, qoeEnabled,

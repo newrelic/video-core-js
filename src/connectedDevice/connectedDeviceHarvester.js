@@ -1,6 +1,7 @@
 import { NrVideoEventAggregator } from "../eventAggregator";
 import {
-  MOBILE_ENDPOINT,
+  MOBILE_ENDPOINT_US,
+  MOBILE_ENDPOINT_EU,
   STAGING_MOBILE_ENDPOINT,
   NR_ENDPOINT,
   DEFAULT_HARVEST_TIME,
@@ -133,20 +134,24 @@ export default class ConnectedDeviceHarvester {
 
     // Connect retry state (REQ-CDH-10..11)
     this._connectAttempt = 0;
-    this._connectExhausted = false;
 
     // REQ-CDH-6: fire-and-forget initialise.
     this.initialise();
   }
 
   /**
-   * Returns the base URL for the configured endpoint. (REQ-CDH-19)
+   * Returns the regional mobile collector base URL for the configured endpoint.
+   * Each region routes to its own datacenter — EU events terminate on EU
+   * infrastructure rather than transiting through the US host.
+   *
    * @returns {string}
    */
   getEndpointBaseUrl() {
-    return this.endpoint === NR_ENDPOINT.STAGING
-      ? STAGING_MOBILE_ENDPOINT
-      : MOBILE_ENDPOINT;
+    switch (this.endpoint) {
+      case NR_ENDPOINT.EU:      return MOBILE_ENDPOINT_EU;
+      case NR_ENDPOINT.STAGING: return STAGING_MOBILE_ENDPOINT;
+      default:                  return MOBILE_ENDPOINT_US;
+    }
   }
 
   /**
@@ -211,8 +216,9 @@ export default class ConnectedDeviceHarvester {
       );
 
       if (this._connectAttempt >= 10) {
-        // REQ-CDH-11
-        this._connectExhausted = true;
+        // REQ-CDH-11: exhausted — dataToken stays null; sendBufferedEvents
+        // short-circuits on `if (!this.dataToken) return` until a 401 triggers
+        // a fresh connect sequence.
         Log.error("ConnectedDeviceHarvester: Max retries reached");
         return;
       }
@@ -236,12 +242,12 @@ export default class ConnectedDeviceHarvester {
   /**
    * Smart-harvest handler. Invoked by `NrVideoEventAggregator` when the buffer
    * crosses 60% (`type='smart'`) or 90% (`type='overflow'`) of capacity, before
-   * `makeRoom()` would start FIFO-evicting events. Drains the buffer immediately.
+   * `makeRoom()` would start FIFO-evicting events. Drains the buffer immediately
+   * and resets the periodic clock so the next scheduled tick fires
+   * `harvestInterval` after this drain completes.
    *
    * Structural mirror of `HarvestScheduler.triggerSmartHarvest` on the Browser
-   * side. Vega doesn't need timer cancel/reschedule because `setInterval` is
-   * autonomous and the `isHarvesting` flag inside `sendBufferedEvents` already
-   * prevents a periodic tick from racing with this call.
+   * side — same method name, same wiring shape, same clock-reset semantics.
    *
    * @param {'smart'|'overflow'} type
    * @param {number} threshold - The threshold percentage that triggered the harvest (60 or 90).
@@ -418,10 +424,9 @@ export default class ConnectedDeviceHarvester {
           "ConnectedDeviceHarvester: /v3/data returned 401, refreshing dataToken"
         );
         this.dataToken = null;
-        // Reset connect retry counters so the refresh starts a fresh
+        // Reset connect retry counter so the refresh starts a fresh
         // 10-attempt budget independent of the original startup attempt.
         this._connectAttempt = 0;
-        this._connectExhausted = false;
         await this.fetchDataTokens();
         if (!this.dataToken) {
           throw new Error(

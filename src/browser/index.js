@@ -12,10 +12,8 @@ import { OptimizedHttpClient } from "../optimizedHttpClient";
 import { HarvestScheduler } from "./harvestScheduler";
 import { videoAnalyticsHarvester } from "./agent";
 import { getRegisteredHarvester } from "../recordEvent";
-// recordEvent is shared with all three subpaths — single definition in
-// `src/recordEvent.js` handles both Browser and Vega pipelines via the
-// registry and the `attributes.src` routing key.
-export { recordEvent } from "../recordEvent";
+// recordEvent is the single shared implementation from `src/recordEvent.js`
+// — handles both Browser and Vega pipelines via the registry.
 import { recordEvent } from "../recordEvent";
 import { version } from "../../package.json";
 
@@ -53,6 +51,7 @@ export {
   HarvestScheduler,
   videoAnalyticsHarvester,
   getRegisteredHarvester,
+  recordEvent,
   version,
 };
 

@@ -4,11 +4,13 @@ import { getObjectEntriesForKeys } from "./index";
 
 /**
  * Pure helper that constructs the wire-format event objects from `recordEvent`
- * arguments. Shared by all three `recordEvent` entry points:
+ * arguments. Used by `src/recordEvent.js`, which is the single shared
+ * implementation re-exported from all three subpath entry points:
  *
- *   - `src/recordEvent.js`                (registry dispatcher; runtime hot path)
- *   - `src/browser/index.js`              (Browser subpath direct dispatch)
- *   - `src/connectedDevice/index.js`      (Vega subpath direct dispatch)
+ *   - `src/recordEvent.js`                (registry dispatcher; runtime hot path
+ *                                          and the only direct caller of this helper)
+ *   - `src/browser/index.js`              (Browser subpath re-export)
+ *   - `src/connectedDevice/index.js`      (Vega subpath re-export)
  *
  * Returns the primary `eventObject` always, plus an optional `qoeEventObject`
  * companion when the event is a `VideoAction`. The caller decides whether to

@@ -70,17 +70,17 @@ Constants.QOE_AGGREGATE_KEYS = [
 // their bundle. Only `connectedDeviceHarvester.js` imports these,
 // keeping the Browser bundle lean.
 
-/** Production mobile collector base URL. */
-export const MOBILE_ENDPOINT = "https://mobile-collector.newrelic.com/mobile";
+/** US production mobile collector base URL. */
+export const MOBILE_ENDPOINT_US = "https://mobile-collector.newrelic.com/mobile";
+
+/** EU production mobile collector base URL. Routes EU-account events to the EU datacenter. */
+export const MOBILE_ENDPOINT_EU = "https://mobile-collector.eu01.nr-data.net/mobile";
 
 /** Staging mobile collector base URL. */
 export const STAGING_MOBILE_ENDPOINT =
   "https://staging-mobile-collector.newrelic.com/mobile";
 
-/**
- * Endpoint region selector. Both `US` and `EU` resolve to the same prod URL
- * (matches CAF). `STAGING` switches to the staging host.
- */
+/** Endpoint region selector. Each value routes to its regional collector. */
 export const NR_ENDPOINT = {
   US: "US",
   EU: "EU",
@@ -119,18 +119,18 @@ export const CD_DATA_TOKENS_PAYLOAD = [
   // deviceInfo
   [
     "Android", // osName       (collector expects a recognized osName here)
-    "14", // osVersion         TODO(OQ-1)
-    "sdk_gphone64_arm64", // deviceModel       TODO(OQ-1)
+    "14", // osVersion        
+    "sdk_gphone64_arm64", // deviceModel     
     "AndroidAgent", // agentName     (collector expects a recognized agentName)
-    "7.4.0-alpha01", // agentVersion  TODO(OQ-1)
-    "b797aee6-aa69-4879-9ba3-1f4aed1a7777", // deviceUuid TODO(OQ-1)
+    "7.4.0-alpha01", // agentVersion  
+    "b797aee6-aa69-4879-9ba3-1f4aed1a7777", // deviceUuid 
     "",
     "",
     "Google", // manufacturer
     {
       size: "normal",
       platform: "Flutter",
-      platformVersion: "1.0.8", // TODO(OQ-1)
+      platformVersion: "1.0.8", // 
     },
   ],
 ];
@@ -142,18 +142,18 @@ export const CD_DATA_TOKENS_PAYLOAD = [
  */
 export const CD_DEVICE_INFO = [
   "Vega", // osName
-  "1.0", // osVersion         TODO(OQ-1)
-  "VegaDevice", // deviceModel       TODO(OQ-1)
+  "1.0", // osVersion        
+  "VegaDevice", // deviceModel       
   "VegaAgent", // agentName
-  "1.0.0", // agentVersion      TODO(OQ-1)
-  "00000000-0000-0000-0000-000000000000", // deviceUuid TODO(OQ-1)
+  "1.0.0", // agentVersion      
+  "00000000-0000-0000-0000-000000000000", // deviceUuid 
   "",
   "",
   "Amazon", // manufacturer
   {
     size: "normal",
     platform: "Native",
-    platformVersion: "1.0.0", // TODO(OQ-1)
+    platformVersion: "1.0.0", // 
   },
 ];
 

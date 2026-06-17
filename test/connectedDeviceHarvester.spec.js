@@ -3,7 +3,8 @@ import fs from "fs";
 import path from "path";
 import ConnectedDeviceHarvester from "../src/connectedDevice/connectedDeviceHarvester";
 import {
-  MOBILE_ENDPOINT,
+  MOBILE_ENDPOINT_US,
+  MOBILE_ENDPOINT_EU,
   STAGING_MOBILE_ENDPOINT,
   CD_DEVICE_INFO,
   CD_METADATA,
@@ -95,7 +96,7 @@ describe("ConnectedDeviceHarvester", () => {
       await Promise.resolve();
       expect(fetchStub.called).toBe(true);
       const [url, opts] = fetchStub.firstCall.args;
-      expect(url).toBe(`${MOBILE_ENDPOINT}/v5/connect`);
+      expect(url).toBe(`${MOBILE_ENDPOINT_US}/v5/connect`);
       expect(opts.method).toBe("POST");
       expect(opts.headers["Content-Type"]).toBe("application/json");
       expect(opts.headers["X-App-License-Key"]).toBe("tok-1");
@@ -126,7 +127,7 @@ describe("ConnectedDeviceHarvester", () => {
   // ====== T-CDH-6 — exp-backoff retry up to 10 attempts ======
 
   describe("connect retry behavior", () => {
-    it("T-CDH-6: retries with exp-backoff on 500, marks exhausted after 10", async () => {
+    it("T-CDH-6: retries with exp-backoff on 500, gives up after 10 and leaves dataToken null", async () => {
       jest.useFakeTimers();
       const failingFetch = sinon
         .stub()
@@ -143,8 +144,7 @@ describe("ConnectedDeviceHarvester", () => {
       }
 
       expect(failingFetch.callCount).toBe(10); // T-CDH-11: gives up after 10
-      expect(h._connectExhausted).toBe(true);
-      expect(h.dataToken).toBe(null);
+      expect(h.dataToken).toBe(null);          // null dataToken gates sendBufferedEvents
 
       jest.useRealTimers();
       h.dispose();
@@ -234,7 +234,7 @@ describe("ConnectedDeviceHarvester", () => {
 
       expect(dataFetch.calledOnce).toBe(true);
       const [url, opts] = dataFetch.firstCall.args;
-      expect(url).toBe(`${MOBILE_ENDPOINT}/v3/data`);
+      expect(url).toBe(`${MOBILE_ENDPOINT_US}/v3/data`);
       const body = JSON.parse(opts.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body).toHaveLength(10);
