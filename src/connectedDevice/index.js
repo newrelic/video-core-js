@@ -7,8 +7,6 @@ import Tracker from "../tracker";
 import VideoTracker from "../videotracker";
 import VideoTrackerState from "../videotrackerstate";
 import { NrVideoEventAggregator } from "../eventAggregator";
-import { RetryQueueHandler } from "../retryQueueHandler";
-import { OptimizedHttpClient } from "../optimizedHttpClient";
 import ConnectedDeviceHarvester from "./connectedDeviceHarvester";
 import { connectedDeviceAnalyticsHarvester } from "./connectedDeviceAgent";
 import { getRegisteredHarvester } from "../recordEvent";
@@ -31,9 +29,6 @@ const nrvideo = {
   version,
 
   NrVideoEventAggregator,
-  RetryQueueHandler,
-  OptimizedHttpClient,
-
   ConnectedDeviceHarvester,
   recordEvent,
 };
@@ -48,8 +43,6 @@ export {
   VideoTracker,
   VideoTrackerState,
   NrVideoEventAggregator,
-  RetryQueueHandler,
-  OptimizedHttpClient,
   ConnectedDeviceHarvester,
   connectedDeviceAnalyticsHarvester,
   getRegisteredHarvester,
