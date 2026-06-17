@@ -496,10 +496,7 @@ export default class ConnectedDeviceHarvester {
    */
   async dispose() {
     this.isDisposed = true;
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    this.timer.stop();
     return this.sendBufferedEvents();
   }
 }

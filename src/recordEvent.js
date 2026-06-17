@@ -1,7 +1,6 @@
 import Constants from "./constants.js";
 import Log from "./log.js";
-import Tracker from "./tracker";
-import { getObjectEntriesForKeys } from "./utils";
+import { dispatchRecordEvent } from "./utils/eventBuilder";
 
 /**
  * Registry-based recordEvent (split build).
@@ -57,45 +56,8 @@ export function recordEvent(eventType, attributes = {}) {
 
     const isVega = attributes.src === "Vega";
     const routingKey = isVega ? "Vega" : "Browser";
-
-    const info = isVega
-      ? globalThis.__NRVIDEO_CD__?.info
-      : window?.NRVIDEO?.info;
-
+    const info = isVega ? globalThis.__NRVIDEO_CD__?.info : window?.NRVIDEO?.info;
     if (!info) return;
-
-    const { appName, applicationID } = info;
-
-    const { qoe, ...eventAttributes } = attributes;
-    const qoeAttrs = qoe ? { ...qoe } : {};
-
-    const otherAttrs = {
-      ...(applicationID ? {} : { appName }),
-      timestamp: Date.now(),
-      ...(isVega
-        ? {}
-        : { timeSinceLoad: window.performance ? window.performance.now() / 1000 : null }),
-    };
-
-    const eventObject = {
-      ...eventAttributes,
-      eventType,
-      ...otherAttrs,
-    };
-
-    const metadataAttributes = getObjectEntriesForKeys(Constants.QOE_AGGREGATE_KEYS, attributes);
-
-    let qoeEventObject = null;
-    if (eventType === "VideoAction") {
-      qoeEventObject = {
-        eventType: "VideoAction",
-        actionName: Tracker.Events.QOE_AGGREGATE,
-        qoeAggregateVersion: '1.0.0',
-        ...qoeAttrs,
-        ...metadataAttributes,
-        ...otherAttrs,
-      };
-    }
 
     const harvester = harvesters[routingKey];
     if (!harvester) {
@@ -103,18 +65,14 @@ export function recordEvent(eventType, attributes = {}) {
       return false;
     }
 
-    const success = harvester.addEvent(eventObject);
-
     const qoeEnabled = isVega
       ? globalThis.__NRVIDEO_CD__?.config?.qoeAggregate
       : window?.NRVIDEO?.config?.qoeAggregate;
 
-    if (qoeEventObject && qoeEnabled) {
-      const successQoe = harvester.addEvent(qoeEventObject);
-      return success && successQoe;
-    }
-
-    return success;
+    return dispatchRecordEvent(
+      eventType, attributes, info, harvester, qoeEnabled,
+      { addTimeSinceLoad: !isVega }
+    );
   } catch (error) {
     Log.error("Failed to record event:", error.message);
     return false;

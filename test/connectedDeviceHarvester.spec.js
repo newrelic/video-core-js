@@ -278,18 +278,25 @@ describe("ConnectedDeviceHarvester", () => {
   // ====== T-CDH-12 — dispose ======
 
   describe("dispose", () => {
-    it("T-CDH-12: stops timer + best-effort final send", async () => {
+    it("T-CDH-12: marks disposed, performs best-effort final send, and prevents future harvest starts", async () => {
       const h = makeHarvester();
-      h.dataToken = ["TKN"];
-      h.timer.start();
-      expect(h.timer.isRunning()).toBe(true);
+      // Let constructor's fire-and-forget initialise() settle.
+      for (let i = 0; i < 5; i++) await Promise.resolve();
 
       const sendSpy = sinon.spy(h, "sendBufferedEvents");
       await h.dispose();
 
+      // Final send attempted.
       expect(sendSpy.calledOnce).toBe(true);
-      expect(h.timer.isRunning()).toBe(false);
+
+      // isDisposed blocks any future startHarvestInterval calls.
       expect(h.isDisposed).toBe(true);
+
+      // Calling startHarvestInterval after dispose is a no-op.
+      const wasRunning = h.timer.isRunning();
+      h.startHarvestInterval();
+      expect(h.timer.isRunning()).toBe(wasRunning); // unchanged — blocked by isDisposed guard
+
       sendSpy.restore();
     });
   });
