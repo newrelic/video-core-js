@@ -278,23 +278,19 @@ describe("ConnectedDeviceHarvester", () => {
   // ====== T-CDH-12 — dispose ======
 
   describe("dispose", () => {
-    it("T-CDH-12: clearInterval + best-effort final send", async () => {
+    it("T-CDH-12: stops timer + best-effort final send", async () => {
       const h = makeHarvester();
       h.dataToken = ["TKN"];
-      h.intervalId = setInterval(() => {}, 1000);
-      const intervalIdRef = h.intervalId;
-
-      const clearIntervalSpy = sinon.spy(global, "clearInterval");
-      stubs.push(clearIntervalSpy);
+      h.timer.start();
+      expect(h.timer.isRunning()).toBe(true);
 
       const sendSpy = sinon.spy(h, "sendBufferedEvents");
       await h.dispose();
 
-      expect(clearIntervalSpy.calledWith(intervalIdRef)).toBe(true);
       expect(sendSpy.calledOnce).toBe(true);
-      expect(h.intervalId).toBe(null);
+      expect(h.timer.isRunning()).toBe(false);
+      expect(h.isDisposed).toBe(true);
       sendSpy.restore();
-      clearIntervalSpy.restore();
     });
   });
 

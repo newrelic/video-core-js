@@ -6,6 +6,7 @@ import {
   partitionByQoeCycle,
   applyQoeDirtyFilter,
 } from "../utils/qoeFilters";
+import { createHarvestTimer } from "../utils/harvestTimer";
 import Constants from "../constants";
 import Tracker from "../tracker";
 import Log from "../log";
@@ -32,8 +33,6 @@ export class HarvestScheduler {
     }
 
     // Scheduler state
-    this.isStarted = false;
-    this.currentTimerId = null;
     this.harvestCycle = Constants.INTERVAL;
     this.isHarvesting = false;
     this.qoeCycleCount = 1;
@@ -41,44 +40,49 @@ export class HarvestScheduler {
     this.beforeDrainCallback = null;
     this._lastSentQoeKpis = {};
 
+    // Periodic harvest timer. Chained-setTimeout under the hood (see
+    // `utils/harvestTimer.js`). Shared with the Vega pipeline.
+    this.timer = createHarvestTimer({
+      interval: this.harvestCycle,
+      onTick: () => this.onHarvestInterval(),
+      errorLabel: "HarvestScheduler",
+    });
+
     // Page lifecycle handling
     this.setupPageLifecycleHandlers();
+  }
+
+  /**
+   * Whether the scheduler is currently running. Backed by the shared timer.
+   * @returns {boolean}
+   */
+  get isStarted() {
+    return this.timer.isRunning();
   }
 
   /**
    * Starts the harvest scheduler.
    */
   startScheduler() {
-    if (this.isStarted) {
+    if (this.timer.isRunning()) {
       Log.warn("Harvest scheduler is already started");
       return;
     }
-
-    this.isStarted = true;
 
     Log.notice("Starting harvest scheduler", {
       harvestCycle: this.harvestCycle,
       eventBufferSize: this.eventBuffer ? this.eventBuffer.size() : 0,
     });
 
-    this.scheduleNextHarvest();
+    this.timer.start();
   }
 
   /**
    * Stops the harvest scheduler.
    */
   stopScheduler() {
-    if (!this.isStarted) {
-      return;
-    }
-
-    this.isStarted = false;
-
-    if (this.currentTimerId) {
-      clearTimeout(this.currentTimerId);
-      this.currentTimerId = null;
-    }
-
+    if (!this.timer.isRunning()) return;
+    this.timer.stop();
     Log.notice("Harvest scheduler stopped");
   }
 
@@ -96,53 +100,30 @@ export class HarvestScheduler {
     // If buffer is empty, abort harvest
     if (!this.eventBuffer || this.eventBuffer.isEmpty()) return;
 
-    // Clear existing timer to prevent redundant harvests
-    if (this.currentTimerId) {
-      clearTimeout(this.currentTimerId);
-      this.currentTimerId = null;
-    }
-
     try {
       await this.triggerHarvest({});
     } catch (error) {
       Log.error(`${type} harvest failed:`, error.message);
     } finally {
-      // Schedule next harvest after smart harvest completes
-      if (this.isStarted) {
-        this.scheduleNextHarvest();
-      }
+      // Reset the periodic clock — next periodic tick happens `harvestCycle`
+      // after this smart drain, not at the originally-scheduled time.
+      this.timer.cancelAndReschedule();
     }
   }
 
   /**
-   * Schedules the next harvest based on current conditions.
-   * @private
-   */
-  scheduleNextHarvest() {
-    if (!this.isStarted) return;
-
-    const interval = this.harvestCycle;
-    this.currentTimerId = setTimeout(() => this.onHarvestInterval(), interval);
-  }
-
-  /**
-   * Handles the harvest interval timer.
+   * Periodic-tick callback. Invoked by the shared harvest timer on each cycle.
    * @private
    */
   async onHarvestInterval() {
-    try {
-      // Check if there's any data to harvest (buffer or retry queue) before starting the harvest process
-      const hasBufferData = this.eventBuffer && !this.eventBuffer.isEmpty();
-      const hasRetryData =
-        this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
-
-      if (!hasBufferData && !hasRetryData) return;
-      await this.triggerHarvest({});
-    } catch (error) {
-      Log.error("Error during scheduled harvest:", error.message);
-    } finally {
-      this.scheduleNextHarvest();
-    }
+    // Check if there's any data to harvest (buffer or retry queue) before
+    // starting the harvest process — avoids unnecessary network calls when
+    // there's nothing to ship.
+    const hasBufferData = this.eventBuffer && !this.eventBuffer.isEmpty();
+    const hasRetryData =
+      this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
+    if (!hasBufferData && !hasRetryData) return;
+    await this.triggerHarvest({});
   }
 
   /**
@@ -392,7 +373,7 @@ export class HarvestScheduler {
    */
 
   updateHarvestInterval(newInterval) {
-    if (typeof newInterval !== "number" && isNaN(newInterval)) {
+    if (typeof newInterval !== "number" || isNaN(newInterval)) {
       Log.warn("Invalid newInterval provided to updateHarvestInterval");
       return;
     }
@@ -403,26 +384,11 @@ export class HarvestScheduler {
     }
 
     // Check if the interval has actually changed to avoid unnecessary actions
-    if (this.harvestCycle === newInterval) {
-      return;
-    }
+    if (this.harvestCycle === newInterval) return;
 
-    // 1. Update the harvestCycle property with the new interval
     this.harvestCycle = newInterval;
     Log.notice("Updated harvestCycle:", this.harvestCycle);
-
-    // 2. Clear the existing timer
-    if (this.currentTimerId) {
-      clearTimeout(this.currentTimerId);
-      this.currentTimerId = null;
-    }
-
-    // 3. Schedule a new timer with the updated interval
-    if (this.isStarted) {
-      this.scheduleNextHarvest();
-    }
-
-    return;
+    this.timer.updateInterval(newInterval);
   }
 
   /**

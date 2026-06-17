@@ -15,6 +15,7 @@ import {
   partitionByQoeCycle,
   applyQoeDirtyFilter,
 } from "../utils/qoeFilters";
+import { createHarvestTimer } from "../utils/harvestTimer";
 import Log from "../log";
 
 /**
@@ -104,21 +105,25 @@ export default class ConnectedDeviceHarvester {
 
     // Smart-harvest wiring: buffer triggers an early drain at 60% (smart) and
     // 90% (overflow) capacity, before makeRoom()'s drop-oldest FIFO eviction
-    // would silently lose events. Mirror of HarvestScheduler:25 on the Browser
-    // side. The send still gates on `dataToken` and `isHarvesting`, so
-    // smart-harvest fires before connect or while a periodic tick is in flight
-    // are no-ops; drop-oldest remains the last-resort fallback in those cases.
-    this.eventBuffer.setSmartHarvestCallback((type, threshold) => {
-      Log.notice(
-        `ConnectedDeviceHarvester: smart-harvest trigger (${type} at ${threshold}%)`
-      );
-      this.sendBufferedEvents();
-    });
+    // would silently lose events. Structural mirror of HarvestScheduler:29 on
+    // the Browser side — same `setSmartHarvestCallback` shape, named method
+    // for stack-trace clarity and unit-testability.
+    this.eventBuffer.setSmartHarvestCallback((type, threshold) =>
+      this.triggerSmartHarvest(type, threshold)
+    );
 
     this.dataToken = null; // REQ-CDH-5
     this.isHarvesting = false;
-    this.intervalId = null;
     this.isDisposed = false;
+
+    // Periodic harvest timer. Chained-setTimeout under the hood (see
+    // `utils/harvestTimer.js`) — guarantees no overlapping ticks even if the
+    // drain takes longer than the interval. Shared with the Browser pipeline.
+    this.timer = createHarvestTimer({
+      interval: this.harvestInterval,
+      onTick: () => this.sendBufferedEvents(),
+      errorLabel: "ConnectedDeviceHarvester",
+    });
 
     // QoE state (REQ-CDH-22..25)
     this.qoeCycleCount = 1;
@@ -221,13 +226,41 @@ export default class ConnectedDeviceHarvester {
 
   /**
    * Starts the periodic harvest timer. (REQ-CDH-12)
+   * Idempotent — safe to call repeatedly.
    */
   startHarvestInterval() {
-    if (this.intervalId || this.isDisposed) return;
-    this.intervalId = setInterval(
-      () => this.sendBufferedEvents(),
-      this.harvestInterval
+    if (this.isDisposed) return;
+    this.timer.start();
+  }
+
+  /**
+   * Smart-harvest handler. Invoked by `NrVideoEventAggregator` when the buffer
+   * crosses 60% (`type='smart'`) or 90% (`type='overflow'`) of capacity, before
+   * `makeRoom()` would start FIFO-evicting events. Drains the buffer immediately.
+   *
+   * Structural mirror of `HarvestScheduler.triggerSmartHarvest` on the Browser
+   * side. Vega doesn't need timer cancel/reschedule because `setInterval` is
+   * autonomous and the `isHarvesting` flag inside `sendBufferedEvents` already
+   * prevents a periodic tick from racing with this call.
+   *
+   * @param {'smart'|'overflow'} type
+   * @param {number} threshold - The threshold percentage that triggered the harvest (60 or 90).
+   * @returns {Promise<void>}
+   */
+  async triggerSmartHarvest(type, threshold) {
+    Log.notice(
+      `ConnectedDeviceHarvester: smart-harvest trigger (${type} at ${threshold}%)`
     );
+    if (!this.eventBuffer || this.eventBuffer.isEmpty()) return;
+    try {
+      await this.sendBufferedEvents();
+    } catch (error) {
+      Log.error(`${type} smart-harvest failed:`, error.message);
+    } finally {
+      // Reset the periodic clock — next periodic tick happens `harvestInterval`
+      // after this smart drain, not from the originally-scheduled time.
+      this.timer.cancelAndReschedule();
+    }
   }
 
   /**
@@ -294,11 +327,7 @@ export default class ConnectedDeviceHarvester {
   setHarvestInterval(interval) {
     if (typeof interval !== "number" || interval <= 0) return;
     this.harvestInterval = interval;
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-      this.startHarvestInterval();
-    }
+    this.timer.updateInterval(interval);
   }
 
   /**
