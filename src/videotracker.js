@@ -667,7 +667,10 @@ class VideoTracker extends Tracker {
         ev = VideoTracker.Events.AD_END;
         att.timeSinceAdRequested = this.state.timeSinceRequested.getDeltaTime();
         att.timeSinceAdStarted = this.state.timeSinceStarted.getDeltaTime();
-        if (this.parentTracker) this.parentTracker.state.isPlaying = true;
+        if (this.parentTracker) {
+          this.parentTracker.state.isPlaying = true;
+          this.parentTracker.state.timeSincePaused.reset();
+        }
         this.state.stopAdsTime();
       } else {
         ev = VideoTracker.Events.CONTENT_END;
