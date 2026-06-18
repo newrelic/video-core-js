@@ -289,7 +289,7 @@ class VideoTracker extends Tracker {
    * saving the current rendition and thus preventing interferences with RENDITION_CHANGE events.
    */
   getRenditionShift(saveNewRendition) {
-    let current = this.getRenditionBitrate();
+    let current = this.getManifestBitrate();
     let last;
     if (this.isAd()) {
       last = this._lastAdRendition;
@@ -544,26 +544,24 @@ class VideoTracker extends Tracker {
 
     if(this.state.isStarted && !this.isAd()) {
       this.state.trackContentBitrateState(att.contentBitrate);
+      this.state.trackDownloadRate(att.contentNetworkDownloadBitrate);
+      this.state.addPlayedRendition(att.contentRenditionHeight, att.contentRenditionWidth);
     }
 
     for (let key in this.customData) {
       att[key] = this.customData[key];
     }
 
-    /**
-     * Adds all the attributes and custom attributes for qoe event
-     */
-    this.addQoeAttributes(att);
-
-    return att;
-  }
-
-  addQoeAttributes(att) {
-      att = this.state.getQoeAttributes(att);
+    // Add QOE v1.1 attributes (for content only, not ads)
+    if (!this.isAd()) {
+      this.state.getQoeAttributes(att);
       const qoe = att.qoe;
       for (let key in this.customData) {
-          qoe[key] = this.customData[key];
+        qoe[key] = this.customData[key];
       }
+    }
+
+    return att;
   }
 
   /**
@@ -713,8 +711,6 @@ class VideoTracker extends Tracker {
       this.isAd()
         ? this.sendVideoAdAction(ev, att)
         : this.sendVideoAction(ev, att);
-
-      //this.send(ev, att);
     }
   }
 
@@ -899,7 +895,25 @@ class VideoTracker extends Tracker {
     att = att || {};
     att.timeSinceLastRenditionChange =
       this.state.timeSinceLastRenditionChange.getDeltaTime();
-    att.shift = this.getRenditionShift(true);
+
+    const {oldBitrate, newBitrate} = att;
+
+    if (!this.isAd() && oldBitrate !== undefined && newBitrate !== undefined) {
+      if (newBitrate > oldBitrate) {
+        att.shift = "up";
+        this.state.totalSwitchUps += 1;
+      } else if (newBitrate < oldBitrate) {
+        att.shift = "down";
+        this.state.totalSwitchDowns += 1;
+      } else {
+        att.shift = null;
+      }
+    }
+
+    // Remove internal tracking fields before sending to analytics
+    delete att.oldBitrate;
+    delete att.newBitrate;
+
     let ev;
     if (this.isAd()) {
       ev = VideoTracker.Events.AD_RENDITION_CHANGE;

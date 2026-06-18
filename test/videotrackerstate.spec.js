@@ -291,8 +291,9 @@ describe("VideoTrackerState", () => {
     it("should initialize QOE state variables to correct defaults", () => {
       expect(state.startupTime).toBeNull();
       expect(state.peakBitrate).toBe(0);
-      expect(state._bitrateAvg.hasObservations()).toBe(false);
-      expect(state._bitrateAvg.weighted).toBe(0);
+      expect(state.partialAverageBitrate).toBe(0);
+      expect(state._totalBitrateDuration).toBe(0);
+      expect(state.weightedBitrate).toBe(0);
       expect(state.hadStartupError).toBe(false);
       expect(state.hadPlaybackError).toBe(false);
       expect(state.totalRebufferingTime).toBe(0);
@@ -404,16 +405,18 @@ describe("VideoTrackerState", () => {
     });
 
     it("should initialize bitrate accumulator with zero total duration", () => {
-      expect(state._bitrateAvg._totalDuration).toBe(0);
+      expect(state._totalBitrateDuration).toBe(0);
+      expect(state.partialAverageBitrate).toBe(0);
     });
 
     it("should reset bitrate accumulator in resetViewIdTrackedState", () => {
-      state._bitrateAvg._totalDuration = 5000;
-      state._bitrateAvg._partialSum = 1_000_000_000;
+      state._totalBitrateDuration = 5000;
+      state.partialAverageBitrate = 1_000_000_000;
       state.resetViewIdTrackedState();
-      expect(state._bitrateAvg._totalDuration).toBe(0);
-      expect(state._bitrateAvg._partialSum).toBe(0);
-      expect(state._bitrateAvg.hasObservations()).toBe(false);
+      expect(state._totalBitrateDuration).toBe(0);
+      expect(state.partialAverageBitrate).toBe(0);
+      expect(state._lastBitrate).toBeNull();
+      expect(state._lastBitrateChangeTimestamp).toBeNull();
     });
 
     it("should not set hadStartupError if error occurs after start", () => {
@@ -470,112 +473,523 @@ describe("VideoTrackerState", () => {
       expect(typeof result.qoe).toBe("object");
     });
 
-    describe("download-rate tracking (Feature 02)", () => {
-      it("should initialize _downloadRateAvg with no observations", () => {
-        expect(state._downloadRateAvg.hasObservations()).toBe(false);
-        expect(state._downloadRateAvg.weighted).toBe(0);
-        expect(state._downloadRateAvg.min).toBeNull();
-        expect(state._downloadRateAvg.max).toBeNull();
+    // NOTE: Old download-rate tracking tests (v1.0 with trackDownloadRateState) removed.
+    // Phase 1 replaced trackDownloadRateState() with trackDownloadRate() for v1.1 simple mean approach.
+    // See QOE v1.1 Metrics section below for new trackDownloadRate() tests.
+
+    describe("QOE v1.1 Metrics", () => {
+      beforeEach(() => {
+        state = new TrackerState();
+        state.setIsAd(false);
       });
 
-      it("trackDownloadRateState() forwards to _downloadRateAvg.observe with isPlaying", () => {
-        state.isPlaying = true;
-        state.trackDownloadRateState(5_000_000);
-        expect(state._downloadRateAvg.hasObservations()).toBe(true);
-        expect(state._downloadRateAvg.min).toBe(5_000_000);
-        expect(state._downloadRateAvg.max).toBe(5_000_000);
-        expect(state._downloadRateAvg.weighted).toBe(5_000_000);
+      describe("trackDownloadRate() - simple mean of changed values", () => {
+        it("should initialize _downloadBitrates as empty array", () => {
+          expect(state._downloadBitrates).toEqual([]);
+          expect(state._lastDownloadBitrate).toBeNull();
+        });
+
+        it("should add value on first call", () => {
+          state.trackDownloadRate(5000);
+          expect(state._downloadBitrates).toEqual([5000]);
+          expect(state._lastDownloadBitrate).toBe(5000);
+        });
+
+        it("should add value only when it differs from previous", () => {
+          state.trackDownloadRate(5000);
+          state.trackDownloadRate(5000);
+          state.trackDownloadRate(5000);
+          expect(state._downloadBitrates).toEqual([5000]);
+
+          state.trackDownloadRate(7000);
+          expect(state._downloadBitrates).toEqual([5000, 7000]);
+
+          state.trackDownloadRate(7000);
+          expect(state._downloadBitrates).toEqual([5000, 7000]);
+
+          state.trackDownloadRate(3000);
+          expect(state._downloadBitrates).toEqual([5000, 7000, 3000]);
+        });
+
+        it("should ignore invalid inputs (null, undefined, NaN, zero, negative)", () => {
+          state.trackDownloadRate(5000);
+          expect(state._downloadBitrates.length).toBe(1);
+
+          state.trackDownloadRate(null);
+          state.trackDownloadRate(undefined);
+          state.trackDownloadRate(NaN);
+          state.trackDownloadRate(0);
+          state.trackDownloadRate(-1000);
+          state.trackDownloadRate(-0.5);
+
+          expect(state._downloadBitrates.length).toBe(1);
+          expect(state._downloadBitrates).toEqual([5000]);
+        });
+
+        it("should ignore non-number types", () => {
+          state.trackDownloadRate("5000");
+          state.trackDownloadRate({});
+          state.trackDownloadRate([]);
+          state.trackDownloadRate(true);
+
+          expect(state._downloadBitrates).toEqual([]);
+        });
+
+        it("should handle float values correctly", () => {
+          state.trackDownloadRate(5000.5);
+          state.trackDownloadRate(5000.5);
+          state.trackDownloadRate(7500.75);
+
+          expect(state._downloadBitrates).toEqual([5000.5, 7500.75]);
+        });
+
+        it("should track rapid bitrate changes", () => {
+          const changes = [1000, 2000, 1500, 3000, 2500, 2500, 4000];
+          changes.forEach(bps => state.trackDownloadRate(bps));
+
+          // Last 2500 is duplicate, so not added
+          expect(state._downloadBitrates).toEqual([1000, 2000, 1500, 3000, 2500, 4000]);
+        });
+
+        it("should accumulate across multiple calls without reset", () => {
+          state.trackDownloadRate(5000);
+          expect(state._downloadBitrates.length).toBe(1);
+
+          state.trackDownloadRate(6000);
+          expect(state._downloadBitrates.length).toBe(2);
+
+          state.trackDownloadRate(5500);
+          expect(state._downloadBitrates.length).toBe(3);
+
+          // No auto-reset between calls
+          expect(state._downloadBitrates).toEqual([5000, 6000, 5500]);
+        });
       });
 
-      it("trackDownloadRateState() ignores invalid inputs (zero/null/undefined/NaN/negative)", () => {
-        state.isPlaying = true;
-        state.trackDownloadRateState(0);
-        state.trackDownloadRateState(null);
-        state.trackDownloadRateState(undefined);
-        state.trackDownloadRateState(NaN);
-        state.trackDownloadRateState(-1000);
-        state.trackDownloadRateState("1000");
-        expect(state._downloadRateAvg.hasObservations()).toBe(false);
+      describe("Rendition switch tracking - quality up/down counting", () => {
+        it("should initialize totalSwitchUps and totalSwitchDowns to 0", () => {
+          expect(state.totalSwitchUps).toBe(0);
+          expect(state.totalSwitchDowns).toBe(0);
+        });
+
+        it("should increment totalSwitchUps when newBitrate > oldBitrate", () => {
+          state.totalSwitchUps += (5000 > 2000) ? 1 : 0;
+          expect(state.totalSwitchUps).toBe(1);
+
+          state.totalSwitchUps += (7000 > 5000) ? 1 : 0;
+          expect(state.totalSwitchUps).toBe(2);
+          expect(state.totalSwitchDowns).toBe(0);
+        });
+
+        it("should increment totalSwitchDowns when newBitrate < oldBitrate", () => {
+          state.totalSwitchDowns += (2000 < 5000) ? 1 : 0;
+          expect(state.totalSwitchDowns).toBe(1);
+
+          state.totalSwitchDowns += (1000 < 3000) ? 1 : 0;
+          expect(state.totalSwitchUps).toBe(0);
+          expect(state.totalSwitchDowns).toBe(2);
+        });
+
+        it("should handle mixed up and down switches", () => {
+          state.totalSwitchUps += (5000 > 2000) ? 1 : 0;      // up
+          state.totalSwitchDowns += (3000 < 5000) ? 1 : 0;    // down
+          state.totalSwitchUps += (6000 > 3000) ? 1 : 0;      // up
+          state.totalSwitchUps += (7000 > 6000) ? 1 : 0;      // up
+          state.totalSwitchDowns += (2000 < 7000) ? 1 : 0;    // down
+
+          expect(state.totalSwitchUps).toBe(3);
+          expect(state.totalSwitchDowns).toBe(2);
+        });
+
+        it("should not increment when newBitrate === oldBitrate (no change)", () => {
+          const oldUps = state.totalSwitchUps;
+          const oldDowns = state.totalSwitchDowns;
+
+          state.totalSwitchUps += (5000 > 5000) ? 1 : 0;
+          state.totalSwitchDowns += (5000 < 5000) ? 1 : 0;
+
+          expect(state.totalSwitchUps).toBe(oldUps);
+          expect(state.totalSwitchDowns).toBe(oldDowns);
+        });
+
+        it("should accumulate without reset between calls", () => {
+          state.totalSwitchUps += (5000 > 2000) ? 1 : 0;
+          state.totalSwitchUps += (6000 > 5000) ? 1 : 0;
+          expect(state.totalSwitchUps).toBe(2);
+
+          state.totalSwitchDowns += (3000 < 6000) ? 1 : 0;
+          expect(state.totalSwitchDowns).toBe(1);
+          expect(state.totalSwitchUps).toBe(2); // Still 2, not reset
+        });
       });
 
-      it("getQoeAttributes() omits avg/min/maxDownloadRate when no observations", () => {
-        const qoe = state.getQoeAttributes().qoe;
-        expect(qoe).not.toHaveProperty("avgDownloadRate");
-        expect(qoe).not.toHaveProperty("minDownloadRate");
-        expect(qoe).not.toHaveProperty("maxDownloadRate");
+      describe("addPlayedRendition() - distinct renditions tracking", () => {
+        it("should initialize _playedRenditions as empty Set", () => {
+          expect(state._playedRenditions).toBeInstanceOf(Set);
+          expect(state._playedRenditions.size).toBe(0);
+        });
+
+        it("should add rendition with valid height and width", () => {
+          state.addPlayedRendition(1920, 1080);
+          expect(state._playedRenditions.size).toBe(1);
+          expect(state._playedRenditions.has("1920x1080")).toBe(true);
+        });
+
+        it("should add multiple distinct renditions", () => {
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1280, 720);
+          state.addPlayedRendition(854, 480);
+
+          expect(state._playedRenditions.size).toBe(3);
+          expect(state._playedRenditions.has("1920x1080")).toBe(true);
+          expect(state._playedRenditions.has("1280x720")).toBe(true);
+          expect(state._playedRenditions.has("854x480")).toBe(true);
+        });
+
+        it("should automatically deduplicate identical renditions", () => {
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1920, 1080);
+
+          expect(state._playedRenditions.size).toBe(1);
+          expect(state._playedRenditions.has("1920x1080")).toBe(true);
+        });
+
+        it("should deduplicate mixed sequence of renditions", () => {
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1280, 720);
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(854, 480);
+          state.addPlayedRendition(1280, 720);
+
+          expect(state._playedRenditions.size).toBe(3);
+          expect([...state._playedRenditions]).toContain("1920x1080");
+          expect([...state._playedRenditions]).toContain("1280x720");
+          expect([...state._playedRenditions]).toContain("854x480");
+        });
+
+        it("should ignore null or undefined height/width", () => {
+          state.addPlayedRendition(null, 1080);
+          state.addPlayedRendition(1920, null);
+          state.addPlayedRendition(undefined, 720);
+          state.addPlayedRendition(1920, undefined);
+          state.addPlayedRendition(null, null);
+
+          expect(state._playedRenditions.size).toBe(0);
+        });
+
+        it("should handle edge case dimensions (negative and large numbers)", () => {
+          // 0 is falsy, so addPlayedRendition(0, 0) won't add anything
+          state.addPlayedRendition(0, 0);
+          expect(state._playedRenditions.size).toBe(0);
+
+          // Negative and large numbers are truthy
+          state.addPlayedRendition(-1, -1);
+          state.addPlayedRendition(7680, 4320); // 8K
+
+          expect(state._playedRenditions.size).toBe(2);
+          expect(state._playedRenditions.has("-1x-1")).toBe(true);
+          expect(state._playedRenditions.has("7680x4320")).toBe(true);
+        });
+
+        it("should treat (1080, 1920) and (1920, 1080) as different", () => {
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1080, 1920);
+
+          expect(state._playedRenditions.size).toBe(2);
+          expect(state._playedRenditions.has("1920x1080")).toBe(true);
+          expect(state._playedRenditions.has("1080x1920")).toBe(true);
+        });
       });
 
-      it("getQoeAttributes() emits all three fields after at least one observation", () => {
-        state.isPlaying = true;
-        state.trackDownloadRateState(8_000_000);
-        const qoe = state.getQoeAttributes().qoe;
-        expect(qoe.avgDownloadRate).toBe(8_000_000);
-        expect(qoe.minDownloadRate).toBe(8_000_000);
-        expect(qoe.maxDownloadRate).toBe(8_000_000);
+      describe("Pause time tracking via timeSincePaused Chrono", () => {
+        beforeEach(() => {
+          jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+          jest.useRealTimers();
+        });
+
+        it("should track pause duration using timeSincePaused chrono", () => {
+          state.goRequest();
+          state.goStart();
+
+          // Pause the video
+          expect(state.goPause()).toBe(true);
+          expect(state.timeSincePaused.startTime).not.toBe(0);
+
+          // Advance time by 50ms
+          jest.advanceTimersByTime(50);
+
+          // Resume
+          expect(state.goResume()).toBe(true);
+
+          // timeSincePaused should have accumulated ~50ms
+          const duration = state.timeSincePaused.getDuration();
+          expect(duration).toBeGreaterThanOrEqual(50);
+        });
+
+        it("should accumulate pause duration across multiple pause cycles", () => {
+          state.goRequest();
+          state.goStart();
+
+          // First pause: 30ms
+          state.goPause();
+          jest.advanceTimersByTime(30);
+          state.goResume();
+          const firstDuration = state.timeSincePaused.getDuration();
+          expect(firstDuration).toBeGreaterThanOrEqual(30);
+
+          // Second pause: 20ms
+          state.goPause();
+          jest.advanceTimersByTime(20);
+          state.goResume();
+          const totalDuration = state.timeSincePaused.getDuration();
+
+          // Should accumulate both pauses
+          expect(totalDuration).toBeGreaterThanOrEqual(50);
+        });
+
+        it("should include totalPauseTime in QOE attributes using chrono duration", () => {
+          state.goRequest();
+          state.goStart();
+
+          // Pause for 40ms
+          state.goPause();
+          jest.advanceTimersByTime(40);
+          state.goResume();
+
+          // Get QOE attributes
+          const qoe = state.getQoeAttributes({}).qoe;
+
+          // totalPauseTime should reflect chrono duration
+          expect(qoe.totalPauseTime).toBeGreaterThanOrEqual(40);
+        });
+
+        it("should reset timeSincePaused on view ID change", () => {
+          state.goRequest();
+          state.goStart();
+
+          // Pause for 50ms
+          state.goPause();
+          jest.advanceTimersByTime(50);
+          state.goResume();
+
+          const durationBeforeReset = state.timeSincePaused.getDuration();
+          expect(durationBeforeReset).toBeGreaterThanOrEqual(50);
+
+          // Reset for new view ID
+          state.resetViewIdTrackedState();
+
+          // Chrono should be reset
+          expect(state.timeSincePaused.getDuration()).toBe(0);
+        });
       });
 
-      it("computes a time-weighted avg, NOT an arithmetic mean", () => {
-        const dateNowSpy = jest.spyOn(Date, "now");
-        let now = 1_000_000;
-        dateNowSpy.mockImplementation(() => now);
+      describe("getQoeAttributes() - v1.1 metrics calculation", () => {
+        it("should include qoeAggregateVersion 1.1.0", () => {
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.qoeAggregateVersion).toBe("1.1.0");
+        });
 
-        state.isPlaying = true;
-        state.trackDownloadRateState(10_000_000);
-        now += 10_000; // 10s at 10 Mbps
-        state.trackDownloadRateState(1_000_000);
-        now += 600_000; // 600s at 1 Mbps
-        state.trackDownloadRateState(1_000_000);
+        it("should calculate avgDownloadRate as simple mean of changed values", () => {
+          state.trackDownloadRate(1000);
+          state.trackDownloadRate(2000);
+          state.trackDownloadRate(3000);
 
-        const qoe = state.getQoeAttributes().qoe;
-        // Σ(v×Δt) / Σ(Δt) ≈ 1.1475 Mbps; arithmetic mean would be 5.5 Mbps
-        expect(qoe.avgDownloadRate).toBeGreaterThanOrEqual(1_100_000);
-        expect(qoe.avgDownloadRate).toBeLessThanOrEqual(1_200_000);
-        expect(qoe.avgDownloadRate).toBeLessThan(5_000_000);
-        expect(qoe.minDownloadRate).toBe(1_000_000);
-        expect(qoe.maxDownloadRate).toBe(10_000_000);
+          const result = state.getQoeAttributes({});
+          // Mean of [1000, 2000, 3000] = 2000
+          expect(result.qoe.avgDownloadRate).toBe(2000);
+        });
 
-        dateNowSpy.mockRestore();
+        it("should include minDownloadRate and maxDownloadRate", () => {
+          state.trackDownloadRate(5000);
+          state.trackDownloadRate(8000);
+          state.trackDownloadRate(3000);
+
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.minDownloadRate).toBe(3000);
+          expect(result.qoe.maxDownloadRate).toBe(8000);
+        });
+
+        it("should omit download rate metrics if no data collected", () => {
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.avgDownloadRate).toBeUndefined();
+          expect(result.qoe.minDownloadRate).toBeUndefined();
+          expect(result.qoe.maxDownloadRate).toBeUndefined();
+        });
+
+        it("should include totalSwitchUps and totalSwitchDowns", () => {
+          state.totalSwitchUps += 2;
+          state.totalSwitchDowns += 1;
+
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.totalSwitchUps).toBe(2);
+          expect(result.qoe.totalSwitchDowns).toBe(1);
+        });
+
+        it("should include totalPauseTime from timeSincePaused chrono", () => {
+          jest.useFakeTimers();
+          state.goRequest();
+          state.goStart();
+          state.goPause();
+          jest.advanceTimersByTime(5000);
+          state.goResume();
+
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.totalPauseTime).toBeGreaterThanOrEqual(5000);
+          jest.useRealTimers();
+        });
+
+        it("should include totalViewSessionTime (from totalPlaytime)", () => {
+          state.totalPlaytime = 45000;
+
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.totalViewSessionTime).toBe(45000);
+        });
+
+        it("should include totalRenditions count", () => {
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1280, 720);
+          state.addPlayedRendition(1920, 1080); // Duplicate, not counted
+
+          const result = state.getQoeAttributes({});
+          expect(result.qoe.totalRenditions).toBe(2);
+        });
+
+        it("should create qoe object if not present", () => {
+          const att = {};
+          const result = state.getQoeAttributes(att);
+
+          expect(result.qoe).toBeDefined();
+          expect(typeof result.qoe).toBe("object");
+        });
+
+        it("should include v1.1 attributes when qoe object provided", () => {
+          const att = { qoe: { startupTime: 500, peakBitrate: 2000 } };
+          state.trackDownloadRate(5000);
+          state.totalSwitchUps += 1;
+
+          const result = state.getQoeAttributes(att);
+
+          // New v1.1 attributes added
+          expect(result.qoe.avgDownloadRate).toBe(5000);
+          expect(result.qoe.totalSwitchUps).toBe(1);
+          expect(result.qoe.qoeAggregateVersion).toBe("1.1.0");
+        });
+
+        it("should include all v1.1 metrics in one call", () => {
+          jest.useFakeTimers();
+          state.trackDownloadRate(5000);
+          state.trackDownloadRate(7000);
+          state.totalSwitchUps += 1;
+          state.totalSwitchDowns += 1;
+          state.addPlayedRendition(1920, 1080);
+
+          // Simulate pause for 3000ms
+          state.goRequest();
+          state.goStart();
+          state.goPause();
+          jest.advanceTimersByTime(3000);
+          state.goResume();
+
+          state.totalPlaytime = 60000;
+
+          const result = state.getQoeAttributes({});
+          const qoe = result.qoe;
+
+          expect(qoe.avgDownloadRate).toBe(6000);
+          expect(qoe.minDownloadRate).toBe(5000);
+          expect(qoe.maxDownloadRate).toBe(7000);
+          expect(qoe.totalSwitchUps).toBe(1);
+          expect(qoe.totalSwitchDowns).toBe(1);
+          expect(qoe.totalPauseTime).toBeGreaterThanOrEqual(3000);
+          expect(qoe.totalViewSessionTime).toBe(60000);
+          expect(qoe.totalRenditions).toBe(1);
+          expect(qoe.qoeAggregateVersion).toBe("1.1.0");
+          jest.useRealTimers();
+        });
       });
 
-      it("excludes paused time from avgDownloadRate (delegates to helper gate)", () => {
-        const dateNowSpy = jest.spyOn(Date, "now");
-        let now = 1_000_000;
-        dateNowSpy.mockImplementation(() => now);
+      describe("resetViewIdTrackedState() - v1.1 metrics reset", () => {
+        it("should reset _downloadBitrates to empty array", () => {
+          state.trackDownloadRate(5000);
+          state.trackDownloadRate(6000);
+          expect(state._downloadBitrates.length).toBe(2);
 
-        state.isPlaying = true;
-        state.trackDownloadRateState(2_000_000);
-        now += 1_000; // 1s playing @ 2 Mbps
+          state.resetViewIdTrackedState();
+          expect(state._downloadBitrates).toEqual([]);
+          expect(state._lastDownloadBitrate).toBeNull();
+        });
 
-        state.isPlaying = false;
-        state.trackDownloadRateState(2_000_000); // pause closes segment
-        now += 60_000; // 60s paused — must not contribute
+        it("should reset totalSwitchUps and totalSwitchDowns to 0", () => {
+          state.totalSwitchUps += 1;
+          state.totalSwitchDowns += 1;
+          expect(state.totalSwitchUps).toBe(1);
+          expect(state.totalSwitchDowns).toBe(1);
 
-        state.isPlaying = true;
-        state.trackDownloadRateState(4_000_000);
-        now += 1_000; // 1s playing @ 4 Mbps
-        state.trackDownloadRateState(4_000_000);
+          state.resetViewIdTrackedState();
+          expect(state.totalSwitchUps).toBe(0);
+          expect(state.totalSwitchDowns).toBe(0);
+        });
 
-        const qoe = state.getQoeAttributes().qoe;
-        // (2M×1000 + 4M×1000) / 2000 = 3 Mbps
-        expect(qoe.avgDownloadRate).toBe(3_000_000);
+        it("should reset pause time tracking (timeSincePaused)", () => {
+          jest.useFakeTimers();
+          state.goRequest();
+          state.goStart();
+          state.goPause();
+          jest.advanceTimersByTime(5000);
+          state.goResume();
 
-        dateNowSpy.mockRestore();
-      });
+          expect(state.timeSincePaused.getDuration()).toBeGreaterThanOrEqual(5000);
 
-      it("resetViewIdTrackedState() clears _downloadRateAvg", () => {
-        state.isPlaying = true;
-        state.trackDownloadRateState(7_000_000);
-        expect(state._downloadRateAvg.hasObservations()).toBe(true);
+          state.resetViewIdTrackedState();
+          expect(state.timeSincePaused.getDuration()).toBe(0);
+          jest.useRealTimers();
+        });
 
-        state.resetViewIdTrackedState();
-        expect(state._downloadRateAvg.hasObservations()).toBe(false);
-        expect(state._downloadRateAvg.weighted).toBe(0);
-        expect(state._downloadRateAvg.min).toBeNull();
-        expect(state._downloadRateAvg.max).toBeNull();
+        it("should reset _playedRenditions to empty Set", () => {
+          state.addPlayedRendition(1920, 1080);
+          state.addPlayedRendition(1280, 720);
+          expect(state._playedRenditions.size).toBe(2);
 
-        // After reset, attribute is again omitted.
-        const qoe = state.getQoeAttributes().qoe;
-        expect(qoe).not.toHaveProperty("avgDownloadRate");
+          state.resetViewIdTrackedState();
+          expect(state._playedRenditions.size).toBe(0);
+        });
+
+        it("should reset all v1.1 metrics together on view ID change", () => {
+          jest.useFakeTimers();
+          // Set up all metrics
+          state.trackDownloadRate(5000);
+          state.totalSwitchUps += 1;
+          state.addPlayedRendition(1920, 1080);
+
+          // Simulate pause for 3000ms
+          state.goRequest();
+          state.goStart();
+          state.goPause();
+          jest.advanceTimersByTime(3000);
+          state.goResume();
+
+          // Verify all set
+          expect(state._downloadBitrates.length).toBe(1);
+          expect(state.totalSwitchUps).toBe(1);
+          expect(state._playedRenditions.size).toBe(1);
+          expect(state.timeSincePaused.getDuration()).toBeGreaterThanOrEqual(3000);
+
+          // Reset
+          state.resetViewIdTrackedState();
+
+          // Verify all reset
+          expect(state._downloadBitrates).toEqual([]);
+          expect(state._lastDownloadBitrate).toBeNull();
+          expect(state.totalSwitchUps).toBe(0);
+          expect(state.totalSwitchDowns).toBe(0);
+          expect(state.timeSincePaused.getDuration()).toBe(0);
+          expect(state._playedRenditions.size).toBe(0);
+          jest.useRealTimers();
+        });
       });
     });
   });
