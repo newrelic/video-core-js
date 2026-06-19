@@ -185,6 +185,7 @@ class VideoConfiguration {
         config: {
           qoeAggregate: config?.qoeAggregate ?? false,
           qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
+          obfuscate: this.filterObfuscateRules(config?.obfuscate),
         },
       };
       return;

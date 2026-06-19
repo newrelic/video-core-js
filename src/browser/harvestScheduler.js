@@ -170,7 +170,6 @@ export class HarvestScheduler {
       return {
         success: false,
         error: error.message,
-        consecutiveFailures: this.consecutiveFailures,
       };
     } finally {
       this.isHarvesting = false;
@@ -358,12 +357,7 @@ export class HarvestScheduler {
    * @private
    */
   handleHarvestFailure(error) {
-    this.consecutiveFailures++;
-
-    Log.warn("Harvest failure handled", {
-      error: error.message,
-      consecutiveFailures: this.consecutiveFailures,
-    });
+    Log.warn("Harvest failure handled", { error: error.message });
   }
 
   /**

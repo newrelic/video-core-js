@@ -290,6 +290,7 @@ describe("Vega core wiring", () => {
       expect(g.config).toEqual({
         qoeAggregate: true,
         qoeIntervalFactor: 5,
+        obfuscate: [],              // filterObfuscateRules([]) → empty array when no rules passed
       });
       expect("harvester" in g).toBe(false); // No harvester field.
       expect(global.window.NRVIDEO).toBeUndefined(); // No NR write.

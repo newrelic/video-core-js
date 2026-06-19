@@ -17,6 +17,7 @@ import {
   applyQoeDirtyFilter,
 } from "../utils/qoeFilters";
 import { createHarvestTimer } from "../utils/harvestTimer";
+import { applyObfuscationRules } from "../obfuscate";
 import Log from "../log";
 
 /**
@@ -392,9 +393,11 @@ export default class ConnectedDeviceHarvester {
     // Build 10-tuple body per spec §7.2. Wrapped so REQ-CDH-26 retry can
     // rebuild with a refreshed dataToken in slot [0]. Slots [1] and [8] are
     // built from this.deviceInfo (customer-supplied where present, defaults
-    // from CD_DEVICE_INFO / CD_METADATA otherwise).
-    const buildBody = () =>
-      JSON.stringify([
+    // from CD_DEVICE_INFO / CD_METADATA otherwise). Obfuscation rules (if any)
+    // are applied to the serialised payload before sending — same behaviour as
+    // the Browser pipeline's OptimizedHttpClient.
+    const buildBody = () => {
+      const raw = JSON.stringify([
         this.dataToken, // [0] from /v5/connect
         this._buildDeviceInfo(), // [1] device tuple
         0, // [2] reserved
@@ -406,6 +409,8 @@ export default class ConnectedDeviceHarvester {
         this._buildMetadata(), // [8] session metadata
         filtered, // [9] events
       ]);
+      return applyObfuscationRules(raw, globalThis.__NRVIDEO_CD__?.config?.obfuscate);
+    };
 
     try {
       let res = await fetch(url, {
