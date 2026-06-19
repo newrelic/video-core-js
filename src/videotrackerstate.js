@@ -93,6 +93,7 @@ class VideoTrackerState {
      */
     this.partialAverageBitrate = 0;
     this._totalBitrateDuration = 0;
+    this.weightedBitrate = 0;
     this._lastBitrate = null;
     this._lastBitrateChangeTimestamp = null;
 
@@ -831,6 +832,7 @@ class VideoTrackerState {
     this.startupTime = null;
     this.partialAverageBitrate = 0;
     this._totalBitrateDuration = 0;
+    this.weightedBitrate = 0;
     this._lastBitrate = null;
     this._lastBitrateChangeTimestamp = null;
     this._downloadBitrates = [];
