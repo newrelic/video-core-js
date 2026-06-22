@@ -94,6 +94,22 @@ export const DEFAULT_HARVEST_TIME = 60_000;
  *  MAX_EVENTS_PER_BATCH / MAX_PAYLOAD_SIZE). */
 export const DEFAULT_BUFFER_SIZE = 100;
 
+/** Maximum number of /v5/connect attempts before giving up. */
+export const CD_CONNECT_MAX_ATTEMPTS = 3;
+
+/** Fixed delay between /v5/connect retry attempts in ms.
+ *  10s gives the device network stack enough time to recover after
+ *  wake-from-sleep before the next attempt fires. */
+export const CD_CONNECT_RETRY_DELAY_MS = 10_000;
+
+/** Hard timeout for POST /v5/connect. A hung connect holds _isFetchingToken=true
+ *  forever, blocking all future reconnect attempts. */
+export const CD_CONNECT_TIMEOUT_MS = 10_000;
+
+/** Hard timeout for POST /v3/data. A hung data send holds isHarvesting=true,
+ *  freezing the chained harvest timer until the fetch resolves. */
+export const CD_DATA_TIMEOUT_MS = 30_000;
+
 /**
  * Positional 2-tuple sent as the body of `POST /v5/connect`.
  *   [

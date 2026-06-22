@@ -8,6 +8,7 @@ import {
   STAGING_MOBILE_ENDPOINT,
   CD_DEVICE_INFO,
   CD_METADATA,
+  CD_CONNECT_MAX_ATTEMPTS,
 } from "../src/constants";
 import Tracker from "../src/tracker";
 import Log from "../src/log";
@@ -127,24 +128,24 @@ describe("ConnectedDeviceHarvester", () => {
   // ====== T-CDH-6 — exp-backoff retry up to 10 attempts ======
 
   describe("connect retry behavior", () => {
-    it("T-CDH-6: retries with exp-backoff on 500, gives up after 10 and leaves dataToken null", async () => {
+    it("T-CDH-6: retries with fixed delay on 500, gives up after CD_CONNECT_MAX_ATTEMPTS and leaves dataToken null", async () => {
       jest.useFakeTimers();
-      const failingFetch = sinon
-        .stub()
-        .resolves({ ok: false, status: 500, json: () => Promise.resolve({}) });
+      const failingFetch = sinon.stub().resolves({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve(""),
+        json: () => Promise.resolve({}),
+      });
       global.fetch = failingFetch;
 
       const h = makeHarvester();
 
-      // Drive timers forward to flush all backoff retries (up to 2^9 * 1000ms).
-      for (let i = 0; i < 12; i++) {
-        await Promise.resolve();
-        jest.runAllTimers();
-        await Promise.resolve();
-      }
+      // runAllTimersAsync interleaves timer firings with promise resolution,
+      // covering all retry delays in a single call.
+      await jest.runAllTimersAsync();
 
-      expect(failingFetch.callCount).toBe(10); // T-CDH-11: gives up after 10
-      expect(h.dataToken).toBe(null);          // null dataToken gates sendBufferedEvents
+      expect(failingFetch.callCount).toBe(CD_CONNECT_MAX_ATTEMPTS);
+      expect(h.dataToken).toBe(null);
 
       jest.useRealTimers();
       h.dispose();
@@ -271,6 +272,45 @@ describe("ConnectedDeviceHarvester", () => {
         "CONTENT_END",
         "CONTENT_START",
       ]);
+      h.dispose();
+    });
+
+    it("T-CDH-11b: 401 on /v3/data re-queues events, clears token, fires background reconnect, releases harvest lock", async () => {
+      const h = makeHarvester();
+      // Let the constructor's fire-and-forget initialise() settle so it does
+      // not race with our 401 stub below.
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+
+      h.dataToken = ["TKN"];
+      h.addEvent({ actionName: "CONTENT_START" });
+      h.addEvent({ actionName: "CONTENT_END" });
+
+      // Replace fetch with a 401 stub covering both /v3/data and any
+      // reconnect attempt from the fire-and-forget initialise().
+      global.fetch = sinon.stub().resolves({
+        ok: false,
+        status: 401,
+        text: () => Promise.resolve(""),
+        json: () => Promise.resolve({}),
+      });
+
+      const initialiseSpy = sinon.spy(h, "initialise");
+      await h.sendBufferedEvents();
+
+      // Events re-queued — not lost.
+      const buffered = h.eventBuffer.drain();
+      expect(buffered).toHaveLength(2);
+
+      // Token cleared so next tick short-circuits until reconnect finishes.
+      expect(h.dataToken).toBe(null);
+
+      // Background reconnect was kicked off without blocking sendBufferedEvents.
+      expect(initialiseSpy.calledOnce).toBe(true);
+
+      // Harvest lock released — pipeline is not frozen.
+      expect(h.isHarvesting).toBe(false);
+
+      initialiseSpy.restore();
       h.dispose();
     });
   });

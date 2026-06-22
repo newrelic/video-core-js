@@ -9,6 +9,10 @@ import {
   CD_DATA_TOKENS_PAYLOAD,
   CD_DEVICE_INFO,
   CD_METADATA,
+  CD_CONNECT_MAX_ATTEMPTS,
+  CD_CONNECT_RETRY_DELAY_MS,
+  CD_CONNECT_TIMEOUT_MS,
+  CD_DATA_TIMEOUT_MS,
 } from "../constants";
 import {
   bufferEventWithQoeDedup,
@@ -117,6 +121,7 @@ export default class ConnectedDeviceHarvester {
     this.dataToken = null; // REQ-CDH-5
     this.isHarvesting = false;
     this.isDisposed = false;
+    this._isFetchingToken = false; // guard: prevents parallel /v5/connect sequences
 
     // Periodic harvest timer. Chained-setTimeout under the hood (see
     // `utils/harvestTimer.js`) — guarantees no overlapping ticks even if the
@@ -170,64 +175,79 @@ export default class ConnectedDeviceHarvester {
   }
 
   /**
-   * POST `/v5/connect` to obtain dataToken, with exponential-backoff retry
-   * up to 10 attempts (1s, 2s, 4s, ... doubling). (REQ-CDH-8..11)
-   * @param {number} attempt
+   * POST `/v5/connect` to obtain a dataToken. Retries up to
+   * CD_CONNECT_MAX_ATTEMPTS times with a fixed CD_CONNECT_RETRY_DELAY_MS
+   * wait between attempts. (REQ-CDH-8..11)
+   *
+   * Iterative loop keeps the call stack flat across all attempts.
+   * `_isFetchingToken` guard ensures only one connect sequence runs at a
+   * time — if `initialise()` (startup) and the 401-refresh path in
+   * `sendBufferedEvents` both call this concurrently, the second call
+   * returns immediately without issuing a duplicate POST.
+   *
    * @returns {Promise<void>}
    */
-  async fetchDataTokens(attempt = 0) {
-    const url = `${this.getEndpointBaseUrl()}/v5/connect`;
-    const requestBody = JSON.stringify(CD_DATA_TOKENS_PAYLOAD);
+  async fetchDataTokens() {
+    if (this._isFetchingToken) return;
+    this._isFetchingToken = true;
+
     try {
-      Log.notice(`ConnectedDeviceHarvester: POST ${url}`);
+      for (let attempt = 0; attempt < CD_CONNECT_MAX_ATTEMPTS; attempt++) {
+        if (this.isDisposed) return;
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-App-License-Key": this.applicationToken,
-        },
-        body: requestBody,
-      });
-
-      if (!res.ok) {
-        // Drain response body so we can surface the collector's rejection
-        // reason. Mobile collector returns plain-text or empty `{}` on 4xx.
-        let errBody = "";
+        const url = `${this.getEndpointBaseUrl()}/v5/connect`;
         try {
-          errBody = await res.text();
-        } catch (_) {
-          /* ignore */
+          Log.notice(
+            `ConnectedDeviceHarvester: POST ${url} (attempt ${attempt + 1}/${CD_CONNECT_MAX_ATTEMPTS})`
+          );
+
+          const res = await this._fetchWithTimeout(
+            url,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-App-License-Key": this.applicationToken,
+              },
+              body: JSON.stringify(CD_DATA_TOKENS_PAYLOAD),
+            },
+            CD_CONNECT_TIMEOUT_MS
+          );
+
+          if (!res.ok) {
+            let errBody = "";
+            try { errBody = await res.text(); } catch (_) { /* ignore */ }
+            throw new Error(`HTTP ${res.status} body=${errBody}`);
+          }
+
+          const body = await res.json();
+          if (!body || !body.data_token) {
+            throw new Error("Missing data_token in connect response");
+          }
+
+          this.dataToken = body.data_token; // REQ-CDH-9
+          this._connectAttempt = attempt + 1;
+          Log.notice("ConnectedDeviceHarvester: dataToken acquired");
+          return;
+        } catch (err) {
+          this._connectAttempt = attempt + 1;
+          Log.error(
+            `ConnectedDeviceHarvester: /v5/connect failed (attempt ${this._connectAttempt}/${CD_CONNECT_MAX_ATTEMPTS}):`,
+            err.message
+          );
+
+          if (attempt >= CD_CONNECT_MAX_ATTEMPTS - 1) {
+            Log.error("ConnectedDeviceHarvester: Max retries reached — dataToken stays null");
+            return;
+          }
+
+          // Fixed delay gives the device network stack time to recover
+          // (e.g. after wake-from-sleep) before the next attempt.
+          await new Promise((resolve) => setTimeout(resolve, CD_CONNECT_RETRY_DELAY_MS));
         }
-        throw new Error(`HTTP ${res.status} body=${errBody}`);
       }
-
-      const body = await res.json();
-      if (!body || !body.data_token) {
-        throw new Error("Missing data_token in connect response");
-      }
-      this.dataToken = body.data_token; // REQ-CDH-9
-      this._connectAttempt = 0;
-      Log.notice("ConnectedDeviceHarvester: dataToken acquired");
-    } catch (err) {
-      this._connectAttempt = attempt + 1;
-      Log.error(
-        `ConnectedDeviceHarvester: /v5/connect failed (attempt ${this._connectAttempt}/10):`,
-        err.message
-      );
-
-      if (this._connectAttempt >= 10) {
-        // REQ-CDH-11: exhausted — dataToken stays null; sendBufferedEvents
-        // short-circuits on `if (!this.dataToken) return` until a 401 triggers
-        // a fresh connect sequence.
-        Log.error("ConnectedDeviceHarvester: Max retries reached");
-        return;
-      }
-
-      // REQ-CDH-10: exponential backoff starting at 1s, doubling each attempt.
-      const delay = 1000 * 2 ** attempt;
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return this.fetchDataTokens(this._connectAttempt);
+    } finally {
+      this._isFetchingToken = false;
     }
   }
 
@@ -413,36 +433,28 @@ export default class ConnectedDeviceHarvester {
     };
 
     try {
-      let res = await fetch(url, {
-        method: "POST",
-        headers,
-        body: buildBody(),
-      });
+      let res = await this._fetchWithTimeout(
+        url,
+        { method: "POST", headers, body: buildBody() },
+        CD_DATA_TIMEOUT_MS
+      );
 
-      // REQ-CDH-26: dataToken expiry handling. Mobile collector returns 401
-      // when the dataToken issued by /v5/connect is no longer accepted
-      // (e.g., after server-side rotation or session timeout). Refresh once
-      // and retry the same drained payload before falling through to the
-      // re-queue path.
+      // REQ-CDH-26: dataToken expiry. Re-queue the drained events and kick
+      // off a background reconnect rather than awaiting fetchDataTokens()
+      // inline. Awaiting inline would hold isHarvesting = true for up to
+      // CD_CONNECT_MAX_ATTEMPTS × CD_CONNECT_RETRY_DELAY_MS (20s), freezing
+      // all subsequent harvest ticks. Fire-and-forget releases the lock
+      // immediately; next ticks short-circuit on !dataToken until the new
+      // token arrives.
       if (res.status === 401) {
         Log.notice(
-          "ConnectedDeviceHarvester: /v3/data returned 401, refreshing dataToken"
+          "ConnectedDeviceHarvester: /v3/data returned 401 — re-queuing events and reconnecting"
         );
         this.dataToken = null;
-        // Reset connect retry counter so the refresh starts a fresh
-        // 10-attempt budget independent of the original startup attempt.
         this._connectAttempt = 0;
-        await this.fetchDataTokens();
-        if (!this.dataToken) {
-          throw new Error(
-            "Failed to refresh dataToken after 401 on /v3/data"
-          );
-        }
-        res = await fetch(url, {
-          method: "POST",
-          headers,
-          body: buildBody(),
-        });
+        for (const e of filtered) this.eventBuffer.add(e);
+        this.initialise(); // fire-and-forget background reconnect
+        return;            // isHarvesting released in finally block
       }
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -498,6 +510,29 @@ export default class ConnectedDeviceHarvester {
       appBuild:     d.appBuild,
       architecture: d.architecture,
     };
+  }
+
+  /**
+   * Wraps `fetch` with an AbortController deadline. If no response arrives
+   * within `timeoutMs`, the controller aborts the request and the returned
+   * Promise rejects with an AbortError. The caller's existing `catch` block
+   * handles it identically to any other network failure — connect retries for
+   * /v5/connect, event re-queue for /v3/data.
+   *
+   * `clearTimeout` in `.finally()` cancels the pending abort when the fetch
+   * completes before the deadline, so the abort never fires spuriously.
+   *
+   * @param {string} url
+   * @param {RequestInit} options
+   * @param {number} timeoutMs
+   * @returns {Promise<Response>}
+   * @private
+   */
+  _fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timerId = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal })
+      .finally(() => clearTimeout(timerId));
   }
 
   /**
