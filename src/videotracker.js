@@ -86,6 +86,11 @@ class VideoTracker extends Tracker {
       }
       if (options.src !== undefined) {
         this._src = options.src;
+        // Propagate src to adsTracker if it was attached before _src was set
+        // (setAdsTracker is called earlier in this same setOptions block).
+        if (this.adsTracker && this.adsTracker._src == null) {
+          this.adsTracker._src = this._src;
+        }
       }
       Tracker.prototype.setOptions.apply(this, arguments);
     }
@@ -138,6 +143,12 @@ class VideoTracker extends Tracker {
       this.adsTracker = tracker;
       this.adsTracker.setIsAd(true);
       this.adsTracker.parentTracker = this;
+      // Propagate src so ads events route to the same pipeline as content events.
+      // Covers the case where setAdsTracker is called after the content tracker
+      // is fully initialised and this._src is already set.
+      if (this._src != null && tracker._src == null) {
+        tracker._src = this._src;
+      }
       this.adsTracker.on("*", funnelAdEvents.bind(this));
     }
   }
