@@ -13,7 +13,7 @@ import {
   CD_CONNECT_RETRY_DELAY_MS,
   CD_CONNECT_TIMEOUT_MS,
   CD_DATA_TIMEOUT_MS,
-} from "../constants";
+} from "./connectedDeviceConstants";
 import {
   bufferEventWithQoeDedup,
   refreshQoeKpisInBuffer,
@@ -25,8 +25,8 @@ import { applyObfuscationRules } from "../obfuscate";
 import Log from "../log";
 
 /**
- * Generic NR mobile-collector harvester implementing the CAF protocol
- * (`/v5/connect` + `/v3/data`). Wire format mirrors `@newrelic/video-caf-js@3.1.0`.
+ * Generic NR mobile-collector harvester for the connected-device pipeline
+ * (`/v5/connect` + `/v3/data`).
  *
  * The class is **not Vega-specific** — it owns the HTTP client, dataToken,
  * harvest setInterval, and event buffer for any consumer that needs to ship
