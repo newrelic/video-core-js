@@ -9,7 +9,7 @@ import {
   CD_DEVICE_INFO,
   CD_METADATA,
   CD_CONNECT_MAX_ATTEMPTS,
-} from "../src/constants";
+} from "../src/connectedDevice/connectedDeviceConstants";
 import Tracker from "../src/tracker";
 import Log from "../src/log";
 
