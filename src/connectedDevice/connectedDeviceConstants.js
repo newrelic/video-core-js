@@ -16,11 +16,15 @@ export const MOBILE_ENDPOINT_EU = "https://mobile-collector.eu01.nr-data.net/mob
 export const STAGING_MOBILE_ENDPOINT =
   "https://staging-mobile-collector.newrelic.com/mobile";
 
+/** FedRAMP/GOV mobile collector base URL. Required for US government accounts. */
+export const MOBILE_ENDPOINT_GOV = "https://gov-mobile-collector.newrelic.com/mobile";
+
 /** Endpoint region selector. Each value routes to its regional collector. */
 export const NR_ENDPOINT = {
-  US: "US",
-  EU: "EU",
+  US:      "US",
+  EU:      "EU",
   STAGING: "staging",
+  GOV:     "GOV",
 };
 
 /** Default harvest cadence in ms. */

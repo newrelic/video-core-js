@@ -2,6 +2,7 @@ import { NrVideoEventAggregator } from "../eventAggregator";
 import {
   MOBILE_ENDPOINT_US,
   MOBILE_ENDPOINT_EU,
+  MOBILE_ENDPOINT_GOV,
   STAGING_MOBILE_ENDPOINT,
   NR_ENDPOINT,
   DEFAULT_HARVEST_TIME,
@@ -155,6 +156,7 @@ export default class ConnectedDeviceHarvester {
     switch (this.endpoint) {
       case NR_ENDPOINT.EU:      return MOBILE_ENDPOINT_EU;
       case NR_ENDPOINT.STAGING: return STAGING_MOBILE_ENDPOINT;
+      case NR_ENDPOINT.GOV:     return MOBILE_ENDPOINT_GOV;
       default:                  return MOBILE_ENDPOINT_US;
     }
   }

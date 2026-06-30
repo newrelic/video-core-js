@@ -46,8 +46,8 @@ class VideoConfiguration {
       Log.error("applicationToken is required");
       return false;
     }
-    if (!["US", "EU", "staging"].includes(info.endpoint)) {
-      Log.error("Invalid endpoint (must be US, EU, or staging)");
+    if (!["US", "EU", "staging", "GOV"].includes(info.endpoint)) {
+      Log.error("Invalid endpoint (must be US, EU, staging, or GOV)");
       return false;
     }
     return true;
