@@ -329,16 +329,21 @@ describe("Vega core wiring", () => {
   // ====== T-CO-14, T-CO-15 — videotracker._src + att.src ======
 
   describe("VideoTracker._src + att.src", () => {
-    it("T-CO-14: setOptions stores options.src on this._src; this._src defaults to null when omitted", () => {
+    it("T-CO-14: setOptions sets src on first call; subsequent calls with a different src are ignored (locked)", () => {
       const t = new VideoTracker();
       expect(t._src).toBe(null);
+      // First call sets _src.
       t.setOptions({ src: "Vega" });
       expect(t._src).toBe("Vega");
+      // Attempt to override with a different src — locked, ignored.
       t.setOptions({ src: "Browser" });
-      expect(t._src).toBe("Browser");
+      expect(t._src).toBe("Vega");
       // Omitted src leaves _src untouched.
       t.setOptions({ heartbeat: 1000 });
-      expect(t._src).toBe("Browser");
+      expect(t._src).toBe("Vega");
+      // Same src value is accepted (no-op, no warning).
+      t.setOptions({ src: "Vega" });
+      expect(t._src).toBe("Vega");
     });
 
     it("T-CO-15: getAttributes returns att.src='Browser' when _src is null (regression guard); 'Vega' when _src='Vega'", () => {

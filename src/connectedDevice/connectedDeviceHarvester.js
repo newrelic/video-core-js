@@ -51,8 +51,6 @@ export default class ConnectedDeviceHarvester {
    * @param {string} [opts.accountId]         Captured for parity with CAF; not transmitted.
    * @param {string} opts.applicationToken    Sent as `X-App-License-Key` header. (REQ-CDH-2)
    * @param {string} opts.endpoint            One of `US`, `EU`, `staging`. (REQ-CDH-3)
-   * @param {number} [opts.harvestInterval]   Send cadence in ms. Defaults to 60s.
-   * @param {number} [opts.maxBufferSize]     Buffer cap before forced send. Defaults to 100.
    * @param {object} [opts.deviceInfo]        Customer-collected device identity. Any of:
    *   uuid, osVersion, deviceModel, deviceManufacturer, osBuild, appBuild, architecture.
    *   Each field optional — missing values fall back to placeholders from
@@ -67,8 +65,6 @@ export default class ConnectedDeviceHarvester {
     accountId,
     applicationToken,
     endpoint,
-    harvestInterval,
-    maxBufferSize,
     deviceInfo,
   } = {}) {
     if (!applicationToken) {
@@ -81,13 +77,16 @@ export default class ConnectedDeviceHarvester {
     this.accountId = accountId;
     this.applicationToken = applicationToken;
     this.endpoint = endpoint;
-    this.harvestInterval = harvestInterval ?? DEFAULT_HARVEST_TIME;
-    this.maxBufferSize = maxBufferSize ?? DEFAULT_BUFFER_SIZE;
+    this.harvestInterval = DEFAULT_HARVEST_TIME;
+    this.maxBufferSize = DEFAULT_BUFFER_SIZE;
 
     // Destructure customer-supplied device identity. Each field optional;
     // unset / empty values silently fall back to the static defaults in
     // CD_DEVICE_INFO / CD_METADATA. Extra fields the customer passes (e.g.
     // a wider device-info object from their own internal model) are ignored.
+    if (!deviceInfo) {
+      Log.warn("ConnectedDeviceHarvester: no deviceInfo provided — using placeholder defaults. Pass info.deviceInfo for accurate device data.");
+    }
     const {
       uuid,
       osVersion,

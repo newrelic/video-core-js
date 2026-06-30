@@ -85,11 +85,13 @@ class VideoTracker extends Tracker {
         this.setIsAd(options.isAd);
       }
       if (options.src !== undefined) {
-        this._src = options.src;
-        // Propagate src to adsTracker if it was attached before _src was set
-        // (setAdsTracker is called earlier in this same setOptions block).
-        if (this.adsTracker && this.adsTracker._src == null) {
-          this.adsTracker._src = this._src;
+        if (this._src !== null && this._src !== options.src) {
+          Log.warn(`setOptions: src is locked to '${this._src}'. Ignoring override '${options.src}'.`);
+        } else {
+          this._src = options.src;
+          if (this.adsTracker && this.adsTracker._src == null) {
+            this.adsTracker._src = this._src;
+          }
         }
       }
       Tracker.prototype.setOptions.apply(this, arguments);

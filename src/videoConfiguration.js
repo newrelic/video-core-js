@@ -152,15 +152,16 @@ class VideoConfiguration {
   }
 
   /**
-   * Sanitizes qoeIntervalFactor, defaulting to 2 if the value is not a positive integer.
+   * Sanitizes qoeIntervalFactor, defaulting to Constants.DEFAULT_QOE_INTERVAL_FACTOR
+   * if the value is not a positive integer.
    * @param {*} value
    * @returns {number}
    */
   sanitizeQoeIntervalFactor(value) {
-    if (value === undefined || value === null) return 2;
+    if (value === undefined || value === null) return Constants.DEFAULT_QOE_INTERVAL_FACTOR;
     if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
-    Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 2.`);
-    return 2;
+    Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to ${Constants.DEFAULT_QOE_INTERVAL_FACTOR}.`);
+    return Constants.DEFAULT_QOE_INTERVAL_FACTOR;
   }
 
   /**
