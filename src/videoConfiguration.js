@@ -184,7 +184,7 @@ class VideoConfiguration {
           ...(userInfo.deviceInfo ? { deviceInfo: userInfo.deviceInfo } : {}),
         },
         config: {
-          qoeAggregate: config?.qoeAggregate ?? false,
+          qoeAggregate: config?.qoeAggregate ?? true,
           qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
           obfuscate: this.filterObfuscateRules(config?.obfuscate),
         },
