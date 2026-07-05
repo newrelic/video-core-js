@@ -2,12 +2,12 @@ import sinon from "sinon";
 import Log from "../src/log";
 
 /**
- * ConnectedDeviceAnalyticsAgent unit tests. Covers T-VA-1..4 from vega-spec.md.
+ * ConnectedDeviceAnalyticsAgent unit tests.
  *
  * Each test re-imports `connectedDeviceAgent` via `jest.isolateModules` so the
  * module-level singleton constructor runs in a fresh state. This is
  * required because the singleton is created at module-load time
- * (REQ-CO-7 part d) and persists across tests otherwise.
+ * and persists across tests otherwise.
  */
 describe("ConnectedDeviceAnalyticsAgent / connectedDeviceAnalyticsHarvester", () => {
   let stubs = [];

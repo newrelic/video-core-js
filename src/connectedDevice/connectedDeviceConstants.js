@@ -112,11 +112,6 @@ export const CD_DEVICE_INFO = [
   },
 ];
 
-/**
- * Slot [8] of the `POST /v3/data` 10-tuple. Session metadata. Device-identity
- * fields (osVersion, deviceModel, deviceManufacturer, osMajorVersion) are
- * NOT duplicated here — they ship in slot [1] (`CD_DEVICE_INFO`).
- */
 export const CD_METADATA = {
   osBuild:      "1",
   osName:       "Vega",

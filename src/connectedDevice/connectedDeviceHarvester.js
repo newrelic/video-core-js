@@ -32,26 +32,15 @@ import Log from "../log";
  * The class is **not Vega-specific** — it owns the HTTP client, dataToken,
  * harvest setInterval, and event buffer for any consumer that needs to ship
  * to NR's mobile collector. Vega-specific routing/lifecycle is provided by
- * the wrapper `ConnectedDeviceAnalyticsAgent` in `connectedDeviceAgent.js` (REQ-CO-7).
+ * the wrapper `ConnectedDeviceAnalyticsAgent` in `connectedDeviceAgent.js`.
  *
- * Implements REQ-CDH-1..26 from vega-spec.md.
- *
- * Constraints (REQ-CDH-20):
- *   - No `document`, `window.location`, `navigator.sendBeacon`, `localStorage`.
- *   - No DOM event listener registration (no `pagehide`/`visibilitychange`).
- *   - `globalThis` is allowed (platform-neutral global, not a DOM API).
- *
- * Note: QoE config (qoeIntervalFactor) is currently read from the Vega-specific
- * `globalThis.__NRVIDEO_CD__.config` slot — REQ-CDH-22 ties this read site to
- * the Vega global by design. Future refactors may inject this via constructor
- * for full Vega-decoupling.
  */
 export default class ConnectedDeviceHarvester {
   /**
    * @param {object} opts
    * @param {string} [opts.accountId]         Captured for parity with CAF; not transmitted.
-   * @param {string} opts.applicationToken    Sent as `X-App-License-Key` header. (REQ-CDH-2)
-   * @param {string} opts.endpoint            One of `US`, `EU`, `staging`. (REQ-CDH-3)
+   * @param {string} opts.applicationToken    Sent as `X-App-License-Key` header. 
+   * @param {string} opts.endpoint            One of `US`, `EU`, `staging`. 
    * @param {object} [opts.deviceInfo]        Customer-collected device identity. Any of:
    *   uuid, osVersion, deviceModel, deviceManufacturer, osBuild, appBuild, architecture.
    *   Each field optional — missing values fall back to placeholders from
@@ -69,10 +58,10 @@ export default class ConnectedDeviceHarvester {
     deviceInfo,
   } = {}) {
     if (!applicationToken) {
-      throw new Error("applicationToken is required"); // REQ-CDH-2
+      throw new Error("applicationToken is required"); 
     }
     if (!Object.values(NR_ENDPOINT).includes(endpoint)) {
-      throw new Error("Invalid endpoint"); // REQ-CDH-3
+      throw new Error("Invalid endpoint"); 
     }
 
     this.accountId = accountId;
@@ -81,10 +70,7 @@ export default class ConnectedDeviceHarvester {
     this.harvestInterval = DEFAULT_HARVEST_TIME;
     this.maxBufferSize = DEFAULT_BUFFER_SIZE;
 
-    // Destructure customer-supplied device identity. Each field optional;
-    // unset / empty values silently fall back to the static defaults in
-    // CD_DEVICE_INFO / CD_METADATA. Extra fields the customer passes (e.g.
-    // a wider device-info object from their own internal model) are ignored.
+    // Destructure customer-supplied device identity.
     if (!deviceInfo) {
       Log.warn("ConnectedDeviceHarvester: no deviceInfo provided — using placeholder defaults. Pass info.deviceInfo for accurate device data.");
     }
@@ -107,41 +93,38 @@ export default class ConnectedDeviceHarvester {
       architecture:       architecture       || CD_METADATA.architecture,
     };
 
-    this.eventBuffer = new NrVideoEventAggregator(); // REQ-CDH-4
+    this.eventBuffer = new NrVideoEventAggregator(); 
 
     // Smart-harvest wiring: buffer triggers an early drain at 60% (smart) and
     // 90% (overflow) capacity, before makeRoom()'s drop-oldest FIFO eviction
-    // would silently lose events. Structural mirror of HarvestScheduler:29 on
-    // the Browser side — same `setSmartHarvestCallback` shape, named method
-    // for stack-trace clarity and unit-testability.
+    // would silently lose events. 
     this.eventBuffer.setSmartHarvestCallback((type, threshold) =>
       this.triggerSmartHarvest(type, threshold)
     );
 
-    this.dataToken = null; // REQ-CDH-5
+    this.dataToken = null; 
     this.isHarvesting = false;
     this.isDisposed = false;
     this._isFetchingToken = false; // guard: prevents parallel /v5/connect sequences
 
-    // Periodic harvest timer. Chained-setTimeout under the hood (see
-    // `utils/harvestTimer.js`) — guarantees no overlapping ticks even if the
-    // drain takes longer than the interval. Shared with the Browser pipeline.
+    // Periodic harvest timer. Chained-setTimeout under the hood guarantees no overlapping ticks even if the
+    // drain takes longer than the interval.
     this.timer = createHarvestTimer({
       interval: this.harvestInterval,
       onTick: () => this.sendBufferedEvents(),
       errorLabel: "ConnectedDeviceHarvester",
     });
 
-    // QoE state (REQ-CDH-22..25)
+    // QoE state 
     this.qoeCycleCount = 1;
     this.forceQoeNextCycle = false;
     this.beforeDrainCallback = null;
     this._lastSentQoeKpis = {};
 
-    // Connect retry state (REQ-CDH-10..11)
+    // Connect retry state 
     this._connectAttempt = 0;
 
-    // REQ-CDH-6: fire-and-forget initialise.
+    // fire-and-forget initialise.
     this.initialise();
   }
 
@@ -162,7 +145,7 @@ export default class ConnectedDeviceHarvester {
   }
 
   /**
-   * Two-phase init: fetch dataToken, then start harvest interval. (REQ-CDH-7)
+   * Two-phase init: fetch dataToken, then start harvest interval. 
    * @returns {Promise<void>}
    */
   async initialise() {
@@ -178,7 +161,7 @@ export default class ConnectedDeviceHarvester {
   /**
    * POST `/v5/connect` to obtain a dataToken. Retries up to
    * CD_CONNECT_MAX_ATTEMPTS times with a fixed CD_CONNECT_RETRY_DELAY_MS
-   * wait between attempts. (REQ-CDH-8..11)
+   * wait between attempts. 
    *
    * Iterative loop keeps the call stack flat across all attempts.
    * `_isFetchingToken` guard ensures only one connect sequence runs at a
@@ -226,7 +209,7 @@ export default class ConnectedDeviceHarvester {
             throw new Error("Missing data_token in connect response");
           }
 
-          this.dataToken = body.data_token; // REQ-CDH-9
+          this.dataToken = body.data_token;
           this._connectAttempt = attempt + 1;
           Log.notice("ConnectedDeviceHarvester: dataToken acquired");
           return;
@@ -253,7 +236,7 @@ export default class ConnectedDeviceHarvester {
   }
 
   /**
-   * Starts the periodic harvest timer. (REQ-CDH-12)
+   * Starts the periodic harvest timer.
    * Idempotent — safe to call repeatedly.
    */
   startHarvestInterval() {
@@ -267,9 +250,6 @@ export default class ConnectedDeviceHarvester {
    * `makeRoom()` would start FIFO-evicting events. Drains the buffer immediately
    * and resets the periodic clock so the next scheduled tick fires
    * `harvestInterval` after this drain completes.
-   *
-   * Structural mirror of `HarvestScheduler.triggerSmartHarvest` on the Browser
-   * side — same method name, same wiring shape, same clock-reset semantics.
    *
    * @param {'smart'|'overflow'} type
    * @param {number} threshold - The threshold percentage that triggered the harvest (60 or 90).
@@ -294,16 +274,12 @@ export default class ConnectedDeviceHarvester {
   /**
    * Buffers an event for the next harvest cycle.
    *
-   * QOE_AGGREGATE events are deduplicated by (actionName + viewId) per
-   * REQ-CDH-21 — mirror of `agent.js:52-63`. Other events are appended with
-   * a `timestamp` field per REQ-CDH-13.
-   *
    * @param {object} eventObject
    * @returns {boolean}
    */
   addEvent(eventObject) {
     try {
-      // REQ-CDH-21 — shared QOE_AGGREGATE dedup + non-QoE append. Timestamp
+      // Shared QOE_AGGREGATE dedup + non-QoE append. Timestamp
       // is preserved from `recordEvent.js` (emit-time), matching the Browser
       // pipeline. Cross-pipeline analytics produce consistent timestamps.
       return bufferEventWithQoeDedup(this.eventBuffer, eventObject);
@@ -315,7 +291,7 @@ export default class ConnectedDeviceHarvester {
 
   /**
    * Forces the next harvest cycle to ship QOE_AGGREGATE regardless of cycle
-   * multiplier or dirty check. Used at CONTENT_END for final QoE flush. (REQ-CDH-24)
+   * multiplier or dirty check. Used at CONTENT_END for final QoE flush.
    */
   forceQoeNextHarvest() {
     this.forceQoeNextCycle = true;
@@ -324,7 +300,7 @@ export default class ConnectedDeviceHarvester {
   /**
    * Registers a callback invoked at the start of every send cycle, before
    * the buffer is drained. Lets the tracker refresh QoE KPIs in the buffer
-   * before they ship. (REQ-CDH-25)
+   * before they ship.
    * @param {Function|null} cb
    */
   setBeforeDrainCallback(cb) {
@@ -365,17 +341,15 @@ export default class ConnectedDeviceHarvester {
    * Mirror of `harvestScheduler.js` drain + send logic, adapted for the CAF
    * 10-tuple wire format and plain `fetch` transport.
    *
-   * REQ-CDH-14..17, REQ-CDH-22..23
    *
    * @returns {Promise<void>}
    */
   async sendBufferedEvents() {
-    // REQ-CDH-14: guard rails
     if (this.isHarvesting) return;
     if (!this.dataToken) return;
     if (this.eventBuffer.isEmpty()) return;
 
-    // REQ-CDH-25: refresh QoE KPIs before drain.
+    // Refresh QoE KPIs before drain.
     if (typeof this.beforeDrainCallback === "function") {
       try {
         this.beforeDrainCallback();
@@ -387,7 +361,7 @@ export default class ConnectedDeviceHarvester {
     this.isHarvesting = true;
     const drained = this.eventBuffer.drain();
 
-    // REQ-CDH-22: QoE cycle filter (mirror of harvestScheduler.js:251-287)
+    // QoE cycle filter
     const multiplier =
       globalThis.__NRVIDEO_CD__?.config?.qoeIntervalFactor ?? 1;
     const isForced = this.forceQoeNextCycle;
@@ -398,7 +372,7 @@ export default class ConnectedDeviceHarvester {
     const filtered = partitionByQoeCycle(drained, isQoeCycle, this.eventBuffer);
     this.qoeCycleCount++;
 
-    // REQ-CDH-23: cross-cycle dirty check
+    // Cross-cycle dirty check
     applyQoeDirtyFilter(filtered, this._lastSentQoeKpis, isForced);
 
     if (filtered.length === 0) {
@@ -411,7 +385,7 @@ export default class ConnectedDeviceHarvester {
       "Content-Type": "application/json",
       "X-App-License-Key": this.applicationToken,
     };
-    // Build 10-tuple body per spec §7.2. Wrapped so REQ-CDH-26 retry can
+    // Build 10-tuple body. Retry can
     // rebuild with a refreshed dataToken in slot [0]. Slots [1] and [8] are
     // built from this.deviceInfo (customer-supplied where present, defaults
     // from CD_DEVICE_INFO / CD_METADATA otherwise). Obfuscation rules (if any)
@@ -440,7 +414,7 @@ export default class ConnectedDeviceHarvester {
         CD_DATA_TIMEOUT_MS
       );
 
-      // REQ-CDH-26: dataToken expiry. Re-queue the drained events and kick
+      // DataToken expiry. Re-queue the drained events and kick
       // off a background reconnect rather than awaiting fetchDataTokens()
       // inline. Awaiting inline would hold isHarvesting = true for up to
       // CD_CONNECT_MAX_ATTEMPTS × CD_CONNECT_RETRY_DELAY_MS (20s), freezing
@@ -459,10 +433,10 @@ export default class ConnectedDeviceHarvester {
       }
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      Log.notice(`ConnectedDeviceHarvester: sent ${filtered.length} events`); // REQ-CDH-16
+      Log.notice(`ConnectedDeviceHarvester: sent ${filtered.length} events`);
     } catch (err) {
       Log.error("ConnectedDeviceHarvester: /v3/data send failed:", err.message);
-      // REQ-CDH-17: re-queue drained events into buffer; next tick retries.
+      // Re-queue drained events into buffer; next tick retries.
       for (const e of filtered) this.eventBuffer.add(e);
     } finally {
       this.isHarvesting = false;
@@ -537,7 +511,7 @@ export default class ConnectedDeviceHarvester {
   }
 
   /**
-   * Stops the harvest interval and attempts one final best-effort send. (REQ-CDH-18)
+   * Stops the harvest interval and attempts one final best-effort send.
    * @returns {Promise<void>}
    */
   async dispose() {

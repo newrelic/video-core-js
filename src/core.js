@@ -16,7 +16,7 @@ class Core {
   static addTracker(tracker, options) {
     // Set video analytics configuration. The optional `options.src` field
     // selects the pipeline: `'Vega'` writes globalThis.__NRVIDEO_CD__,
-    // anything else writes window.NRVIDEO. (REQ-CO-1)
+    // anything else writes window.NRVIDEO. 
     if (options?.info) {
       setVideoConfig(options.info, options?.config, options?.src);
     }

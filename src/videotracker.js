@@ -657,9 +657,6 @@ class VideoTracker extends Tracker {
         this.state.setStartupTime(totalAdsTime)
         this.sendVideoAction(ev, att);
 
-        // Register callback to refresh QoE KPIs with latest state before each drain.
-        // Routes to whichever harvester this tracker subclass declares via
-        // `getHarvester()` — Browser for Html5Tracker, Vega for VegaTracker.
         const harvester = this.getHarvester?.();
         harvester?.setBeforeDrainCallback(() => {
           if (this.state) {

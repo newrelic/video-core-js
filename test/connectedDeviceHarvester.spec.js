@@ -14,7 +14,7 @@ import Tracker from "../src/tracker";
 import Log from "../src/log";
 
 /**
- * ConnectedDeviceHarvester unit tests. Covers T-CDH-1..18, T-CDH-26 from vega-spec.md.
+ * ConnectedDeviceHarvester unit tests.
  *
  * Each test stubs `global.fetch` before constructing the harvester so the
  * fire-and-forget `initialise()` call in the constructor doesn't make real
@@ -343,7 +343,7 @@ describe("ConnectedDeviceHarvester", () => {
 
   // ====== T-CDH-13 — grep test (no banned DOM APIs) ======
 
-  describe("REQ-CDH-20 (no DOM APIs)", () => {
+  describe("(no DOM APIs)", () => {
     it("T-CDH-13: source contains no document, window.location, sendBeacon, localStorage, or addEventListener (outside JSDoc comments)", () => {
       const src = fs.readFileSync(
         path.resolve(__dirname, "../src/connectedDevice/connectedDeviceHarvester.js"),
@@ -495,7 +495,7 @@ describe("ConnectedDeviceHarvester", () => {
 
   // ====== T-CDH-26 — lazy construction marker ======
 
-  describe("REQ-CDH-26 lazy construction (drives integration with ConnectedDeviceAnalyticsAgent)", () => {
+  describe("lazy construction (drives integration with ConnectedDeviceAnalyticsAgent)", () => {
     it("T-CDH-26: ConnectedDeviceHarvester constructor IS callable without globalThis.__NRVIDEO_CD__ — confirming the class is decoupled from the Vega global", () => {
       // The Vega-specific lazy-init lives in ConnectedDeviceAnalyticsAgent (T-VA-3), not the
       // harvester. Construction here works as long as info is passed

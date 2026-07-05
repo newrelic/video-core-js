@@ -40,8 +40,7 @@ export class HarvestScheduler {
     this.beforeDrainCallback = null;
     this._lastSentQoeKpis = {};
 
-    // Periodic harvest timer. Chained-setTimeout under the hood (see
-    // `utils/harvestTimer.js`). Shared with the Vega pipeline.
+    // Periodic harvest timer. Chained-setTimeout under the hood
     this.timer = createHarvestTimer({
       interval: this.harvestCycle,
       onTick: () => this.onHarvestInterval(),

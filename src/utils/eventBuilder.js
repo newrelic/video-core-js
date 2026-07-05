@@ -12,11 +12,6 @@ import { getObjectEntriesForKeys } from "./index";
  *   - `src/browser/index.js`              (Browser subpath re-export)
  *   - `src/connectedDevice/index.js`      (Vega subpath re-export)
  *
- * Returns the primary `eventObject` always, plus an optional `qoeEventObject`
- * companion when the event is a `VideoAction`. The caller decides whether to
- * actually emit the QoE companion based on its pipeline-specific
- * `qoeAggregate` config and routes both to the appropriate harvester.
- *
  * Pipeline-specific concerns (which info global to read, which harvester to
  * call, which qoeAggregate config to check) stay at the call site. This helper
  * is purely about event-object shape.
@@ -26,7 +21,7 @@ import { getObjectEntriesForKeys } from "./index";
  * @param {object} info - The pipeline's resolved `info` object (with `appName` /
  *   `applicationID` for namespacing).
  * @param {{ addTimeSinceLoad?: boolean }} [opts] - When `true`, stamp
- *   `timeSinceLoad` on the event. Browser sets this; Vega does not (REQ-CDH-20).
+ *   `timeSinceLoad` on the event. Browser sets this; Vega does not.
  *
  * @returns {{ eventObject: object, qoeEventObject: object|null }}
  */
@@ -99,8 +94,7 @@ export function buildEventObjects(
  * @param {object} info - Resolved `info` from the pipeline's config global.
  * @param {{ addEvent: function }} harvester - The registered harvester for
  *   the current pipeline. Returns false if null/undefined.
- * @param {boolean} qoeEnabled - Whether the pipeline's `qoeAggregate` flag
- *   is on for the current session.
+ * @param {boolean} qoeEnabled 
  * @param {{ addTimeSinceLoad?: boolean }} [opts] - Forwarded to
  *   `buildEventObjects`.
  * @returns {boolean}

@@ -9,7 +9,6 @@ import Log from "../src/log";
 
 /**
  * Vega wiring tests. Covers T-CO-1, T-CO-2, T-CO-3..7, T-CO-9..15
- * from vega-spec.md.
  *
  * Kept in a dedicated file (rather than appended to existing spec files)
  * to minimize regression risk against the established test suites.

@@ -7,10 +7,6 @@ import { dispatchRecordEvent } from "./utils/eventBuilder";
  *
  * No static harvester imports. Each harvester self-registers under a key
  * (`'Browser'` or `'Vega'`) at module load time via `registerHarvester`.
- *
- * For Html5Tracker-only builds, only `agent.js` is statically reachable from
- * the import graph; `connectedDeviceAgent.js` and the rest of the Vega chain
- * are unreachable and tree-shaken.
  */
 const harvesters = Object.create(null);
 

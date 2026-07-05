@@ -10,8 +10,6 @@ import { NrVideoEventAggregator } from "../eventAggregator";
 import ConnectedDeviceHarvester from "./connectedDeviceHarvester";
 import { connectedDeviceAnalyticsHarvester } from "./connectedDeviceAgent";
 import { getRegisteredHarvester } from "../recordEvent";
-// recordEvent is the single shared implementation from `src/recordEvent.js`
-// — handles both Browser and Vega pipelines via the registry.
 import { recordEvent } from "../recordEvent";
 import { version } from "../../package.json";
 

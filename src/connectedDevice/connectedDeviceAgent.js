@@ -4,20 +4,9 @@ import { registerHarvester } from "../recordEvent";
 
 /**
  * Vega-side analytics agent. Mirror of `VideoAnalyticsAgent` in `agent.js`.
- *
- * Wraps a `ConnectedDeviceHarvester` instance and defers its construction until the
- * first `addEvent` call — at which point it reads `info` from
- * `globalThis.__NRVIDEO_CD__` (populated synchronously by `setVideoConfig`
- * during `Core.addTracker`).
- *
- * The exported `connectedDeviceAnalyticsHarvester` singleton is what `recordEvent.js`
- * imports and dispatches to when `att.src === 'Vega'`.
- *
- * Implements REQ-CO-7 from vega-spec.md.
  */
 class ConnectedDeviceAnalyticsAgent {
   constructor() {
-    // REQ-CO-7 (a): inert flags only — no I/O, no timers, no global writes.
     this.isInitialized = false;
     this.harvester = null;
   }
@@ -26,8 +15,6 @@ class ConnectedDeviceAnalyticsAgent {
    * Lazy initialization. Reads `info` from `globalThis.__NRVIDEO_CD__` and
    * constructs the wrapped `ConnectedDeviceHarvester`. If `info` is not yet populated,
    * returns without flipping `isInitialized` so the next `addEvent` retries.
-   *
-   * REQ-CO-7 (b)
    */
   initialize() {
     if (this.isInitialized) return;
@@ -55,7 +42,6 @@ class ConnectedDeviceAnalyticsAgent {
    * (defensive — under normal flow, `setVideoConfig` runs synchronously
    * inside `super()` before any player event can fire).
    *
-   * REQ-CO-7 (c)
    *
    * @param {object} eventObject
    * @returns {boolean}
@@ -95,7 +81,7 @@ class ConnectedDeviceAnalyticsAgent {
   /**
    * Forwards to the underlying ConnectedDeviceHarvester. Triggers lazy init so
    * `videotracker.js`'s drain callback (registered in sendStart) can refresh
-   * QoE on the buffered event before send. (REQ-parity with browser.)
+   * QoE on the buffered event before send.
    *
    * @param {object} freshKpis
    * @param {string} [viewId]
@@ -108,7 +94,7 @@ class ConnectedDeviceAnalyticsAgent {
   /**
    * Forwards to the underlying ConnectedDeviceHarvester. Triggers lazy init so
    * `tracker.setHarvestInterval(...)` works for VegaTracker the same way it
-   * does for Html5Tracker.
+   * does for other trackers.
    *
    * @param {number} interval
    */
@@ -118,7 +104,6 @@ class ConnectedDeviceAnalyticsAgent {
   }
 }
 
-// REQ-CO-7 (d): module-level singleton, enforced by ES module identity.
 const connectedDeviceAnalyticsAgent = new ConnectedDeviceAnalyticsAgent();
 
 // Self-register for the 'Vega' routing key. Importing this module is what

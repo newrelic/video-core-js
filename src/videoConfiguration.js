@@ -16,8 +16,6 @@ class VideoConfiguration {
    */
 
   setConfiguration(userInfo, config, src) {
-    // Validation branches by `src`. The Vega pipeline uses `applicationToken`
-    // + `endpoint`; the existing NR pipeline uses `licenseKey`. (REQ-CO-5 b)
     const validated = src === "Vega"
       ? this.validateVegaFields(userInfo)
       : this.validateRequiredFields(userInfo);
@@ -33,7 +31,7 @@ class VideoConfiguration {
   }
 
   /**
-   * Validates required Vega configuration fields. (REQ-CO-5 b)
+   * Validates required Vega configuration fields.
    * @param {object} info
    * @returns {boolean} True if valid
    */
@@ -172,7 +170,7 @@ class VideoConfiguration {
   initializeGlobalConfig(userInfo, config, src) {
     // Vega path: write `globalThis.__NRVIDEO_CD__` with info+config only.
     // The harvester is owned by `connectedDeviceAgent.js` as a module singleton — no
-    // harvester field on this global. (REQ-CO-5 c)
+    // harvester field on this global.
     if (src === "Vega") {
       globalThis.__NRVIDEO_CD__ = {
         info: {
@@ -192,7 +190,6 @@ class VideoConfiguration {
       return;
     }
 
-    // NR path — unchanged.
     let { licenseKey, appName, region, beacon, applicationID } = userInfo;
 
     if (region === "US") {

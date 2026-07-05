@@ -118,15 +118,13 @@ The `options` object passed to `Core.addTracker()` consists of two parts:
 
 ### Getting Your Configuration
 
-Before initializing the tracker, obtain your New Relic configuration:
+Obtained through the New Relic onboarding process.
+
+**Obtain your credentials:**
 
 1. Log in to [one.newrelic.com](https://one.newrelic.com)
 2. Navigate to the video agent onboarding flow
 3. Copy your credentials: `licenseKey`, `beacon`, and `applicationId`
-
-### Info Object (Required)
-
-Obtained through the New Relic onboarding process. Two configuration modes are supported:
 
 **Mode 1 — With Application ID and Beacon:**
 
@@ -159,7 +157,13 @@ info: {
 
 **Mode 3 — Vega / Connected-Device pipeline:**
 
-When importing from the `/vega` subpath (`@newrelic/video-core/vega` or any player package's `/vega`), the `info` object uses a different shape — `applicationToken` + `endpoint` instead of license key + beacon, plus an optional `deviceInfo` block carrying runtime device identity:
+When importing from the `/vega` subpath (`@newrelic/video-core/vega` or any player package's `/vega`), the `info` object uses `applicationToken` and `endpoint` specific to the Vega pipeline, plus an optional `deviceInfo` block carrying runtime device identity:
+
+**Obtain your credentials:**
+
+1. Log in to [one.newrelic.com](https://one.newrelic.com)
+2. Navigate to the video agent onboarding flow
+3. Copy your `applicationToken` and your `accountId`
 
 ```javascript
 info: {

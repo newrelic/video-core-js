@@ -14,12 +14,7 @@ import { recordEvent, getRegisteredHarvester } from "./recordEvent";
 import { version } from "../package.json";
 
 // Harvesters are exported as NAMED exports only — never added to the `nrvideo`
-// default-namespace object. This is the load-bearing detail for tree-shaking:
-// each tracker imports the named binding for its own harvester (e.g.,
-// `import { videoAnalyticsHarvester } from '@newrelic/video-core'`), which
-// triggers that harvester module's self-registration in `recordEvent`'s
-// registry. A consumer who doesn't import a given binding gets the entire
-// harvester chain dropped from their bundle (with `sideEffects: false` set).
+// default-namespace object. This is the load-bearing detail for tree-shaking
 
 const nrvideo = {
   Constants,
