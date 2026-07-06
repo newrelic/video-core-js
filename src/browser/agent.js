@@ -1,8 +1,11 @@
 import { HarvestScheduler } from "./harvestScheduler.js";
-import { NrVideoEventAggregator } from "./eventAggregator.js";
-import Constants from "./constants.js";
-import Log from "./log.js";
-import Tracker from "./tracker";
+import { NrVideoEventAggregator } from "../eventAggregator.js";
+import Log from "../log.js";
+import { registerHarvester } from "../recordEvent.js";
+import {
+  bufferEventWithQoeDedup,
+  refreshQoeKpisInBuffer,
+} from "../utils/qoeFilters";
 
 /**
  * Enhanced video analytics agent with HarvestScheduler only.
@@ -49,20 +52,8 @@ class VideoAnalyticsAgent {
     }
 
     try {
-      if(eventObject.actionName && eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
-          // Ensure only one QOE_AGGREGATE event per (actionName + viewId) in buffer per harvest cycle.
-          // Each player has a unique viewId, so multi-player scenarios are handled correctly.
-          // Dirty-check dedup happens at drain time in HarvestScheduler._qoeKpisUnchanged().
-          if (eventObject.viewId) {
-              return this.eventBuffer.addOrReplaceByActionNameAndViewId(
-                  Tracker.Events.QOE_AGGREGATE,
-                  eventObject.viewId,
-                  eventObject
-              );
-          }
-          return this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, eventObject);
-      }
-      return this.eventBuffer.add(eventObject);
+      // QOE_AGGREGATE dedup + plain append, shared with the Vega pipeline.
+      return bufferEventWithQoeDedup(this.eventBuffer, eventObject);
     } catch (error) {
       Log.error("Failed to add event to harvesting system:", error.message);
       return false;
@@ -109,28 +100,16 @@ class VideoAnalyticsAgent {
    * @param {string} [viewId] - The viewId of the player whose QoE event to update
    */
   refreshQoeKpis(freshKpis, viewId) {
-    if (!this.eventBuffer || !freshKpis) return;
-    const existing = viewId
-      ? this.eventBuffer.findByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId)
-      : this.eventBuffer.findByActionName(Tracker.Events.QOE_AGGREGATE);
-    if (existing) {
-      const updated = { ...existing };
-      for (const key of Constants.QOE_KPI_KEYS) {
-        if (key in freshKpis) {
-          updated[key] = freshKpis[key];
-        }
-      }
-      if (viewId) {
-        this.eventBuffer.addOrReplaceByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId, updated);
-      } else {
-        this.eventBuffer.addOrReplaceByActionName(Tracker.Events.QOE_AGGREGATE, updated);
-      }
-    }
+    refreshQoeKpisInBuffer(this.eventBuffer, freshKpis, viewId);
   }
 }
 
 // Create singleton instance
 const videoAnalyticsAgent = new VideoAnalyticsAgent();
+
+// Self-register for the 'Browser' routing key. Importing this module is what
+// makes the Browser pipeline reachable in the consumer's bundle.
+registerHarvester("Browser", videoAnalyticsAgent);
 
 // Enhanced video analytics harvester
 export const videoAnalyticsHarvester = videoAnalyticsAgent;

@@ -5,7 +5,7 @@ import {
   shouldRetry,
   compressPayload,
   decompressPayload
-} from "../src/utils.js";
+} from "../src/utils";
 import Log from "../src/log.js";
 import sinon from "sinon";
 import { JSDOM } from "jsdom";

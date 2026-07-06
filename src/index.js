@@ -9,12 +9,14 @@ import VideoTrackerState from "./videotrackerstate";
 import { NrVideoEventAggregator } from "./eventAggregator";
 import { RetryQueueHandler } from "./retryQueueHandler";
 import { OptimizedHttpClient } from "./optimizedHttpClient";
-import { HarvestScheduler } from "./harvestScheduler";
-import { recordEvent } from "./recordEvent";
+import { HarvestScheduler } from "./browser/harvestScheduler";
+import { recordEvent, getRegisteredHarvester } from "./recordEvent";
 import { version } from "../package.json";
 
+// Harvesters are exported as NAMED exports only — never added to the `nrvideo`
+// default-namespace object. This is the load-bearing detail for tree-shaking
+
 const nrvideo = {
-  // Core components (existing)
   Constants,
   Chrono,
   Log,
@@ -25,19 +27,16 @@ const nrvideo = {
   Core,
   version,
 
-  // Enhanced video analytics components (new)
- 
   NrVideoEventAggregator,
   RetryQueueHandler,
   OptimizedHttpClient,
   HarvestScheduler,
 
-
-
-  // Enhanced event recording
   recordEvent,
-
-
 };
+
+export { videoAnalyticsHarvester } from "./browser/agent";
+export { connectedDeviceAnalyticsHarvester } from "./connectedDevice/connectedDeviceAgent";
+export { getRegisteredHarvester } from "./recordEvent";
 
 export default nrvideo;

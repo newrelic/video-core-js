@@ -1,5 +1,5 @@
-import pkg from "../package.json";
-import Log from "./log";
+import pkg from "../../package.json";
+import Log from "../log";
 
 /**
  * Builds the harvest URL with proper query parameters.

@@ -15,15 +15,39 @@ class VideoConfiguration {
    * @returns {boolean} True if configuration is valid and set
    */
 
-  setConfiguration(userInfo, config) {
-    if (!this.validateRequiredFields(userInfo)) {
+  setConfiguration(userInfo, config, src) {
+    const validated = src === "Vega"
+      ? this.validateVegaFields(userInfo)
+      : this.validateRequiredFields(userInfo);
+    if (!validated) {
       return false;
     }
     if (!this.validateConfigFields(config)) {
       return false;
     }
-    this.initializeGlobalConfig(userInfo, config);
+    this.initializeGlobalConfig(userInfo, config, src);
     Log.notice("Video analytics configuration initialized successfully");
+    return true;
+  }
+
+  /**
+   * Validates required Vega configuration fields.
+   * @param {object} info
+   * @returns {boolean} True if valid
+   */
+  validateVegaFields(info) {
+    if (!info || typeof info !== "object") {
+      Log.error("Configuration must be an object");
+      return false;
+    }
+    if (!info.applicationToken) {
+      Log.error("applicationToken is required");
+      return false;
+    }
+    if (!["US", "EU", "staging", "GOV"].includes(info.endpoint)) {
+      Log.error("Invalid endpoint (must be US, EU, staging, or GOV)");
+      return false;
+    }
     return true;
   }
 
@@ -126,15 +150,16 @@ class VideoConfiguration {
   }
 
   /**
-   * Sanitizes qoeIntervalFactor, defaulting to 2 if the value is not a positive integer.
+   * Sanitizes qoeIntervalFactor, defaulting to Constants.DEFAULT_QOE_INTERVAL_FACTOR
+   * if the value is not a positive integer.
    * @param {*} value
    * @returns {number}
    */
   sanitizeQoeIntervalFactor(value) {
-    if (value === undefined || value === null) return 2;
+    if (value === undefined || value === null) return Constants.DEFAULT_QOE_INTERVAL_FACTOR;
     if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
-    Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to 2.`);
-    return 2;
+    Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to ${Constants.DEFAULT_QOE_INTERVAL_FACTOR}.`);
+    return Constants.DEFAULT_QOE_INTERVAL_FACTOR;
   }
 
   /**
@@ -142,7 +167,28 @@ class VideoConfiguration {
    * @param {object} userInfo - User provided configuration
    * @param {object} [config] - Optional configuration object
    */
-  initializeGlobalConfig(userInfo, config) {
+  initializeGlobalConfig(userInfo, config, src) {
+    // Vega path: write `globalThis.__NRVIDEO_CD__` with info+config only.
+    // The harvester is owned by `connectedDeviceAgent.js` as a module singleton — no
+    // harvester field on this global.
+    if (src === "Vega") {
+      globalThis.__NRVIDEO_CD__ = {
+        info: {
+          accountId: userInfo.accountId,
+          applicationToken: userInfo.applicationToken,
+          endpoint: userInfo.endpoint,
+          ...(userInfo.appName ? { appName: userInfo.appName } : {}),
+          ...(userInfo.applicationID ? { applicationID: userInfo.applicationID } : {}),
+          ...(userInfo.deviceInfo ? { deviceInfo: userInfo.deviceInfo } : {}),
+        },
+        config: {
+          qoeAggregate: config?.qoeAggregate ?? true,
+          qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
+          obfuscate: this.filterObfuscateRules(config?.obfuscate),
+        },
+      };
+      return;
+    }
 
     let { licenseKey, appName, region, beacon, applicationID } = userInfo;
 
@@ -179,8 +225,8 @@ const videoConfiguration = new VideoConfiguration();
  * @param {object} [config] - Optional configuration object
  * @returns {boolean} True if configuration was set successfully
  */
-export function setVideoConfig(info, config) {
-  return videoConfiguration.setConfiguration(info, config);
+export function setVideoConfig(info, config, src) {
+  return videoConfiguration.setConfiguration(info, config, src);
 }
 
 export { videoConfiguration };

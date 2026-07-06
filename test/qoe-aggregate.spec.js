@@ -1,4 +1,4 @@
-import { videoAnalyticsHarvester } from "../src/agent.js";
+import { videoAnalyticsHarvester } from "../src/browser/agent.js";
 import Tracker from "../src/tracker.js";
 import Log from "../src/log.js";
 

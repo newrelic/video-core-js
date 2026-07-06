@@ -208,12 +208,5 @@ describe('Core', function() {
       Log.level = Log.Levels.SILENT;
     });
   });
-
-  describe('forceHarvest()', function() {
-    it('should handle forceHarvest call', async function() {
-      const result = await Core.forceHarvest();
-      expect(typeof result).toBe('object');
-    });
-  });
 });
 

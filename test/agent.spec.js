@@ -1,8 +1,8 @@
 import sinon from 'sinon';
-import { videoAnalyticsHarvester } from '../src/agent';
+import { videoAnalyticsHarvester } from '../src/browser/agent';
 import Log from '../src/log';
 import { JSDOM } from "jsdom";
-import { HarvestScheduler } from '../src/harvestScheduler.js';
+import { HarvestScheduler } from '../src/browser/harvestScheduler.js';
 
 describe('videoAnalyticsHarvester', function() {
   let stubs = [];
