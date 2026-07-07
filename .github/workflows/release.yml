@@ -7,7 +7,7 @@ name: Release
 on:
   push:
     branches:
-      - stable
+      - master
   workflow_dispatch:
     inputs:
       dry-run:
@@ -32,7 +32,7 @@ jobs:
       new-release-published: ${{ steps.check-version.outputs.new-release-published }}
       new-release-version: ${{ steps.check-version.outputs.new-release-version }}
       pr-number: ${{ steps.create-pr.outputs.pr_number }}
-    # Run on push to stable or manual dispatch.
+    # Run on push to master or manual dispatch.
     # Skip commits that start with "chore(release):" — those are the bot's own
     # release PR merges. If Stage 1 runs on those commits, semantic-release's core
     # publish phase pushes the version tag a second time, which causes Stage 2's
@@ -47,7 +47,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          ref: stable
+          ref: master
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -77,7 +77,7 @@ jobs:
         if: github.event.inputs.dry-run != 'true'
         run: |
           # semantic-release has no --config flag; it always reads .releaserc.json.
-          # Strip @semantic-release/git (would push directly to protected stable) and
+          # Strip @semantic-release/git (would push directly to protected master) and
           # @semantic-release/github (Stage 2 owns tag creation and GitHub Releases).
           cp .releaserc.json .releaserc.json.bak
           jq '.plugins |= map(select(
@@ -180,7 +180,7 @@ jobs:
               PR_CREATE_OUTPUT=$(gh pr create \
                 --title "chore(release): v$VERSION" \
                 --body "Automated release PR - Version $VERSION: package.json, package-lock.json, and CHANGELOG.md updated. Review and merge to trigger automated publishing." \
-                --base stable \
+                --base master \
                 --head "$BRANCH" 2>&1)
               set -e
 
