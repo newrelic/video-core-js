@@ -161,12 +161,12 @@ describe("VideoTracker", () => {
 
     it("should return correct shift", () => {
       expect(tracker.getRenditionShift(true)).toBeNull();
-      tracker.getRenditionBitrate = () => 1;
+      tracker.getManifestBitrate = () => 1;
       expect(tracker.getRenditionShift(true)).toBeNull();
-      tracker.getRenditionBitrate = () => 2;
+      tracker.getManifestBitrate = () => 2;
       expect(tracker.getRenditionShift()).toBe("up");
       expect(tracker.getRenditionShift(true)).toBe("up");
-      tracker.getRenditionBitrate = () => 1;
+      tracker.getManifestBitrate = () => 1;
       expect(tracker.getRenditionShift(true)).toBe("down");
       expect(tracker.getRenditionShift(true)).toBeNull();
     });
