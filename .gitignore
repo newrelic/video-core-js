@@ -24,4 +24,4 @@ documentation/
 samples/agent.js
 
 # local settings
-.github/settings.local.json
+.claude/settings.local.json
