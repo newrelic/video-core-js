@@ -1,13 +1,13 @@
 name: Release Publish
 
-# Stage 2: Triggered on every push to stable.
+# Stage 2: Triggered on every push to master.
 # If package.json version differs from the latest git tag, creates the tag,
 # triggers npm-publish.yml (npm), and creates a GitHub Release.
 
 on:
   push:
     branches:
-      - stable
+      - master
   workflow_dispatch:
     inputs:
       version:
@@ -116,7 +116,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run npm-publish.yml --ref stable
+          gh workflow run npm-publish.yml --ref master
           echo "Triggered npm-publish.yml"
 
       - name: Summary
