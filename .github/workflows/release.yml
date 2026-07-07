@@ -48,7 +48,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          ref: master
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
