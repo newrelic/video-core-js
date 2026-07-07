@@ -89,24 +89,45 @@ class VideoTrackerState {
     this.peakBitrate = 0;
 
     /**
-     * Last tracked bitrate
+     * Time-weighted bitrate calculation accumulators
      */
+    this.partialAverageBitrate = 0;
+    this._totalBitrateDuration = 0;
+    this.weightedBitrate = 0;
     this._lastBitrate = null;
-
-    /**
-     * Tracks the last updated timestamp for bitrate
-     * */
     this._lastBitrateChangeTimestamp = null;
 
     /**
-     * total bitrate partial value for average weighted average bitrate
+     * Array of changed network download bitrate values (only values that differ from previous).
+     * Used for calculating simple mean, min, max (not time-weighted).
      */
-    this.partialAverageBitrate = 0;
+    this._downloadBitrates = [];
 
     /**
-     * Total duration (ms) of all closed bitrate segments for weighted average
+     * Previous download bitrate value to detect changes.
      */
-    this._totalBitrateDuration = 0;
+    this._lastDownloadBitrate = null;
+
+    /**
+     * QOE v1.1: Total number of rendition/quality switches where bitrate increased.
+     */
+    this.totalSwitchUps = 0;
+
+    /**
+     * QOE v1.1: Total number of rendition/quality switches where bitrate decreased.
+     */
+    this.totalSwitchDowns = 0;
+
+    /**
+     * QOE v1.1: Total time in milliseconds spent in paused state (intentional pauses only).
+     * Calculated from timeSincePaused chrono accumulation.
+     */
+    this.totalPauseTime = 0;
+
+    /**
+     * QOE v1.1: Set of distinct renditions played, keyed by "heightxwidth" (e.g., "1080x1920").
+     */
+    this._playedRenditions = new Set();
 
     /**
      * Had Startup Error: TRUE if CONTENT_ERROR occurs before CONTENT_START.
@@ -352,7 +373,7 @@ class VideoTrackerState {
       const kpi = {};
 
       try {
-          // QoE KPIs - Content only
+          // QoE v1 KPIs
           if (this.startupTime !== null) {
               kpi["startupTime"] = this.startupTime;
           }
@@ -362,13 +383,35 @@ class VideoTrackerState {
           kpi["hadStartupError"] = this.hadStartupError;
           kpi["hadPlaybackError"] = this.hadPlaybackError;
           kpi["totalRebufferingTime"] = this.totalRebufferingTime;
-          // Calculate rebuffering ratio as percentage (avoid division by zero)
           kpi["rebufferingRatio"] = this.totalPlaytime > 0
               ? (this.totalRebufferingTime / this.totalPlaytime) * 100
               : 0;
           kpi["totalPlaytime"] = this.totalPlaytime;
           kpi["averageBitrate"] = this.weightedBitrate;
           kpi["numberOfErrors"] = this.numberOfErrors;
+
+          // QoE v1.1 KPIs - Download rate (simple mean of changed values)
+          if (this._downloadBitrates.length > 0) {
+              const sum = this._downloadBitrates.reduce((a, b) => a + b, 0);
+              kpi["avgDownloadRate"] = Math.round(sum / this._downloadBitrates.length);
+              kpi["minDownloadRate"] = Math.min(...this._downloadBitrates);
+              kpi["maxDownloadRate"] = Math.max(...this._downloadBitrates);
+          }
+
+          // QoE v1.1 KPIs - Rendition switching
+          kpi["totalSwitchUps"] = this.totalSwitchUps;
+          kpi["totalSwitchDowns"] = this.totalSwitchDowns;
+
+          // QoE v1.1 KPIs - Pause and session timing
+          kpi["totalPauseTime"] = this.timeSincePaused.getDuration();
+          kpi["totalViewSessionTime"] = this.totalPlaytime;
+
+          // QoE v1.1 KPIs - Renditions
+          kpi["totalRenditions"] = this._playedRenditions.size;
+
+          // Version tag
+          kpi["qoeAggregateVersion"] = "1.1.0";
+
       } catch (error) {
           Log.error("Failed to add attributes for QOE KPIs", error.message);
       }
@@ -696,7 +739,7 @@ class VideoTrackerState {
   }
 
   /**
-   * Updates peak bitrate with current bitrate value (content only).
+   * Updates peak bitrate and time-weighted average bitrate (content only).
    * @param {number} bitrate Current content bitrate in bps.
    */
   trackContentBitrateState(bitrate) {
@@ -758,15 +801,46 @@ class VideoTrackerState {
   }
 
   /**
+   * Records network download bitrate observation. Only tracks values that differ from previous.
+   * @param {number} bps Network throughput in bits per second.
+   */
+  trackDownloadRate(bps) {
+    if (!bps || typeof bps !== "number" || bps <= 0) return;
+    if (bps !== this._lastDownloadBitrate) {
+      this._downloadBitrates.push(bps);
+      this._lastDownloadBitrate = bps;
+    }
+  }
+
+  /**
+   * Records a rendition play event (height x width combination).
+   * @param {number} height Rendition height in pixels.
+   * @param {number} width Rendition width in pixels.
+   */
+  addPlayedRendition(height, width) {
+    if (height && width) {
+      this._playedRenditions.add(`${height}x${width}`);
+    }
+  }
+
+
+  /**
    * Resets tracked variable for view id change
    * */
   resetViewIdTrackedState() {
     this.peakBitrate = 0;
+    this.startupTime = null;
     this.partialAverageBitrate = 0;
     this._totalBitrateDuration = 0;
-    this.startupTime = null;
+    this.weightedBitrate = 0;
     this._lastBitrate = null;
     this._lastBitrateChangeTimestamp = null;
+    this._downloadBitrates = [];
+    this._lastDownloadBitrate = null;
+    this.totalSwitchUps = 0;
+    this.totalSwitchDowns = 0;
+    this.timeSincePaused.reset();
+    this._playedRenditions = new Set();
   }
 
   /** Methods to manage total ads time chrono */

@@ -1,15 +1,13 @@
 name: Release
 
-# This workflow uses semantic-release to automatically determine version numbers
-# based on conventional commits, update package.json, generate changelog,
-# create git tags, and publish GitHub releases.
+# Two-stage release workflow that respects branch protection rules:
+# Stage 1 (release-prepare): Creates a PR with version bumps and changelog
+# Stage 2 (release-publish): After PR merges, creates git tag and publishes
 
 on:
-  pull_request:
+  push:
     branches:
-      - stable
-    types:
-      - closed
+      - master
   workflow_dispatch:
     inputs:
       dry-run:
@@ -20,28 +18,41 @@ on:
 
 permissions:
   contents: write
-  issues: write
   pull-requests: write
-  id-token: write
-  actions: write  # Required to trigger npm-publish workflow
+
+concurrency:
+  group: release-prepare
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Semantic Release
+  release-prepare:
+    name: Prepare Release (Create PR)
     runs-on: ubuntu-latest
     outputs:
-      new-release-published: ${{ steps.semantic.outputs.new-release-published }}
-      new-release-version: ${{ steps.semantic.outputs.new-release-version }}
-    # Only run when PR is merged or workflow is manually triggered
+      new-release-published: ${{ steps.check-version.outputs.new-release-published }}
+      new-release-version: ${{ steps.check-version.outputs.new-release-version }}
+      pr-number: ${{ steps.create-pr.outputs.pr_number }}
+    # Run on push to master or manual dispatch.
+    # Skip commits that start with "chore(release):" — those are the bot's own
+    # release PR merges. If Stage 1 runs on those commits, semantic-release's core
+    # publish phase pushes the version tag a second time, which causes Stage 2's
+    # check-release to see package.json version == latest tag and skip publishing.
+    # Stage 2 is the sole owner of tag creation; Stage 1 must not interfere.
     if: |
       github.event_name == 'workflow_dispatch' ||
-      github.event.pull_request.merged == true
+      (github.event_name == 'push' &&
+       !contains(github.event.head_commit.message, '[skip ci]') &&
+       !startsWith(github.event.head_commit.message, 'chore(release):'))
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
+          ref: master
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch all tags
+        run: git fetch --tags --force
 
       - name: Setup git
         run: |
@@ -52,106 +63,158 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24.x'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm test
-
-      - name: Run build
-        run: npm run build
-
-      - name: Verify .releaserc.json exists
-        run: |
-          if [ ! -f .releaserc.json ]; then
-            echo "Error: .releaserc.json not found. Please create the configuration file."
-            exit 1
-          fi
 
       - name: Run semantic-release (Dry Run)
         if: github.event.inputs.dry-run == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npx semantic-release --dry-run
+        run: npx semantic-release --dry-run --repository-url "https://github.com/${{ github.repository }}.git"
 
-      - name: Run semantic-release
-        id: semantic
+      - name: Generate prepare-only release config
+        if: github.event.inputs.dry-run != 'true'
+        run: |
+          # semantic-release has no --config flag; it always reads .releaserc.json.
+          # Strip @semantic-release/git (would push directly to protected master) and
+          # @semantic-release/github (Stage 2 owns tag creation and GitHub Releases).
+          cp .releaserc.json .releaserc.json.bak
+          jq '.plugins |= map(select(
+            if type == "array" then
+              .[0] != "@semantic-release/git" and .[0] != "@semantic-release/github"
+            else
+              . != "@semantic-release/git" and . != "@semantic-release/github"
+            end
+          ))' .releaserc.json.bak > .releaserc.json
+
+      - name: Analyze and prepare release
+        id: check-version
         if: github.event.inputs.dry-run != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx semantic-release > semantic-output.log 2>&1 || true
-          cat semantic-output.log
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "Current version: $CURRENT_VERSION"
 
-          # Check if release was published
-          if grep -q "Published release" semantic-output.log || grep -q "Release published" semantic-output.log; then
+          # --repository-url overrides package.json which points to the upstream
+          # newrelic repo. Without this, semantic-release compares against the
+          # wrong remote and exits early with "local branch is behind".
+          npx semantic-release \
+            --repository-url "https://github.com/${{ github.repository }}.git" \
+            2>&1 | tee semantic-output.log || true
+
+          # Restore original .releaserc.json so it is not included in the release commit
+          cp .releaserc.json.bak .releaserc.json
+
+          NEW_VERSION=$(jq -r '.version' package.json)
+          echo "New version: $NEW_VERSION"
+
+          if [ "$NEW_VERSION" != "$CURRENT_VERSION" ]; then
+            # semantic-release's core publish phase unconditionally pushes the git
+            # tag (e.g. v5.0.0) to the remote — this is not controlled by any plugin.
+            # Stripping @semantic-release/git and @semantic-release/github only
+            # prevents the release commit and the GitHub Release; the version tag
+            # is still pushed by the core. That premature tag causes Stage 2's
+            # check-release to always see package.json version == latest tag and
+            # skip publishing on every subsequent run. Delete it here so Stage 2
+            # remains the sole owner of tag creation (after the PR merges).
+            git push origin --delete "v$NEW_VERSION" 2>/dev/null || true
+            git tag -d "v$NEW_VERSION" 2>/dev/null || true
+            echo "Cleaned up premature tag v$NEW_VERSION — Stage 2 will re-create it after PR merges"
+
             echo "new-release-published=true" >> $GITHUB_OUTPUT
-            # Extract version from package.json after semantic-release
-            NEW_VERSION=$(jq -r '.version' package.json)
             echo "new-release-version=$NEW_VERSION" >> $GITHUB_OUTPUT
-            echo "Release published: v$NEW_VERSION"
+            echo "Version change detected: $CURRENT_VERSION → $NEW_VERSION"
           else
             echo "new-release-published=false" >> $GITHUB_OUTPUT
-            echo "No release published"
+            echo "No version change detected"
           fi
 
-      - name: Get released version
-        id: version
-        if: github.event.inputs.dry-run != 'true'
+      - name: Create or update release PR
+        id: create-pr
+        if: github.event.inputs.dry-run != 'true' && steps.check-version.outputs.new-release-published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(jq -r '.version' package.json)
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Released version: $VERSION"
+          VERSION="${{ steps.check-version.outputs.new-release-version }}"
+          BRANCH="chore/release-v$VERSION"
 
-      - name: Summary - Release Created
-        if: github.event.inputs.dry-run != 'true' && steps.semantic.outputs.new-release-published == 'true'
+          # Check if PR already exists for ANY version (stale PR handling)
+          EXISTING_RELEASE_PR=$(gh pr list --head "chore/release-*" --state open --json number,headRefName --jq '.[0] | select(.headRefName | startswith("chore/release-")) | .number' 2>/dev/null || echo "")
+          EXISTING_BRANCH=$(gh pr list --head "chore/release-*" --state open --json headRefName --jq '.[0].headRefName' 2>/dev/null || echo "")
+
+          # If a different release PR exists, close it and delete its branch
+          if [ -n "$EXISTING_RELEASE_PR" ] && [ "$EXISTING_BRANCH" != "$BRANCH" ]; then
+            echo "Closing stale PR #$EXISTING_RELEASE_PR ($EXISTING_BRANCH)"
+            gh pr close "$EXISTING_RELEASE_PR" --comment "Superseded by new release PR for v$VERSION"
+            git push origin --delete "$EXISTING_BRANCH" 2>/dev/null || true
+          fi
+
+          # Check if PR for THIS version already exists
+          THIS_VERSION_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$THIS_VERSION_PR" ]; then
+            echo "PR #$THIS_VERSION_PR already exists for v$VERSION"
+            echo "pr_number=$THIS_VERSION_PR" >> $GITHUB_OUTPUT
+          else
+            # Clean up any old release branch to avoid GitHub confusion
+            git push origin --delete "$BRANCH" 2>/dev/null || true
+
+            # Create release branch with files updated by semantic-release
+            git checkout -b "$BRANCH"
+
+            # Verify files were updated and commit them
+            if [ -n "$(git status --porcelain)" ]; then
+              # Stage only the files semantic-release is expected to update.
+              # Avoids accidentally committing .releaserc.json, logs, etc.
+              git add package.json package-lock.json CHANGELOG.md
+
+              # Commit the changes
+              git commit -m "chore(release): v$VERSION - Automated version bump and changelog update"
+
+              # Push the branch with the commit
+              git push -u origin "$BRANCH"
+
+              set +e
+              PR_CREATE_OUTPUT=$(gh pr create \
+                --title "chore(release): v$VERSION" \
+                --body "Automated release PR - Version $VERSION: package.json, package-lock.json, and CHANGELOG.md updated. Review and merge to trigger automated publishing." \
+                --base master \
+                --head "$BRANCH" 2>&1)
+              set -e
+
+              echo "PR Create Output: $PR_CREATE_OUTPUT"
+
+              # Extract PR number from the output (format: https://github.com/owner/repo/pull/NUMBER)
+              PR_NUMBER=$(echo "$PR_CREATE_OUTPUT" | grep -oP 'pull/\K[0-9]+' | head -1)
+
+              if [ -z "$PR_NUMBER" ]; then
+                echo "ERROR: Failed to create PR"
+                echo "Full output: $PR_CREATE_OUTPUT"
+                exit 1
+              fi
+
+              echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+              echo "✅ Created PR #$PR_NUMBER for v$VERSION"
+            else
+              echo "No files were updated by semantic-release. Version may already be released."
+              exit 1
+            fi
+          fi
+
+      - name: Summary - Release PR Created
+        if: github.event.inputs.dry-run != 'true' && steps.check-version.outputs.new-release-published == 'true'
         run: |
-          VERSION="${{ steps.semantic.outputs.new-release-version }}"
-          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          VERSION="${{ steps.check-version.outputs.new-release-version }}"
+          PR_NUM="${{ steps.create-pr.outputs.pr_number }}"
+          echo "## ✅ Release Prepared" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: v$VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag**: v$VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### What happened?" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Version bumped in package.json and package-lock.json" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ CHANGELOG.md updated with release notes" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Git tag created and pushed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ GitHub release created" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "- ⏳ NPM Publish workflow will trigger automatically" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: v$VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**PR**: [#$PR_NUM](https://github.com/${{ github.repository }}/pull/$PR_NUM)" >> $GITHUB_STEP_SUMMARY
 
-      - name: Summary - No Release
-        if: github.event.inputs.dry-run != 'true' && steps.semantic.outputs.new-release-published != 'true'
+      - name: Summary - No Release Needed
+        if: github.event.inputs.dry-run != 'true' && steps.check-version.outputs.new-release-published != 'true'
         run: |
-          echo "## No Release Created" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "No new version was released because:" >> $GITHUB_STEP_SUMMARY
-          echo "- No commits with release-triggering types (feat, fix, perf, revert, breaking changes)" >> $GITHUB_STEP_SUMMARY
-          echo "- Or all commits since last release are non-release types (chore, docs, style, refactor, test)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Current version" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: $(jq -r '.version' package.json)" >> $GITHUB_STEP_SUMMARY
-
-  # Trigger NPM publish workflow after release is complete
-  publish:
-    name: Trigger NPM Publish
-    needs: release
-    runs-on: ubuntu-latest
-    if: github.event.inputs.dry-run != 'true' && needs.release.outputs.new-release-published == 'true'
-    steps:
-      - name: Trigger npm-publish workflow
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'npm-publish.yml',
-              ref: 'stable'
-            });
-            console.log('✅ Triggered npm-publish workflow')
+          echo "## ℹ️ No Release Needed" >> $GITHUB_STEP_SUMMARY
+          echo "No commits with release-triggering types since last release." >> $GITHUB_STEP_SUMMARY

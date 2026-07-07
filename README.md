@@ -3,10 +3,14 @@
 [![npm version](https://img.shields.io/npm/v/@newrelic/video-core.svg)](https://www.npmjs.com/package/@newrelic/video-core)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
+
+> **Note:** The `PageAction` event type is officially deprecated and is no longer maintained. It has been archived in the [`archived-master`](https://github.com/newrelic/video-core-js/tree/archived-master) branch for historical reference.
+
 The **New Relic Video Core** library (`@newrelic/video-core`) is the foundational framework for video trackers in the New Relic ecosystem. It provides the core classes, state management, event harvesting, and data transmission pipeline that player-specific trackers extend. The library supports two harvester pipelines:
 
 - **Browser pipeline** — ships events to `bam.nr-data.net` via the standard Browser collector (license key auth). Used by web-based players.
 - **Connected-device pipeline** — ships events to `mobile-collector.newrelic.com` via the mobile collector. Used by Vega apps and other connected-device platforms.
+
 
 Events are categorized into four distinct types:
 
