@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - master
+      - fix/release-workflow
   workflow_dispatch:
     inputs:
       dry-run:
