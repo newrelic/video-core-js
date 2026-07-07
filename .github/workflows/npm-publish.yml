@@ -1,0 +1,170 @@
+name: Publish Module
+
+# This workflow publishes the @newrelic/video-core package to npmjs.org via 
+# "Trusted Publishing" (https://docs.npmjs.com/trusted-publishers).
+#
+# This workflow assumes that the `(package.json).version` field has been updated
+# with the version string that should be published.
+#
+# This workflow will create a new git tag for the module version, along with
+# a new GitHub release. It will then publish the new module version to npmjs.org.
+#
+# This workflow can be triggered automatically when a release is published,
+# or manually via the GitHub Actions interface.
+on:
+  # Trigger automatically when a new release is published
+  release:
+    types:
+      - published
+
+  # Manual trigger with optional S3 upload
+  workflow_dispatch:
+    inputs:
+      s3-path:
+        description: 'Path within the S3 bucket (optional)'
+        required: false
+        type: string
+      file-to-upload:
+        description: 'Specific file to upload to S3 (optional)'
+        required: false
+        type: string
+
+  # Reusable workflow for other workflows to call
+  workflow_call:
+    inputs:
+      s3-path:
+        description: 'Path within the S3 bucket'
+        required: false
+        type: string
+      file-to-upload:
+        description: 'Specific file to upload to S3'
+        required: false
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: 'AWS Access Key ID'
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        description: 'AWS Secret Access Key'
+        required: false
+
+permissions:
+  # In order to create the git tag, we must have write permissions.
+  contents: write
+  # This is important. Trusted Publishing requires this for the OIDC exchange.
+  id-token: write
+
+jobs:
+  publish_and_deploy:
+    # Run when: release published, manually triggered, or called by another workflow
+    if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Log trigger event
+      run: |
+        echo "## NPM Publish Triggered" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "- **Trigger**: Automatic (Release published)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Tag**: ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "- **Trigger**: Manual" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Trigger**: Workflow call" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+
+    - name: Setup git
+      run: |
+        git config user.name "${{ github.actor }}"
+        git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v5
+      with:
+        # Trusted Publishing requires `npm@11.5.1` or later. Compatible
+        # versions of `npm` started shipping with Node.js v24.5.0.
+        # Hardcoded to ensure NPM Trusted Publishing compatibility.
+        node-version: '24.x'
+        cache: 'npm'
+        # This is important. The OIDC exchange requires that the registry
+        # URL matches on both ends.
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build project
+      run: npm run build
+
+    - name: Get Package Version
+      id: package-version
+      run: |
+        PACKAGE_VERSION=$(jq -r '.version' package.json)
+        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
+        if echo "$PACKAGE_VERSION" | grep -q "beta"; then
+          echo "NPM_TAG=beta" >> $GITHUB_ENV
+        else
+          echo "NPM_TAG=latest" >> $GITHUB_ENV
+        fi
+
+    - name: Run security audit
+      run: npm audit --audit-level=critical
+
+    # - name: Create Git Tag
+    #   run: |
+    #     git tag v${{ env.PACKAGE_VERSION }}
+    #     git push --tags
+
+    # - name: Create GitHub Release
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   run: |
+    #     gh release create v${{ env.PACKAGE_VERSION }} --generate-notes
+
+    - name: Publish to NPM
+      run: npm publish --tag ${{ env.NPM_TAG }}
+    - name: Configure AWS Credentials
+      if: ${{ inputs.s3-path != '' }}
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Upload to S3
+      if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+      run: |
+        FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
+        BASE_NAME="${FILE_NAME%.min.js}"
+        VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
+        LATEST_NAME="${BASE_NAME}.latest.min.js"
+        S3_BUCKET="nr-downloads-main"
+        cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
+        cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
+        aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
+        aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
+
+    - name: Publish Summary
+      run: |
+        echo "## ✅ Publish Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package**: @newrelic/video-core" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **NPM Tag**: ${{ env.NPM_TAG }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **NPM URL**: https://www.npmjs.com/package/@newrelic/video-core/v/${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.s3-path }}" != "" ]; then
+          echo "### S3 Upload" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Files uploaded to S3" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Installation" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "npm install @newrelic/video-core@${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

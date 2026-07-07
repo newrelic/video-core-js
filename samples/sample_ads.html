@@ -1,37 +1,35 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <!-- newrelic browser agent. REMEMBER TO REPLACE THIS SCRIPT WITH YOUR OWN BROWSER AGENT -->
+    <script type="text/javascript" src="agent.js"></script>
 
-<head>
-  <!-- newrelic browser agent. REMEMBER TO REPLACE THIS SCRIPT WITH YOUR OWN BROWSER AGENT -->
-  <script type="text/javascript" src="agent.js"></script>
+    <!-- newrelic video core -->
+    <script src="../dist/umd/nrvideo.min.js"></script>
+  </head>
 
-  <!-- newrelic video core -->
-  <script src="../dist/newrelic-video-core.min.js"></script>
-</head>
-
-<body>
+  <body>
     <script>
       // A toy video tracker
       class MyTracker extends nrvideo.VideoTracker {
         getTrackerName() {
-          return "MyTracker"
+          return "MyTracker";
         }
       }
 
       // A toy ads tracker
       class MyAdsTracker extends nrvideo.VideoTracker {
         getTrackerName() {
-          return "MyAdsTracker"
+          return "MyAdsTracker";
         }
       }
 
       // Init tracker
-      nrvideo.Log.level = nrvideo.Log.Levels.ALL
+      nrvideo.Log.level = nrvideo.Log.Levels.ALL;
 
-      let myTracker = new MyTracker({})
-      let myAdsTracker = new MyAdsTracker({})
-      myTracker.setAdsTracker(myAdsTracker)
-      nrvideo.Core.addTracker(myTracker)
+      let myTracker = new MyTracker({}, options);
+      let myAdsTracker = new MyAdsTracker({});
+      myTracker.setAdsTracker(myAdsTracker);
 
       // Simulate video and ads events
 
@@ -39,31 +37,30 @@
       myTracker.sendRequest();
       myTracker.sendStart();
 
-      myAdsTracker.sendAdBreakStart()
-      myAdsTracker.sendRequest()
-      myAdsTracker.sendStart()
-      myAdsTracker.sendEnd()
-      myAdsTracker.sendAdBreakEnd()
+      myAdsTracker.sendAdBreakStart();
+      myAdsTracker.sendRequest();
+      myAdsTracker.sendStart();
+      myAdsTracker.sendEnd();
+      myAdsTracker.sendAdBreakEnd();
 
       myTracker.sendHeartbeat();
       myTracker.sendPause();
       myTracker.sendResume();
 
-      myAdsTracker.sendAdBreakStart()
-      myAdsTracker.sendRequest()
-      myAdsTracker.sendStart()
-      myAdsTracker.sendEnd()
-      myAdsTracker.sendRequest()
-      myAdsTracker.sendStart()
-      myAdsTracker.sendEnd()
-      myAdsTracker.sendRequest()
-      myAdsTracker.sendStart()
-      myAdsTracker.sendEnd()
-      myAdsTracker.sendAdBreakEnd()
+      myAdsTracker.sendAdBreakStart();
+      myAdsTracker.sendRequest();
+      myAdsTracker.sendStart();
+      myAdsTracker.sendEnd();
+      myAdsTracker.sendRequest();
+      myAdsTracker.sendStart();
+      myAdsTracker.sendEnd();
+      myAdsTracker.sendRequest();
+      myAdsTracker.sendStart();
+      myAdsTracker.sendEnd();
+      myAdsTracker.sendAdBreakEnd();
 
       myTracker.sendHeartbeat();
       myTracker.sendEnd();
     </script>
-</body>
-
+  </body>
 </html>

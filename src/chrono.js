@@ -5,17 +5,20 @@ class Chrono {
   /**
    * Constructor
    */
-  constructor () {
-    this.reset()
+  constructor() {
+    this.reset();
   }
 
   /** Reset chrono values. */
-  reset () {
+  reset() {
     /** Start time */
-    this.startTime = 0
+    this.startTime = 0;
 
     /** Stop time */
-    this.stopTime = 0
+    this.stopTime = 0;
+
+    /** accumulation of all the start and stop intervals */
+    this.accumulator = 0;
 
     /**
      * If you set an offset in a chrono, its value will be added getDeltaTime and stop.
@@ -29,7 +32,7 @@ class Chrono {
      *
      * @type {number}
      */
-    this.offset = 0
+    this.offset = 0;
   }
 
   /**
@@ -37,42 +40,54 @@ class Chrono {
    * called.
    * @return {(number|null)} Time lapse in ms.
    */
-  getDeltaTime () {
+  getDeltaTime() {
     if (this.startTime) {
-      return this.offset + (new Date().getTime() - this.startTime)
+      return this.offset + (new Date().getTime() - this.startTime);
     } else {
-      return null
+      return null;
     }
   }
 
   /**
    * Starts the chrono.
    */
-  start () {
-    this.startTime = new Date().getTime()
-    this.stopTime = 0
+  start() {
+    this.startTime = new Date().getTime();
+    this.stopTime = 0;
   }
 
   /**
    * Stops the timer and returns delta time.
    * @return {(number|null)} Returns the delta time
    */
-  stop () {
-    this.stopTime = new Date().getTime()
-    return this.getDeltaTime()
+  stop() {
+    this.stopTime = new Date().getTime();
+    if(this.startTime < this.stopTime) {
+      this.accumulator += (this.stopTime - this.startTime);
+    }
+    return this.getDeltaTime();
+  }
+
+  getDuration() {
+    if(this.stopTime) {
+      return this.accumulator + this.offset;
+    } else {
+      return this.accumulator + (this.getDeltaTime() ?? 0)
+    }
   }
 
   /**
    * Creates a copy of the chrono.
    * @returns {Chrono} Cloned chrono
    */
-  clone () {
-    var chrono = new Chrono()
-    chrono.startTime = this.startTime
-    chrono.stopTime = this.stopTime
-    chrono.offset = this.offset
-    return chrono
+  clone() {
+    var chrono = new Chrono();
+    chrono.startTime = this.startTime;
+    chrono.stopTime = this.stopTime;
+    chrono.offset = this.offset;
+    chrono.accumulator = this.accumulator;
+    return chrono;
   }
 }
 
-export default Chrono
+export default Chrono;

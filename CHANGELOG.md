@@ -1,239 +1,483 @@
 # Changelog
-
 All notable changes to this project will be documented in this file.
 
-## [0.32.4] - 2024/05/08
+## [4.1.7] - 2026/06/11
+
+### Changed
+
+- **QoE enabled by default**
+  Flipped the default of `qoeAggregate` from `false` to `true` and `qoeIntervalFactor` from `1` to `2` in `videoConfiguration.js`. QoE aggregate tracking is now on out of the box; set `qoeAggregate: false` to opt out. README and configuration reference updated accordingly.
+
 ### Fix
+
+- **Use `Log.warn` in `sanitizeQoeIntervalFactor`**
+  Replaced `console.warn` with the library's `Log.warn` when sanitizing an invalid `qoeIntervalFactor`, so the warning respects the configured log level.
+
+## [4.1.6] - 2026/04/16
+
+### Chore
+
+- **README.md overhaul**
+  Rewrote `README.md` with comprehensive documentation including table of contents, installation instructions, quick start guide, configuration reference, exposed API details, custom tracker guide, getter methods reference, QoE section, obfuscation rules, build & development instructions, and distribution formats.
+
+## [4.1.5] - 2026/04/08
+
+### Changed
+
+- **Bitrate attribute and method renaming**
+  Renamed bitrate attributes and their corresponding getter methods for better clarity:
+  - Attribute: `contentMeasuredBitrate` → `contentSegmentDownloadBitrate`
+  - Method: `getMeasuredBitrate()` → `getSegmentDownloadBitrate()`
+  - Attribute: `contentDownloadBitrate` → `contentNetworkDownloadBitrate`
+  - Method: `getDownloadBitrate()` → `getNetworkDownloadBitrate()`
+
+### Removed
+
+- **Deprecated rendition bitrate attributes**
+  Removed `contentRenditionBitrate` and `adRenditionBitrate` attributes from `getAttributes()` in `videotracker.js`. These attributes are no longer included in video events.
+
+- **Updated data model documentation**
+  Updated `DATAMODEL.md` to reflect the removal of rendition bitrate attributes and the renaming of download bitrate attributes.
+
+## [4.1.4] - 2026/03/31
+
+### Feat
+
+- **Add obfuscation rules support for pre-harvest payload masking**
+  Introduces regex-based obfuscation rules that mask sensitive data in event payloads before they are sent to New Relic. Allows configuration of custom regex patterns with replacement strings to protect PII and sensitive tokens. Rules are applied in order to the serialized JSON payload, with invalid regex patterns logged as warnings and skipped.
+
+## [4.1.3] - 2026/03/24
+
+### Fix
+
+- **Bitrate attributes default to 0 instead of null**
+  Updated `getAttributes()` in `videotracker.js` to fallback bitrate values (`contentBitrate`, `contentRenditionBitrate`, `contentManifestBitrate`, `contentMeasuredBitrate`, `contentDownloadBitrate`) to `0` when null, preventing attributes from being dropped by `cleanData`.
+
+## [4.1.2] - 2026/03/18
+
+### Fix
+
+- **QoE aggregate improvements - KPI accuracy**
+  Fixed startup time, average bitrate, and rebuffering time calculations for more accurate QoE KPI reporting
+
+- **QoE harvest lifecycle and dedup**
+  Improved harvest cycle management with state refresh before drain, forced QoE at `CONTENT_END`, cross-cycle dirty check to skip unchanged KPIs.
+
+- **Rename QOE playback failure attrs to error**
+  Renamed `hadStartupFailure` and `hadPlaybackFailure` properties to `hadStartupError` and `hadPlaybackError` in `videotrackerstate.js` to align with error terminology.
+
+## [4.1.1] - 2026/03/13
+
+### Fix
+- Added bitrate related changes](d588f72)
+- Added qoe harvest cycle multiplier
+
+## [4.1.0] - 2026/02/18
+
+### Feat
+
+- **Add QOE health index KPIs with toggle config**
+  Introduced Quality of Experience (QOE) health index key performance indicators with configurable toggle to enable/disable tracking
+
+## [4.0.3] - 2026/01/29
+
+### Fix
+
+- **Drop bitrate values before start**
+  Modified `getAttributes()` in `videotracker.js` to check `this.state.isStarted` before adding bitrate attributes
+
+
+## [4.0.2] - 2025/11/03
+
+### Chore
+
+- **Unit test: Ad mock**
+  Add mock file for mocks NRVideo for unit testing individual separately
+
+## [4.0.1] - 2025/10/22
+
+### Enhancements
+
+- **New Timing Attributes: Enhanced Error Tracking ⏱️**
+  - Added `timeSinceLastError` attribute for content events - tracks time in milliseconds since the last content error occurred
+  - Added `timeSinceLastAdError` attribute for ad events - tracks time in milliseconds since the last ad error occurred
+
+## [4.0.0] - 2025/08/26
+
+### Standalone Agent: Decoupled & Redesigned
+
+#### Key Changes
+
+- **Breaking Change: Decoupled Agent 💥**  
+  The browser agent is now a completely standalone unit with its own architecture, independent of the Browser Agent.
+
+- **Enhancement: Independent Logic ⚙️**  
+  The agent now uses its own dedicated harvesting logic for data collection.
+
+- **Build: Simplified Onboarding 🚀**  
+  The onboarding process has been streamlined to reflect its new decoupled nature, making it easier to integrate and manage.
+
+## [3.1.1] - 2025/06/09
+
+### Fix
+
+- Updated event type for `AD_ERROR` to `VideoErrorAction`
+
+## [3.1.0] - 2025-05-26
+
+### Enhancements
+
+- **Publishing to npm:** The package can now be published to npm, making it easily accessible.
+
+### Build
+
+- **Distribution Formats:** Added `cjs`, `esm`, and `umd` builds to the `dist` folder, ensuring compatibility with CommonJS, ES Modules, and UMD module formats.
+
+## [3.0.0] - 2025/02/20
+
+### New Event Type Introduced [VideoAction, VideoErrorAction, VideoAdAction, VideoCustomAction]
+
+- PageAction Deprecated.
+- New Attributes Introduced.
+- The `recordCustomEvent` function is used to send data.
+
+## [0.32.4] - 2024/05/08
+
+### Fix
+
 - Fix `isAd` attribute value in `sendError`.
 
 ## [0.32.3] - 2023/09/08
+
 ### Fix
+
 - Fix issue in `tracker.customData.deviceType`.
 
-
 ## [0.32.2] - 2021/04/27
+
 ### Update
+
 - Improve `totalAdPlaytime`.
 
 ## [0.32.1] - 2021/04/26
+
 ### Fix
+
 - Only put `totalAdPlaytime` on START.
 
 ## [0.32.0] - 2021/04/26
+
 ### Add
+
 - Attribute `totalAdPlaytime`.
 
 ## [0.31.0] - 2021/02/08
+
 ### Add
+
 - Function `state.removeTimeSinceAttribute(...)`, to remove a custom timeSince attribute.
 
 ## [0.30.0] - 2020/11/18
+
 ### Fix
+
 - Reset `totalPlaytime` after an END.
 
 ## [0.29.0] - 2020/11/11
+
 ### Add
+
 - Attribute `timeSinceSeekEnd` to BUFFER events.
 
 ## [0.28.0] - 2020/10/23
+
 ### Fix
+
 - Initial bufferType when video is a live stream.
 
 ## [0.27.0] - 2020/10/20
+
 ### Fix
+
 - Increment time margin for initial `bufferType`.
 
 ## [0.26.0] - 2020/10/08
+
 ### Fix
+
 - When buffering happens before START, BUFFER events not being sent.
 
 ## [0.25.0] - 2020/10/02
+
 ### Add
+
 - Attribute `isBackgroundEvent` to indicate when an event happend during the browser tab is in background.
 
 ## [0.24.0] - 2020/10/01
+
 ### Fix
+
 - Report `bufferType` as "pause" when it happens right after a RESUME event.
 
 ## [0.23.0] - 2020/09/29
+
 ### Add
+
 - Method `sendCustom` to send a custom action with a timeSince attribute.
 
 ## [0.22.0] - 2020/09/01
+
 ### Fix
+
 - Use the same `bufferType` value for both BUFFER events.
 
 ## [0.21.0] - 2020/08/13
+
 ### Add
+
 - Call `trackerInit` method when a tracker is added.
 
 ## [0.20.0] - 2020/08/11
+
 ### Add
+
 - `bufferType` attribute to all BUFFER events.
 - `timeSinceResumed` attribute to all BUFFER events.
 
 ## [0.19.0] - 2020/06/15
+
 ### Fix
+
 - `isInitialBuffering` attribute.
 
 ## [0.18.0] - 2020/06/15
+
 ### Fix
+
 - `adPosition`, use state.isStarted from parent tracker (contents tracker) to determine current ad position.
 
 ## [0.17.0] - 2020/05/13
+
 ### Fix
+
 - Minor issues on CAF Receiver environment.
 
 ## [0.16.0] - 2020/04/30
+
 ### Update
+
 - `diff` package to version 3.5.0.
 
 ## [0.15.0] - 2020/04/30
+
 ### Fix
+
 - Updated dependencies to fix multiple vulnerabilities reported by `npm audit`.
 
 ## [0.14.0] - 2020/04/23
+
 ### Add
+
 - Event backend system.
 
 ## [0.13.0] - 2019/12/03
+
 ### Fix
+
 - Issue with `isInitialBuffering` attribute.
 
 ## [0.12.0] - 2019/12/02
+
 ### Add
+
 - Add `isInitialBuffering` attribute.
 
 ## [0.11.0] - 2019/11/22
+
 ### Fix
+
 - Fix issue with AD_BREAK_END and recovering CONTENT tracker state.
 
 ## [0.10.0] - 2018/02/08
+
 ### Add
+
 - Add `playtimeSinceLastEvent` and `totalPlaytime` as attributes.
 
 ## [0.9.3] - 2018/01/02
+
 ### Fix
+
 - Fix `isAd` not being correctly reported.
 
 ## [0.9.2] - 2017/12/19
+
 ### Fix
+
 - Reset `timeSinceAdStart` at `CONTENT_REQUEST`.
 
 ## [0.9.1] - 2017/11/21
+
 ### Fix
+
 - Fix `Tracker#sendHeartbeat` not passing attributes.
 
 ### Change
+
 - `sendXXXXX` methods from `VideoTracker` will now use `send` internally instead of `emit`.
 - Added a boolean as a parameter in `VideoTracker#getRenditionShift(bool)`. If true, it will store the new rendition. This way you can call `getRenditionShift()` without disrupting `RENDITION_CHANGE` events.
 
-
 ## [0.9.0] - 2017/11/10
+
 ### Add
+
 - Add `isPlayerReady` to `VideoTrackerState`.
 - Add `shift` in `*_RENDITION_CHANGE` events. Will report `up` or `down` depending on the change of rendition bitrate since last change.
 
 ### Remove
+
 - Remove `TRACKER_READY` and `PLAYER_INIT` events.
 - Remove `sendPlayerInit` from `VideoTracker`.
 - Remove `timeSincePlayerInit` from `VideoTrackerState`. Use `timeSinceLoad`.
 - Remove `goPlayerInit` and `isPlayerReadying` from `VideoTrackerState`.
 
 ### Change
+
 - First `HEARTBEAT` will now contain `timeSinceLastHeartbeat` counting since it was started.
 - Extend events of `VideoTracker` to cover all posibilities: from `END` to `CONTENT_END` and `AD_END`.
 
 ## [0.8.0] - 2017/11/03
+
 ### Add
+
 - Add `adCreativeId`, `adPartner` and `contentId/adId` attributes.
 
 ## [0.7.0] - 2017/11/02
+
 ### Add
+
 - Add `numberOfVideos` attribute, it shows the amount of videos reproduced.
 
 ### Fix
+
 - Fix a bug with `viewId` being incremented ad `CONTENT_START` instead on on `CONTENT_REQUEST`.
 
 ## [0.6.1] - 2017/10/17
+
 ### Add
+
 - Add `addEventHandler` to `Log.debugCommonVideoEvents`.
 
 ## [0.6.0] - 2017/10/16
+
 ### Change
+
 - Move `heartbeat` support from `VideoTracker` to `Tracker`.
 
 ### Fix
+
 - Fix minnor bug with `Tracker` class not reporting `customData`.
 
 ## [0.5.0] - 2017/09/28
+
 ### Add
+
 - `viewSession` attribute.
 - `VideoTrackerState#goViewCountUp` to increment `viewCount`.
 
 ### Fix
+
 - `viewCount` going up BEFORE `CONTENT_END` is sent.
 
 ### Remove
+
 - `VideoTracker#getViewId`.
 
 ## [0.4.4] - 2017/09/28
+
 ### Fix
+
 - `VideoTracker` not reporting user-defined attributes correctly.
 
 ## [0.4.3] - 2017/09/26
+
 ### Add
+
 - Expose `Chrono` class.
 
 ## [0.4.2] - 2017/09/26
+
 ### Change
+
 - Changed `timeSinceTrackerReady` behaviour.
 
 ### Fix
-- `TrackerState` class not found error. 
+
+- `TrackerState` class not found error.
 
 ## [0.4.1] - 2017/09/26
+
 ### Change
+
 - Move `getTrackerName` and `getTrackerVersion` from `VideoTracker` to `Tracker` class.
 
 ## [0.4.0] - 2017/09/26
+
 ### Change
+
 - Rename `Tracker` to `VideoTracker` and `TrackerState` to `VideoTrackerState`.
 - Create a new `Tracker` intermediate class between `Emitter` and `VideoTracker` to provide support for non-video platforms.
 
 ## [0.3.1] - 2017/09/20
+
 ### Added
+
 - Add `coreVersion` as attribute for all events.
 
 ## [0.3.0] - 2017/09/19
+
 ### Added
+
 - Add `getHeartbeat` for `Tracker` class.
 
 ### Change
+
 - Set default hearbeat to 30s.
 
 ## [0.2.1] - 2017/09/19
+
 ## Change
+
 - If you do not define a heartbeat for an adsTracker, it will take its parent value.
 
 ## [0.2.0] - 2017/09/18
+
 ### Add
+
 - Add `setOptions` for `Tracker` class.
 
 ## [0.1.3] - 2017/09/12
+
 ### Fix
+
 - Stop heartbeat when disposing.
 
 ## [0.1.2] - 2017/08/28
+
 ### Remove
+
 - Remove `adIsFullscreen`, `adIsAutoplayed`, `adIsLive`, `adPlayrate` and `adPreload` attributes from ad events.
 
 ## [0.1.1] - 2017/08/23
+
 ### Fix
+
 - `Tracker#sendXXXXX` methods, now they distinguish between ads and no ads for `timeSinceXXXX` attrs.
 
 ### Added
+
 - Add `CONTRIBUTING.md` file
 
 ## [0.1.0] - 2017/08/06
+
 - First Version

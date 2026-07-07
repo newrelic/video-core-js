@@ -1,54 +1,52 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <script src="./agent.js"></script>
+    <!-- newrelic video core -->
+    <script src="../dist/umd/nrvideo.min.js"></script>
+  </head>
 
-<head>
-  <!-- newrelic video core -->
-  <script src="../dist/newrelic-video-core.min.js"></script>
-</head>
-
-<body>
-  <video id="myPlayer" controls height="315" width="560">
-    <source src="http://dl5.webmfiles.org/big-buck-bunny_trailer.webm" type='video/mp4'>
-  </video>
+  <body>
+    <video id="myPlayer" controls height="315" width="560">
+      <source
+        src="https://dl11.webmfiles.org/big-buck-bunny_trailer.webm"
+        type="video/webm"
+      />
+    </video>
     <script>
-
       // A toy video tracker
       class MyTracker extends nrvideo.VideoTracker {
         getTrackerName() {
-          return "MyTracker"
+          return "MyTracker";
         }
 
-        getRenditionWidth () {
-          return this.player.width
+        getRenditionWidth() {
+          return this.player.width;
         }
 
-        getRenditionHeight () {
-          return this.player.height
+        getRenditionHeight() {
+          return this.player.height;
         }
 
-        getSrc () {
-          return this.player.getElementsByTagName('source')[0].src
+        getSrc() {
+          return this.player.getElementsByTagName("source")[0].src;
         }
       }
 
-      // Set up a custom backend for event recording, it will be used instead of New Relic Browser Agent
-      let backend = new nrvideo.NRInsightsBackend("ACCOUNT ID", "API KEY")
-      // Set a custom attribute
-      backend.setAttribute("videoElementId", "myPlayer")
-      nrvideo.Core.setBackend(backend)
-
       // Init tracker
-      nrvideo.Log.level = nrvideo.Log.Levels.ALL
-      var myPlayer = document.getElementById('myPlayer')
-      let myTracker = new MyTracker(myPlayer)
-      nrvideo.Core.addTracker(myTracker)
+      nrvideo.Log.level = nrvideo.Log.Levels.ALL;
+      var myPlayer = document.getElementById("myPlayer");
+      let myTracker = new MyTracker(myPlayer, options);
+
+      nrvideo.Core.addTracker(myTracker);
 
       // Send a sample events
-      myTracker.send('SAMPLE_ACTION', { "num": 1})
-      myTracker.send('SAMPLE_ACTION', { "num": 2})
-      myTracker.send('SAMPLE_ACTION', { "num": 3})
-      myTracker.send('SAMPLE_ACTION', { "num": 4})
+      myTracker.sendVideoAction("VIDEO_SAMPLE_ACTION", { num: 1 });
+      myTracker.sendVideoAdAction("VIDEO_AD_SAMPLE_ACTION", { num: 2 });
+      myTracker.sendVideoErrorAction("VIDEO_ERROR_ACTION", { num: 3 });
+      myTracker.sendVideoCustomAction("VIDEO_CUSTOM_ACTION", { num: 4 });
+      //myTracker.state._isAd = true;
+      // myTracker.sendError({ errorCode: 404, errorName: "Ad Not Found!" });
     </script>
-</body>
-
+  </body>
 </html>

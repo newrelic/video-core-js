@@ -1,6 +1,9 @@
-import pkg from '../package.json'
-import Emitter from './emitter'
-import Chrono from './chrono'
+import pkg from "../package.json";
+import Emitter from "./emitter";
+import Chrono from "./chrono";
+import Constants from "./constants";
+import { videoAnalyticsHarvester } from "./agent";
+import Log from "./log";
 
 /**
  * Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.
@@ -20,8 +23,8 @@ class Tracker extends Emitter {
    *
    * @param {Object} [options] Options for the tracker. See {@link setOptions}.
    */
-  constructor (options) {
-    super()
+  constructor(options) {
+    super();
 
     /**
      * If you add something to this custom dictionary it will be added to every action. If you set
@@ -31,28 +34,34 @@ class Tracker extends Emitter {
      * If you define tracker.customData.contentTitle = 'a' and tracker.getTitle() returns 'b'.
      * 'a' will prevail.
      */
-    this.customData = {}
+    this.customData = {};
 
     /**
      * Set time between hearbeats, in ms.
      */
-    this.heartbeat = null
+    this.heartbeat = null;
 
     /**
      * Another Tracker instance. Useful to relate ad Trackers to their parent content Trackers.
      * @type Tracker
      */
-    this.parentTracker = null
+    this.parentTracker = null;
 
     /**
      * Chrono that counts time since this class was instantiated.
      * @private
      */
-    this._trackerReadyChrono = new Chrono()
-    this._trackerReadyChrono.start()
+    this._trackerReadyChrono = new Chrono();
+    this._trackerReadyChrono.start();
 
-    options = options || {}
-    this.setOptions(options)
+    /**
+     * Store the initial table of actions with time 0 ms
+     */
+    this._actionTable = Constants.ACTION_TABLE;
+    this._actionAdTable = Constants.ACTION_AD_TABLE;
+
+    options = options || {};
+    this.setOptions(options);
   }
 
   /**
@@ -63,19 +72,19 @@ class Tracker extends Emitter {
    * @param {Object} [options.customData] Set custom data. See {@link customData}.
    * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
    */
-  setOptions (options) {
+  setOptions(options) {
     if (options) {
-      if (options.parentTracker) this.parentTracker = options.parentTracker
-      if (options.customData) this.customData = options.customData
-      if (options.heartbeat) this.heartbeat = options.heartbeat
+      if (options.parentTracker) this.parentTracker = options.parentTracker;
+      if (options.customData) this.customData = options.customData;
+      if (options.heartbeat) this.heartbeat = options.heartbeat;
     }
   }
 
   /**
    * Prepares tracker to dispose. Calls {@see unregisterListeners} and drops references.
    */
-  dispose () {
-    this.unregisterListeners()
+  dispose() {
+    this.unregisterListeners();
   }
 
   /**
@@ -92,7 +101,7 @@ class Tracker extends Emitter {
    *  }
    * }
    */
-  registerListeners () {}
+  registerListeners() {}
 
   /**
    * Override this method to unregister listeners to third party elements created with
@@ -113,40 +122,45 @@ class Tracker extends Emitter {
    *  }
    * }
    */
-  unregisterListeners () {}
+  unregisterListeners() {}
 
   /**
    * Returns heartbeat time interval. 30000 (30s) if not set. See {@link setOptions}.
    * @return {number} Heartbeat interval in ms.
    * @final
    */
-  getHeartbeat () {
-    if (this.heartbeat) {
-      return this.heartbeat
-    } else if (this.parentTracker && this.parentTracker.heartbeat) {
-      return this.parentTracker.heartbeat
+  getHeartbeat() {
+    if (this.state._isAd) {
+      // modifying heartbeat for Ad Tracker
+      return 2000;
     } else {
-      return 30000
+      if (this.heartbeat) {
+        return this.heartbeat;
+      } else if (this.parentTracker && this.parentTracker.heartbeat) {
+        return this.parentTracker.heartbeat;
+      } else {
+        return 30000;
+      }
     }
   }
 
   /**
-   * Starts heartbeating. Interval period set by options.heartbeat. Min 5000 ms.
+   * Starts heartbeating. Interval period set by options.heartbeat. Min 2000 ms.
    * This method is automaticaly called by the tracker once sendRequest is called.
    */
-  startHeartbeat () {
+  startHeartbeat() {
     this._heartbeatInterval = setInterval(
       this.sendHeartbeat.bind(this),
-      Math.max(this.getHeartbeat(), 5000)
-    )
+      Math.max(this.getHeartbeat(), 2000)
+    );
   }
 
   /**
    * Stops heartbeating. This method is automaticaly called by the tracker.
    */
-  stopHeartbeat () {
+  stopHeartbeat() {
     if (this._heartbeatInterval) {
-      clearInterval(this._heartbeatInterval)
+      clearInterval(this._heartbeatInterval);
     }
   }
 
@@ -168,8 +182,8 @@ class Tracker extends Emitter {
    *
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendHeartbeat (att) {
-    this.send(Tracker.Events.HEARTBEAT, att)
+  sendHeartbeat(att) {
+    this.sendVideoAction(Tracker.Events.HEARTBEAT, att);
   }
 
   /**
@@ -188,32 +202,32 @@ class Tracker extends Emitter {
    * @return {object} Filled attributes
    * @final
    */
-  getAttributes (att) {
-    att = att || {}
-    att.trackerName = this.getTrackerName()
-    att.trackerVersion = this.getTrackerVersion()
-    att.coreVersion = pkg.version
-    att.timeSinceTrackerReady = this._trackerReadyChrono.getDeltaTime()
+  getAttributes(att, eventType) {
+    att = att || {};
+    att.trackerName = this.getTrackerName();
+    att.trackerVersion = this.getTrackerVersion();
+    att.coreVersion = pkg.version;
+    att.timeSinceTrackerReady = this._trackerReadyChrono.getDeltaTime();
 
     for (let key in this.customData) {
-      att[key] = this.customData[key]
+      att[key] = this.customData[key];
     }
 
     if (document.hidden != undefined) {
-      att.isBackgroundEvent = document.hidden
+      att.isBackgroundEvent = document.hidden;
     }
 
-    return att
+    return att;
   }
 
   /** Override to change of the Version of tracker. ie: '1.0.1' */
-  getTrackerVersion () {
-    return pkg.version
+  getTrackerVersion() {
+    return pkg.version;
   }
 
   /** Override to change of the Name of the tracker. ie: 'custom-html5' */
-  getTrackerName () {
-    return 'base-tracker'
+  getTrackerName() {
+    return "base-tracker";
   }
 
   /**
@@ -221,13 +235,51 @@ class Tracker extends Emitter {
    * Internally, this will call {@see Emitter#emit}, so you could listen any event fired.
    *
    * @example
-   * tracker.send('BANNER_CLICK', { url: 'http....' })
+   * tracker.sendVideoAction('BANNER_CLICK', { url: 'http....' })
    *
    * @param {string} event Event name
    * @param {object} [att] Key:value dictionary filled with attributes.
    */
-  send (event, att) {
-    this.emit(event, this.getAttributes(att))
+
+  sendVideoAction(event, att) {
+    this.emit("VideoAction", event, this.getAttributes(att));
+  }
+
+  sendVideoAdAction(event, att) {
+    this.emit("VideoAdAction", event, this.getAttributes(att));
+  }
+
+  sendVideoErrorAction(event, att) {
+    let ev = this.isAd() ? "adError" : "videoError";
+    this.emit("VideoErrorAction", event, this.getAttributes(att, ev));
+  }
+
+  sendVideoCustomAction(event, att) {
+    this.emit(
+      "VideoCustomAction",
+      event,
+      this.getAttributes(att, "customAction")
+    );
+  }
+
+  /**
+   * Sets the harvest interval for video tracking.
+   * @param {*} interval - The interval in milliseconds.
+   * @returns {void}
+   */
+
+  setHarvestInterval(interval) {
+    if (!videoAnalyticsHarvester) {
+      Log.error("VideoAnalyticsHarvester is not available");
+      return;
+    }
+
+    try {
+      videoAnalyticsHarvester.setHarvestInterval(interval);
+    } catch (error) {
+      Log.error("Failed to set harvest interval:", error.message);
+      return;
+    }
   }
 }
 
@@ -240,7 +292,8 @@ class Tracker extends Emitter {
  */
 Tracker.Events = {
   /** The heartbeat event is sent once every 30 seconds while the video is playing. */
-  HEARTBEAT: 'HEARTBEAT'
-}
+  HEARTBEAT: "HEARTBEAT",
+  QOE_AGGREGATE: "QOE_AGGREGATE",
+};
 
-export default Tracker
+export default Tracker;
