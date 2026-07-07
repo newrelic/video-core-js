@@ -213,12 +213,14 @@ describe("VideoTrackerState", () => {
   });
 
   it("should track and reset playtimeSinceLastEvent based on playing state", () => {
+    jest.useFakeTimers();
     state.setIsAd(false);
     state.goRequest();
     state.goStart();
 
     let attributes = state.getStateAttributes();
     expect(attributes.playtimeSinceLastEvent).toBe(0);
+    jest.useRealTimers();
 
     attributes = state.getStateAttributes();
     expect(attributes.playtimeSinceLastEvent).toBeGreaterThan(-1);

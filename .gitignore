@@ -22,3 +22,6 @@ documentation/
 
 # agent
 samples/agent.js
+
+# local settings
+.claude/settings.local.json
