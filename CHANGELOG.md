@@ -1,3 +1,11 @@
+## [4.1.8](https://github.com/newrelic/video-core-js/compare/v4.1.7...v4.1.8) (2026-07-07)
+
+
+### Bug Fixes
+
+* stabilize playtimeSinceLastEvent test with fake timers ([9268eeb](https://github.com/newrelic/video-core-js/commit/9268eeb2c3e69a5ba4f558d2e67ab7b7b16b6ce7))
+* update release workflow to two-stage prepare/publish pattern ([3ef40cb](https://github.com/newrelic/video-core-js/commit/3ef40cb06b4d98a9bf8dbf6cc2021c7214f4e6b5))
+
 # Changelog
 All notable changes to this project will be documented in this file.
 
