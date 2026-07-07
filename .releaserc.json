@@ -1,7 +1,6 @@
 {
   "branches": [
-    "master",
-    "fix/release-workflow"
+    "master"
   ],
   "plugins": [
     [

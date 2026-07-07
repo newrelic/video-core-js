@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - master
-      - fix/release-workflow
   workflow_dispatch:
     inputs:
       dry-run:
@@ -48,7 +47,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: master
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
