@@ -25,6 +25,7 @@ Constants.AdPositions = {
 Constants.COLLECTOR = {
   US: ["bam.nr-data.net", "bam-cell.nr-data.net"],
   EU: "bam.eu01.nr-data.net",
+  JP: "bam.jp.nr-data.net",
   Staging: "staging-bam-cell.nr-data.net",
   GOV: "gov-bam.nr-data.net",
 };
