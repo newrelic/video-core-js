@@ -1,5 +1,5 @@
 import sinon from 'sinon';
-import { HarvestScheduler } from '../src/harvestScheduler';
+import { HarvestScheduler } from '../src/browser/harvestScheduler';
 import { NrVideoEventAggregator } from '../src/eventAggregator';
 import { RetryQueueHandler } from '../src/retryQueueHandler';
 import Constants from '../src/constants';
@@ -63,47 +63,39 @@ describe('HarvestScheduler', function() {
       // Start successfully
       scheduler.startScheduler();
       expect(scheduler.isStarted).toBe(true);
-      expect(scheduler.currentTimerId).not.toBeNull();
-      const firstTimerId = scheduler.currentTimerId;
 
       // Prevent double start
       const logSpy = sinon.spy(Log, 'warn');
       stubs.push(logSpy);
       scheduler.startScheduler();
       expect(logSpy.calledWith('Harvest scheduler is already started')).toBe(true);
-      expect(scheduler.currentTimerId).toBe(firstTimerId);
+      expect(scheduler.isStarted).toBe(true);
 
       // Stop and clear timer
       scheduler.stopScheduler();
       expect(scheduler.isStarted).toBe(false);
-      expect(scheduler.currentTimerId).toBeNull();
 
       // Allow restart
       scheduler.startScheduler();
       expect(scheduler.isStarted).toBe(true);
-      expect(scheduler.currentTimerId).not.toBeNull();
     });
 
     it('should handle edge cases for stopping and scheduling', function() {
       // Stop unstarted scheduler
       expect(() => scheduler.stopScheduler()).not.toThrow();
-
-      // Handle stopScheduler when currentTimerId is null but isStarted is true
-      scheduler.isStarted = true;
-      scheduler.currentTimerId = null;
-      scheduler.stopScheduler();
       expect(scheduler.isStarted).toBe(false);
 
-      // Not schedule when not started
-      scheduler.scheduleNextHarvest();
-      expect(scheduler.currentTimerId).toBeNull();
+      // Repeated stop is idempotent
+      scheduler.startScheduler();
+      scheduler.stopScheduler();
+      scheduler.stopScheduler();
+      expect(scheduler.isStarted).toBe(false);
     });
 
     it('should start scheduler with null eventBuffer', function() {
       scheduler = new HarvestScheduler(null);
       scheduler.startScheduler();
       expect(scheduler.isStarted).toBe(true);
-      expect(scheduler.currentTimerId).not.toBeNull();
     });
   });
 
@@ -120,7 +112,7 @@ describe('HarvestScheduler', function() {
       // Trigger harvest and reschedule
       await scheduler.triggerSmartHarvest('smart', 60);
       expect(triggerHarvestStub.calledOnce).toBe(true);
-      expect(scheduler.currentTimerId).not.toBeNull();
+      expect(scheduler.isStarted).toBe(true);
 
       // Not trigger when buffer is empty
       mockEventBuffer.isEmpty.returns(true);
@@ -132,14 +124,14 @@ describe('HarvestScheduler', function() {
       const triggerHarvestStub = sinon.stub(scheduler, 'triggerHarvest').rejects(new Error('Test error'));
       stubs.push(triggerHarvestStub);
 
-      // Handle errors and reschedule
+      // Handle errors gracefully
       await scheduler.triggerSmartHarvest('smart', 60);
-      expect(scheduler.currentTimerId).not.toBeNull();
+      expect(scheduler.isStarted).toBe(true);
 
       // Not reschedule when stopped
       scheduler.stopScheduler();
       await scheduler.triggerSmartHarvest('overflow', 90);
-      expect(scheduler.currentTimerId).toBeNull();
+      expect(scheduler.isStarted).toBe(false);
     });
   });
 
@@ -157,7 +149,7 @@ describe('HarvestScheduler', function() {
       clock.tick(Constants.INTERVAL);
       await Promise.resolve();
       expect(triggerHarvestStub.called).toBe(true);
-      expect(scheduler.currentTimerId).not.toBeNull();
+      expect(scheduler.isStarted).toBe(true);
 
       // Not trigger when both buffer and retry queue are empty
       triggerHarvestStub.reset();
@@ -181,8 +173,11 @@ describe('HarvestScheduler', function() {
       const logStub = sinon.stub(Log, 'error');
       stubs.push(logStub);
 
+      // Fire the timer + flush microtasks for: setTimeout body → onHarvestInterval
+      // → triggerHarvest rejection → timer catch → Log.error.
+      // The shared timer wraps onTick in async, so we need extra microtask flushes.
       clock.tick(Constants.INTERVAL);
-      await Promise.resolve();
+      for (let i = 0; i < 5; i++) await Promise.resolve();
       expect(logStub.calledOnce).toBe(true);
     });
   });
@@ -519,12 +514,11 @@ describe('HarvestScheduler', function() {
 
     it('should update interval with validation', function() {
       scheduler.startScheduler();
-      const oldTimerId = scheduler.currentTimerId;
 
-      // Update interval and restart timer
+      // Update interval — timer keeps running, harvestCycle updated
       scheduler.updateHarvestInterval(15000);
       expect(scheduler.harvestCycle).toBe(15000);
-      expect(scheduler.currentTimerId).not.toBe(oldTimerId);
+      expect(scheduler.isStarted).toBe(true);
 
       // Reject below minimum
       scheduler.updateHarvestInterval(500);
@@ -542,21 +536,22 @@ describe('HarvestScheduler', function() {
     it('should handle edge cases for interval updates', function() {
       scheduler.startScheduler();
 
-      // Handle NaN
+      // Handle NaN — harvestCycle unchanged from initial
       scheduler.updateHarvestInterval(NaN);
-      expect(isNaN(scheduler.harvestCycle)).toBe(true);
+      expect(isNaN(scheduler.harvestCycle)).toBe(false);
 
-      // Not restart when unchanged
-      scheduler.harvestCycle = 20000;
-      scheduler.startScheduler();
-      const timerId = scheduler.currentTimerId;
-      scheduler.updateHarvestInterval(20000);
-      expect(scheduler.currentTimerId).toBe(timerId);
+      // Same-value update is idempotent
+      scheduler.updateHarvestInterval(15000);
+      const cycleBefore = scheduler.harvestCycle;
+      scheduler.updateHarvestInterval(15000);
+      expect(scheduler.harvestCycle).toBe(cycleBefore);
+      expect(scheduler.isStarted).toBe(true);
 
-      // Not schedule when stopped
+      // Update while stopped — harvestCycle still updates but timer doesn't run
       scheduler.stopScheduler();
       scheduler.updateHarvestInterval(25000);
-      expect(scheduler.currentTimerId).toBeNull();
+      expect(scheduler.harvestCycle).toBe(25000);
+      expect(scheduler.isStarted).toBe(false);
     });
   });
 

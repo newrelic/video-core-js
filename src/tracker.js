@@ -2,7 +2,6 @@ import pkg from "../package.json";
 import Emitter from "./emitter";
 import Chrono from "./chrono";
 import Constants from "./constants";
-import { videoAnalyticsHarvester } from "./agent";
 import Log from "./log";
 
 /**
@@ -269,17 +268,28 @@ class Tracker extends Emitter {
    */
 
   setHarvestInterval(interval) {
-    if (!videoAnalyticsHarvester) {
-      Log.error("VideoAnalyticsHarvester is not available");
+    const harvester = this.getHarvester?.();
+    if (!harvester) {
+      Log.error("Tracker has no harvester; setHarvestInterval ignored");
       return;
     }
 
     try {
-      videoAnalyticsHarvester.setHarvestInterval(interval);
+      harvester.setHarvestInterval(interval);
     } catch (error) {
       Log.error("Failed to set harvest interval:", error.message);
       return;
     }
+  }
+
+  /**
+   * Default harvester accessor. Subclasses (Html5Tracker, VegaTracker, etc.)
+   * override this to point to their specific harvester. Returning `null` here
+   * means a tracker that doesn't override `getHarvester()` will silently no-op
+   * on harvester-bound calls (setHarvestInterval, QoE drain wiring).
+   */
+  getHarvester() {
+    return null;
   }
 }
 

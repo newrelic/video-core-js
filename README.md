@@ -3,9 +3,14 @@
 [![npm version](https://img.shields.io/npm/v/@newrelic/video-core.svg)](https://www.npmjs.com/package/@newrelic/video-core)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
+
 > **Note:** The `PageAction` event type is officially deprecated and is no longer maintained. It has been archived in the [`archived-master`](https://github.com/newrelic/video-core-js/tree/archived-master) branch for historical reference.
 
-The **New Relic Video Core** library (`@newrelic/video-core`) is the foundational framework for all browser-based video trackers in the New Relic ecosystem. It provides the core classes, state management, event harvesting, and data transmission pipeline that player-specific trackers extend.
+The **New Relic Video Core** library (`@newrelic/video-core`) is the foundational framework for video trackers in the New Relic ecosystem. It provides the core classes, state management, event harvesting, and data transmission pipeline that player-specific trackers extend. The library supports two harvester pipelines:
+
+- **Browser pipeline** — ships events to `bam.nr-data.net` via the standard Browser collector (license key auth). Used by web-based players.
+- **Connected-device pipeline** — ships events to `mobile-collector.newrelic.com` via the mobile collector. Used by Vega apps and other connected-device platforms.
+
 
 Events are categorized into four distinct types:
 
@@ -95,12 +100,9 @@ class MyPlayerTracker extends nrvideo.VideoTracker {
 // 2. Configure and register the tracker
 const options = {
   info: {
-    licenseKey: 'YOUR_LICENSE_KEY',
-    beacon: 'bam.nr-data.net',
+    licenseKey:    'YOUR_LICENSE_KEY',
+    beacon:        'bam.nr-data.net',
     applicationID: 'YOUR_APPLICATION_ID',
-  },
-  config: {
-    qoeAggregate: true,
   },
 };
 
@@ -113,41 +115,39 @@ nrvideo.Core.addTracker(tracker, options);
 
 ## Configuration
 
-The `options` object passed to `Core.addTracker()` consists of two parts:
+The `options` object passed to `Core.addTracker()` consists of two top-level keys: `info` (credentials and pipeline config) and `config` (optional behaviour settings).
 
-### Getting Your Configuration
+---
 
-Before initializing the tracker, obtain your New Relic configuration:
+### Browser / Web Setup
+
+**Obtain your credentials:**
 
 1. Log in to [one.newrelic.com](https://one.newrelic.com)
 2. Navigate to the video agent onboarding flow
 3. Copy your credentials: `licenseKey`, `beacon`, and `applicationId`
 
-### Info Object (Required)
-
-Obtained through the New Relic onboarding process. Two configuration modes are supported:
-
-**Mode 1 — With Application ID and Beacon:**
+**With Application ID and Beacon:**
 
 ```javascript
 info: {
-  licenseKey: 'YOUR_LICENSE_KEY',      // Required
-  applicationID: 'YOUR_APPLICATION_ID', // Required
-  beacon: 'bam.nr-data.net',            // Required when applicationID is provided
+  licenseKey:    'YOUR_LICENSE_KEY',       // Required
+  applicationID: 'YOUR_APPLICATION_ID',   // Required
+  beacon:        'bam.nr-data.net',        // Required when applicationID is provided
 }
 ```
 
-**Mode 2 — With App Name and Region:**
+**With App Name and Region:**
 
 ```javascript
 info: {
   licenseKey: 'YOUR_LICENSE_KEY', // Required
-  appName: 'My Video App',       // Required when no applicationID
-  region: 'US',                   // Required when no applicationID
+  appName:    'My Video App',     // Required when no applicationID
+  region:     'US',               // Required when no applicationID — 'US' | 'EU' | 'staging'
 }
 ```
 
-**Valid Beacon Endpoints:**
+**Valid Browser Beacon Endpoints:**
 
 | Region | Beacon |
 |---|---|
@@ -156,11 +156,89 @@ info: {
 | Staging | `staging-bam-cell.nr-data.net` |
 | GOV | `gov-bam.nr-data.net` |
 
+---
+
+### Vega / Fire TV Setup
+
+For Amazon Vega (Fire TV / Kepler runtime), import from the `/vega` subpath. The `info` object uses `applicationToken` and `endpoint` specific to the Vega pipeline, plus an optional `deviceInfo` block carrying runtime device identity.
+
+**Obtain your application token:**
+
+1. Log in to [one.newrelic.com](https://one.newrelic.com)
+2. Navigate to the video agent onboarding flow
+3. Copy your `applicationToken` (begins with `AA...` and ends with `-NRMA`) and your `accountId`
+
+```javascript
+info: {
+  accountId:        'YOUR_ACCOUNT_ID',   // Required
+  applicationToken: 'YOUR_NRMA_TOKEN',   // Required — begins "AA…-NRMA"
+  endpoint:         'US',                // Required — 'US' | 'EU' | 'staging' | 'GOV'
+  deviceInfo: {                          // Optional — all sub-fields optional
+    uuid:               getDeviceId(),
+    osVersion:          getSystemVersion(),
+    deviceModel:        getModel(),
+    deviceManufacturer: getBrand(),
+    osBuild:            getBuildIdSync(),  
+    appBuild:           getBuildNumber(),  
+    architecture:       'aarch64',
+  },
+}
+```
+
+Install the device-info library to source real device attributes at runtime:
+
+```bash
+npm install @amazon-devices/react-native-device-info --save
+```
+
+```javascript
+import {
+  getDeviceId, getSystemVersion, getModel, getBrand,
+  getBuildIdSync, getBuildNumber,
+} from '@amazon-devices/react-native-device-info';
+
+const deviceInfo = {
+  uuid:               getDeviceId(),
+  osVersion:          getSystemVersion(),
+  deviceModel:        getModel(),
+  deviceManufacturer: getBrand(),
+  osBuild:            getBuildIdSync(),    // OS image build
+  appBuild:           getBuildNumber(),    // app build number
+  architecture:       'aarch64',
+};
+```
+
+#### `deviceInfo` field reference
+
+All sub-fields are optional — missing values fall back to the SDK defaults. Extra fields are ignored.
+
+| Field | Recommended source | Falls back to |
+|---|---|---|
+| `uuid` | `getDeviceId()` — stable model-code identifier | `"00000000-0000-0000-0000-000000000000"` |
+| `osVersion` | `getSystemVersion()` | `"1.0"` |
+| `deviceModel` | `getModel()` | `"VegaDevice"` |
+| `deviceManufacturer` | `getBrand()` | `"Amazon"` |
+| `osBuild` | `getBuildIdSync()` — **OS image build** | `"1"` |
+| `appBuild` | `getBuildNumber()` — **app build number** | `"1"` |
+| `architecture` | `'aarch64'` | `"aarch64"` |
+
+> `osBuild` and `appBuild` are semantically distinct: `osBuild` is the OS image identifier set by Amazon; `appBuild` is your app's build number. Use `getBuildIdSync()` for the former and `getBuildNumber()` for the latter.
+
+**Valid Vega Endpoints:**
+
+| Value | Routes to |
+|---|---|
+| `'US'` | `mobile-collector.newrelic.com` |
+| `'EU'` | `mobile-collector.eu01.nr-data.net` |
+| `'staging'` | `staging-mobile-collector.newrelic.com` |
+| `'GOV'` | `gov-mobile-collector.newrelic.com` |
+
+---
+
 ### Config Object (Optional)
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `qoeAggregate` | `boolean` | `true` | Enable Quality of Experience event aggregation. QoE is enabled out of the box; set to `false` to disable. |
 | `qoeIntervalFactor` | `number` | `2` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
 | `obfuscate` | `array` | `[]` | Regex-based rules to mask sensitive data before transmission. See [Obfuscation Rules](#obfuscation-rules). |
 
@@ -192,7 +270,6 @@ Static class managing tracker registration and event dispatch.
 | `Core.getTrackers()` | Returns the array of currently registered trackers. |
 | `Core.send(eventType, actionName, data)` | Sends an event to the collector. Called internally by event handlers. |
 | `Core.sendError(att)` | Sends a `VideoErrorAction` with `actionName: "ERROR"`. For external/app-level errors. |
-| `Core.forceHarvest()` | Forces an immediate harvest of all pending events. Returns a `Promise`. |
 
 ### VideoTracker
 
@@ -308,15 +385,32 @@ nrvideo.Log.level = nrvideo.Log.Levels.DEBUG; // ALL, DEBUG, NOTICE, WARNING, ER
 
 ### Constants
 
+**General constants** (used by both pipelines):
+
 | Constant | Value | Description |
 |---|---|---|
 | `Constants.AdPositions` | `{ PRE, MID, POST }` | Ad position enum. |
-| `Constants.COLLECTOR` | Object | Beacon endpoint URLs by region. |
+| `Constants.COLLECTOR` | Object | Browser beacon endpoint URLs by region. |
 | `Constants.VALID_EVENT_TYPES` | Array | `['VideoAction', 'VideoAdAction', 'VideoErrorAction', 'VideoCustomAction']` |
 | `Constants.MAX_PAYLOAD_SIZE` | `1048576` | Maximum payload size (1 MB). |
 | `Constants.MAX_BEACON_SIZE` | `61440` | Maximum beacon size (60 KB). |
 | `Constants.MAX_EVENTS_PER_BATCH` | `1000` | Maximum events per batch. |
 | `Constants.INTERVAL` | `10000` | Default harvest interval (10s). |
+| `Constants.QOE_KPI_KEYS` | Array | KPI field names tracked in QoE aggregates. |
+| `Constants.QOE_AGGREGATE_KEYS` | Array | Metadata field names included in QoE events. |
+
+**Connected-device constants** (named exports from `constants.js`, used by the `/vega` subpath):
+
+| Export | Description |
+|---|---|
+| `MOBILE_ENDPOINT` | Production mobile collector URL (`mobile-collector.newrelic.com`). |
+| `STAGING_MOBILE_ENDPOINT` | Staging mobile collector URL. |
+| `NR_ENDPOINT` | Endpoint region enum: `{ US, EU, STAGING }`. |
+| `DEFAULT_HARVEST_TIME` | Default harvest cadence: `60_000` ms. |
+| `DEFAULT_BUFFER_SIZE` | Default buffer cap: `100` events (informational). |
+| `CD_DATA_TOKENS_PAYLOAD` | `/v5/connect` request body template (positional 2-tuple). |
+| `CD_DEVICE_INFO` | `/v3/data`  device-identity tuple (default Vega values). |
+| `CD_METADATA` | `/v3/data` session-metadata object (default Vega values). |
 
 ---
 
@@ -474,13 +568,32 @@ npm run clean
 
 ## Distribution Formats
 
-The build produces three output formats:
+The build produces multiple output formats including subpath exports for tree-shaking:
 
 | Format | Path | Usage |
 |---|---|---|
 | **UMD** | `dist/umd/nrvideo.min.js` | `<script>` tag → `window.nrvideo` |
-| **CommonJS** | `dist/cjs/index.js` | `require('@newrelic/video-core')` |
-| **ES Module** | `dist/esm/index.js` | `import nrvideo from '@newrelic/video-core'` |
+| **CommonJS** | `dist/cjs/index.js` | `require('@newrelic/video-core')` — both pipelines |
+| **ES Module** | `dist/esm/index.js` | `import nrvideo from '@newrelic/video-core'` — both pipelines |
+| **CJS Browser** | `dist/cjs/browser/index.js` | `require('@newrelic/video-core/browser')` — Browser pipeline only |
+| **CJS Connected-Device** | `dist/cjs/vega/index.js` | `require('@newrelic/video-core/vega')` — connected-device pipeline only |
+| **ESM Browser** | `dist/esm/browser/index.js` | `import ... from '@newrelic/video-core/browser'` |
+| **ESM Connected-Device** | `dist/esm/vega/index.js` | `import ... from '@newrelic/video-core/vega'` |
+
+### Subpath imports
+
+Import the specific subpath to ship only the harvester chain you need. The unused pipeline is tree-shaken from the bundle.
+
+```javascript
+// Browser pipeline only — tree-shakes out the connected-device chain
+import nrvideo from '@newrelic/video-core/browser';
+
+// Connected-device pipeline only — tree-shakes out Browser harvester and harvestScheduler
+import nrvideo from '@newrelic/video-core/vega';
+
+// Both pipelines — use with the default entry
+import nrvideo from '@newrelic/video-core';
+```
 
 ## Testing
 

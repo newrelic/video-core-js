@@ -1,9 +1,24 @@
 {
   "name": "@newrelic/video-core",
-  "version": "4.1.8",
+  "version": "5.0.0",
   "description": "New Relic video tracking core library",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./browser": {
+      "import": "./dist/esm/browser/index.js",
+      "require": "./dist/cjs/browser/index.js"
+    },
+    "./vega": {
+      "import": "./dist/esm/vega/index.js",
+      "require": "./dist/cjs/vega/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
@@ -26,6 +41,7 @@
     "Bharat Sarsawat"
   ],
   "license": "Apache-2.0",
+  "sideEffects": false,
   "devDependencies": {
     "@babel/core": "^7.24.5",
     "@babel/plugin-transform-modules-commonjs": "^7.24.1",
