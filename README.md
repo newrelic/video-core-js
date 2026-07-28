@@ -178,8 +178,8 @@ info: {
     osVersion:          getSystemVersion(),
     deviceModel:        getModel(),
     deviceManufacturer: getBrand(),
-    osBuild:            getBuildIdSync(),  // OS image build
-    appBuild:           getBuildNumber(),  // app build number
+    osBuild:            getBuildIdSync(),  
+    appBuild:           getBuildNumber(),  
     architecture:       'aarch64',
   },
 }
