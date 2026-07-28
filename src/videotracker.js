@@ -1,7 +1,6 @@
 import Log from "./log";
 import Tracker from "./tracker";
 import TrackerState from "./videotrackerstate";
-import { videoAnalyticsHarvester } from "./agent";
 import pkg from "../package.json";
 
 /**
@@ -45,6 +44,7 @@ class VideoTracker extends Tracker {
      */
     this._lastBufferType = null;
     this._userId = null;
+    this._src = null;
 
     options = options || {};
     this.setOptions(options);
@@ -83,6 +83,16 @@ class VideoTracker extends Tracker {
       }
       if (typeof options.isAd === "boolean") {
         this.setIsAd(options.isAd);
+      }
+      if (options.src !== undefined) {
+        if (this._src !== null && this._src !== options.src) {
+          Log.warn(`setOptions: src is locked to '${this._src}'. Ignoring override '${options.src}'.`);
+        } else {
+          this._src = options.src;
+          if (this.adsTracker && this.adsTracker._src == null) {
+            this.adsTracker._src = this._src;
+          }
+        }
       }
       Tracker.prototype.setOptions.apply(this, arguments);
     }
@@ -135,6 +145,12 @@ class VideoTracker extends Tracker {
       this.adsTracker = tracker;
       this.adsTracker.setIsAd(true);
       this.adsTracker.parentTracker = this;
+      // Propagate src so ads events route to the same pipeline as content events.
+      // Covers the case where setAdsTracker is called after the content tracker
+      // is fully initialised and this._src is already set.
+      if (this._src != null && tracker._src == null) {
+        tracker._src = this._src;
+      }
       this.adsTracker.on("*", funnelAdEvents.bind(this));
     }
   }
@@ -465,7 +481,7 @@ class VideoTracker extends Tracker {
     att["instrumentation.name"] = this.getInstrumentationName();
     att["instrumentation.version"] = this.getInstrumentationVersion();
     att["enduser.id"] = this._userId;
-    att["src"] = "Browser";
+    att["src"] = this._src || "Browser";
 
     if (type === "customAction") return att;
 
@@ -639,11 +655,11 @@ class VideoTracker extends Tracker {
         this.state.setStartupTime(totalAdsTime)
         this.sendVideoAction(ev, att);
 
-        // Register callback to refresh QoE KPIs with latest state before each drain
-        videoAnalyticsHarvester.setBeforeDrainCallback(() => {
+        const harvester = this.getHarvester?.();
+        harvester?.setBeforeDrainCallback(() => {
           if (this.state) {
             const freshKpis = this.state.getQoeAttributes({}).qoe;
-            videoAnalyticsHarvester.refreshQoeKpis(freshKpis, this.getViewId());
+            harvester.refreshQoeKpis(freshKpis, this.getViewId());
           }
         });
       }
@@ -688,14 +704,15 @@ class VideoTracker extends Tracker {
       this.state.goViewCountUp();
       this.state.totalPlaytime = 0;
       if(!this.isAd()) {
+        const harvester = this.getHarvester?.();
         // Force QoE to be included in the next harvest cycle at content end
-          videoAnalyticsHarvester.forceNextQoeCycle();
+        harvester?.forceNextQoeCycle?.();
         // Clear the before-drain callback so the next harvest doesn't overwrite
         // the final QoE (already in buffer) with zeroed-out state values
-          videoAnalyticsHarvester.setBeforeDrainCallback(null);
+        harvester?.setBeforeDrainCallback?.(null);
         // reset the states after the view count is up
-          if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
-          this.state.resetViewIdTrackedState();
+        if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
+        this.state.resetViewIdTrackedState();
       }
     }
   }

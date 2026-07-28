@@ -42,6 +42,7 @@ Constants.MAX_PAYLOAD_SIZE = 1048576; // 1MB = 1024 × 1024 bytes
 Constants.MAX_BEACON_SIZE = 61440; // 60KB = 60 × 1024 bytes
 Constants.MAX_EVENTS_PER_BATCH = 1000;
 Constants.INTERVAL = 10000; //10 seconds
+Constants.DEFAULT_QOE_INTERVAL_FACTOR = 2;
 
 Constants.QOE_KPI_KEYS = [
     "startupTime", "peakBitrate", "averageBitrate", "totalPlaytime",

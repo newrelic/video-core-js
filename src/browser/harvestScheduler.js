@@ -1,10 +1,15 @@
-import { NrVideoEventAggregator } from "./eventAggregator";
-import { RetryQueueHandler } from "./retryQueueHandler";
-import { OptimizedHttpClient } from "./optimizedHttpClient";
-import { buildUrl, dataSize } from "./utils";
-import Constants from "./constants";
-import Tracker from "./tracker";
-import Log from "./log";
+import { NrVideoEventAggregator } from "../eventAggregator";
+import { RetryQueueHandler } from "../retryQueueHandler";
+import { OptimizedHttpClient } from "../optimizedHttpClient";
+import { buildUrl, dataSize } from "../utils";
+import {
+  partitionByQoeCycle,
+  applyQoeDirtyFilter,
+} from "../utils/qoeFilters";
+import { createHarvestTimer } from "../utils/harvestTimer";
+import Constants from "../constants";
+import Tracker from "../tracker";
+import Log from "../log";
 
 /**
  * Enhanced harvest scheduler that orchestrates the video analytics data collection,
@@ -28,8 +33,6 @@ export class HarvestScheduler {
     }
 
     // Scheduler state
-    this.isStarted = false;
-    this.currentTimerId = null;
     this.harvestCycle = Constants.INTERVAL;
     this.isHarvesting = false;
     this.qoeCycleCount = 1;
@@ -37,44 +40,48 @@ export class HarvestScheduler {
     this.beforeDrainCallback = null;
     this._lastSentQoeKpis = {};
 
+    // Periodic harvest timer. Chained-setTimeout under the hood
+    this.timer = createHarvestTimer({
+      interval: this.harvestCycle,
+      onTick: () => this.onHarvestInterval(),
+      errorLabel: "HarvestScheduler",
+    });
+
     // Page lifecycle handling
     this.setupPageLifecycleHandlers();
+  }
+
+  /**
+   * Whether the scheduler is currently running. Backed by the shared timer.
+   * @returns {boolean}
+   */
+  get isStarted() {
+    return this.timer.isRunning();
   }
 
   /**
    * Starts the harvest scheduler.
    */
   startScheduler() {
-    if (this.isStarted) {
+    if (this.timer.isRunning()) {
       Log.warn("Harvest scheduler is already started");
       return;
     }
-
-    this.isStarted = true;
 
     Log.notice("Starting harvest scheduler", {
       harvestCycle: this.harvestCycle,
       eventBufferSize: this.eventBuffer ? this.eventBuffer.size() : 0,
     });
 
-    this.scheduleNextHarvest();
+    this.timer.start();
   }
 
   /**
    * Stops the harvest scheduler.
    */
   stopScheduler() {
-    if (!this.isStarted) {
-      return;
-    }
-
-    this.isStarted = false;
-
-    if (this.currentTimerId) {
-      clearTimeout(this.currentTimerId);
-      this.currentTimerId = null;
-    }
-
+    if (!this.timer.isRunning()) return;
+    this.timer.stop();
     Log.notice("Harvest scheduler stopped");
   }
 
@@ -92,53 +99,30 @@ export class HarvestScheduler {
     // If buffer is empty, abort harvest
     if (!this.eventBuffer || this.eventBuffer.isEmpty()) return;
 
-    // Clear existing timer to prevent redundant harvests
-    if (this.currentTimerId) {
-      clearTimeout(this.currentTimerId);
-      this.currentTimerId = null;
-    }
-
     try {
       await this.triggerHarvest({});
     } catch (error) {
       Log.error(`${type} harvest failed:`, error.message);
     } finally {
-      // Schedule next harvest after smart harvest completes
-      if (this.isStarted) {
-        this.scheduleNextHarvest();
-      }
+      // Reset the periodic clock — next periodic tick happens `harvestCycle`
+      // after this smart drain, not at the originally-scheduled time.
+      this.timer.cancelAndReschedule();
     }
   }
 
   /**
-   * Schedules the next harvest based on current conditions.
-   * @private
-   */
-  scheduleNextHarvest() {
-    if (!this.isStarted) return;
-
-    const interval = this.harvestCycle;
-    this.currentTimerId = setTimeout(() => this.onHarvestInterval(), interval);
-  }
-
-  /**
-   * Handles the harvest interval timer.
+   * Periodic-tick callback. Invoked by the shared harvest timer on each cycle.
    * @private
    */
   async onHarvestInterval() {
-    try {
-      // Check if there's any data to harvest (buffer or retry queue) before starting the harvest process
-      const hasBufferData = this.eventBuffer && !this.eventBuffer.isEmpty();
-      const hasRetryData =
-        this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
-
-      if (!hasBufferData && !hasRetryData) return;
-      await this.triggerHarvest({});
-    } catch (error) {
-      Log.error("Error during scheduled harvest:", error.message);
-    } finally {
-      this.scheduleNextHarvest();
-    }
+    // Check if there's any data to harvest (buffer or retry queue) before
+    // starting the harvest process — avoids unnecessary network calls when
+    // there's nothing to ship.
+    const hasBufferData = this.eventBuffer && !this.eventBuffer.isEmpty();
+    const hasRetryData =
+      this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0;
+    if (!hasBufferData && !hasRetryData) return;
+    await this.triggerHarvest({});
   }
 
   /**
@@ -185,7 +169,6 @@ export class HarvestScheduler {
       return {
         success: false,
         error: error.message,
-        consecutiveFailures: this.consecutiveFailures,
       };
     } finally {
       this.isHarvesting = false;
@@ -269,35 +252,17 @@ export class HarvestScheduler {
 
     // Always drain fresh events first (priority approach)
     const freshEvents = this.eventBuffer.drain();
-    let filteredFreshEvents;
-    if (isQoeCycle) {
-      filteredFreshEvents = freshEvents;
-    } else {
-      // On non-QoE cycles, put QoE events back into buffer instead of losing them
-      filteredFreshEvents = [];
-      for (const e of freshEvents) {
-        if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
-          this.eventBuffer.add(e);
-        } else {
-          filteredFreshEvents.push(e);
-        }
-      }
-    }
+    let filteredFreshEvents = partitionByQoeCycle(
+      freshEvents,
+      isQoeCycle,
+      this.eventBuffer
+    );
 
     this.qoeCycleCount++;
 
-    // Cross-cycle dirty check: skip QoE if KPIs unchanged since last send
-    // Forced cycles (CONTENT_END, page unload) always send QoE
-    for (let i = filteredFreshEvents.length - 1; i >= 0; i--) {
-      const e = filteredFreshEvents[i];
-      if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
-        if (!isForced && this._qoeKpisUnchanged(e)) {
-          filteredFreshEvents.splice(i, 1);
-        } else {
-          this._saveQoeKpis(e);
-        }
-      }
-    }
+    // Cross-cycle dirty check: skip QoE if KPIs unchanged since last send.
+    // Forced cycles (CONTENT_END, page unload) always send QoE.
+    applyQoeDirtyFilter(filteredFreshEvents, this._lastSentQoeKpis, isForced);
 
     let events = [...filteredFreshEvents];
     let currentPayloadSize = dataSize(filteredFreshEvents);
@@ -391,12 +356,7 @@ export class HarvestScheduler {
    * @private
    */
   handleHarvestFailure(error) {
-    this.consecutiveFailures++;
-
-    Log.warn("Harvest failure handled", {
-      error: error.message,
-      consecutiveFailures: this.consecutiveFailures,
-    });
+    Log.warn("Harvest failure handled", { error: error.message });
   }
 
   /**
@@ -406,7 +366,7 @@ export class HarvestScheduler {
    */
 
   updateHarvestInterval(newInterval) {
-    if (typeof newInterval !== "number" && isNaN(newInterval)) {
+    if (typeof newInterval !== "number" || isNaN(newInterval)) {
       Log.warn("Invalid newInterval provided to updateHarvestInterval");
       return;
     }
@@ -417,26 +377,11 @@ export class HarvestScheduler {
     }
 
     // Check if the interval has actually changed to avoid unnecessary actions
-    if (this.harvestCycle === newInterval) {
-      return;
-    }
+    if (this.harvestCycle === newInterval) return;
 
-    // 1. Update the harvestCycle property with the new interval
     this.harvestCycle = newInterval;
     Log.notice("Updated harvestCycle:", this.harvestCycle);
-
-    // 2. Clear the existing timer
-    if (this.currentTimerId) {
-      clearTimeout(this.currentTimerId);
-      this.currentTimerId = null;
-    }
-
-    // 3. Schedule a new timer with the updated interval
-    if (this.isStarted) {
-      this.scheduleNextHarvest();
-    }
-
-    return;
+    this.timer.updateInterval(newInterval);
   }
 
   /**
@@ -469,31 +414,4 @@ export class HarvestScheduler {
     });
   }
 
-  /**
-   * Checks if QoE KPIs are unchanged since last send.
-   * @param {object} event - QoE event to compare
-   * @returns {boolean} True if KPIs are identical to last sent
-   * @private
-   */
-  _qoeKpisUnchanged(event) {
-    const snapshot = this._lastSentQoeKpis[event.viewId];
-    if (!snapshot) return false;
-    for (const key of Constants.QOE_KPI_KEYS) {
-      if (event[key] !== snapshot[key]) return false;
-    }
-    return true;
-  }
-
-  /**
-   * Saves QoE KPI values after sending, keyed by viewId to support multiple players.
-   * @param {object} event - QoE event that was sent
-   * @private
-   */
-  _saveQoeKpis(event) {
-    const snapshot = {};
-    for (const key of Constants.QOE_KPI_KEYS) {
-      snapshot[key] = event[key];
-    }
-    this._lastSentQoeKpis[event.viewId] = snapshot;
-  }
 }
