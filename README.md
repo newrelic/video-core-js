@@ -100,12 +100,9 @@ class MyPlayerTracker extends nrvideo.VideoTracker {
 // 2. Configure and register the tracker
 const options = {
   info: {
-    licenseKey: 'YOUR_LICENSE_KEY',
-    beacon: 'bam.nr-data.net',
+    licenseKey:    'YOUR_LICENSE_KEY',
+    beacon:        'bam.nr-data.net',
     applicationID: 'YOUR_APPLICATION_ID',
-  },
-  config: {
-    qoeAggregate: true,
   },
 };
 
@@ -118,11 +115,11 @@ nrvideo.Core.addTracker(tracker, options);
 
 ## Configuration
 
-The `options` object passed to `Core.addTracker()` consists of two parts:
+The `options` object passed to `Core.addTracker()` consists of two top-level keys: `info` (credentials and pipeline config) and `config` (optional behaviour settings).
 
-### Getting Your Configuration
+---
 
-Obtained through the New Relic onboarding process.
+### Browser / Web Setup
 
 **Obtain your credentials:**
 
@@ -130,27 +127,27 @@ Obtained through the New Relic onboarding process.
 2. Navigate to the video agent onboarding flow
 3. Copy your credentials: `licenseKey`, `beacon`, and `applicationId`
 
-**Mode 1 — With Application ID and Beacon:**
+**With Application ID and Beacon:**
 
 ```javascript
 info: {
-  licenseKey: 'YOUR_LICENSE_KEY',      // Required
-  applicationID: 'YOUR_APPLICATION_ID', // Required
-  beacon: 'bam.nr-data.net',            // Required when applicationID is provided
+  licenseKey:    'YOUR_LICENSE_KEY',       // Required
+  applicationID: 'YOUR_APPLICATION_ID',   // Required
+  beacon:        'bam.nr-data.net',        // Required when applicationID is provided
 }
 ```
 
-**Mode 2 — With App Name and Region:**
+**With App Name and Region:**
 
 ```javascript
 info: {
   licenseKey: 'YOUR_LICENSE_KEY', // Required
-  appName: 'My Video App',       // Required when no applicationID
-  region: 'US',                   // Required when no applicationID
+  appName:    'My Video App',     // Required when no applicationID
+  region:     'US',               // Required when no applicationID — 'US' | 'EU' | 'staging'
 }
 ```
 
-**Valid Beacon Endpoints:**
+**Valid Browser Beacon Endpoints:**
 
 | Region | Beacon |
 |---|---|
@@ -159,36 +156,42 @@ info: {
 | Staging | `staging-bam-cell.nr-data.net` |
 | GOV | `gov-bam.nr-data.net` |
 
-**Mode 3 — Vega / Connected-Device pipeline:**
+---
 
-When importing from the `/vega` subpath (`@newrelic/video-core/vega` or any player package's `/vega`), the `info` object uses `applicationToken` and `endpoint` specific to the Vega pipeline, plus an optional `deviceInfo` block carrying runtime device identity:
+### Vega / Fire TV Setup
 
-**Obtain your credentials:**
+For Amazon Vega (Fire TV / Kepler runtime), import from the `/vega` subpath. The `info` object uses `applicationToken` and `endpoint` specific to the Vega pipeline, plus an optional `deviceInfo` block carrying runtime device identity.
+
+**Obtain your application token:**
 
 1. Log in to [one.newrelic.com](https://one.newrelic.com)
 2. Navigate to the video agent onboarding flow
-3. Copy your `applicationToken` and your `accountId`
+3. Copy your `applicationToken` (begins with `AA...` and ends with `-NRMA`) and your `accountId`
 
 ```javascript
 info: {
-  accountId:        '1',                   // Required
-  applicationToken: 'AA...NRMA',           // Required — NRMA token for mobile collector
-  endpoint:         'US',                  // Required — 'US' | 'EU' | 'staging'
-  deviceInfo: {                            // Optional — all sub-fields optional
-    uuid:               'AQVV01P',         // device identifier
-    osVersion:          '1.4.0',           // OS version string
-    deviceModel:        'AQVV01P',         // device model code
-    deviceManufacturer: 'Amazon',
-    osBuild:            'PS7649/1976N',    // OS build identifier
-    appBuild:           '601646782',       // app build number
+  accountId:        'YOUR_ACCOUNT_ID',   // Required
+  applicationToken: 'YOUR_NRMA_TOKEN',   // Required — begins "AA…-NRMA"
+  endpoint:         'US',                // Required — 'US' | 'EU' | 'staging' | 'GOV'
+  deviceInfo: {                          // Optional — all sub-fields optional
+    uuid:               getDeviceId(),
+    osVersion:          getSystemVersion(),
+    deviceModel:        getModel(),
+    deviceManufacturer: getBrand(),
+    osBuild:            getBuildIdSync(),  // OS image build
+    appBuild:           getBuildNumber(),  // app build number
     architecture:       'aarch64',
   },
 }
 ```
 
-On Vega, source these from `@amazon-devices/react-native-device-info`:
+Install the device-info library to source real device attributes at runtime:
 
-```js
+```bash
+npm install @amazon-devices/react-native-device-info --save
+```
+
+```javascript
 import {
   getDeviceId, getSystemVersion, getModel, getBrand,
   getBuildIdSync, getBuildNumber,
@@ -199,18 +202,43 @@ const deviceInfo = {
   osVersion:          getSystemVersion(),
   deviceModel:        getModel(),
   deviceManufacturer: getBrand(),
-  osBuild:            getBuildIdSync(),    // OS build
-  appBuild:           getBuildNumber(),    // app build
+  osBuild:            getBuildIdSync(),    // OS image build
+  appBuild:           getBuildNumber(),    // app build number
   architecture:       'aarch64',
 };
 ```
 
+#### `deviceInfo` field reference
+
+All sub-fields are optional — missing values fall back to the SDK defaults. Extra fields are ignored.
+
+| Field | Recommended source | Falls back to |
+|---|---|---|
+| `uuid` | `getDeviceId()` — stable model-code identifier | `"00000000-0000-0000-0000-000000000000"` |
+| `osVersion` | `getSystemVersion()` | `"1.0"` |
+| `deviceModel` | `getModel()` | `"VegaDevice"` |
+| `deviceManufacturer` | `getBrand()` | `"Amazon"` |
+| `osBuild` | `getBuildIdSync()` — **OS image build** | `"1"` |
+| `appBuild` | `getBuildNumber()` — **app build number** | `"1"` |
+| `architecture` | `'aarch64'` | `"aarch64"` |
+
+> `osBuild` and `appBuild` are semantically distinct: `osBuild` is the OS image identifier set by Amazon; `appBuild` is your app's build number. Use `getBuildIdSync()` for the former and `getBuildNumber()` for the latter.
+
+**Valid Vega Endpoints:**
+
+| Value | Routes to |
+|---|---|
+| `'US'` | `mobile-collector.newrelic.com` |
+| `'EU'` | `mobile-collector.eu01.nr-data.net` |
+| `'staging'` | `staging-mobile-collector.newrelic.com` |
+| `'GOV'` | `gov-mobile-collector.newrelic.com` |
+
+---
 
 ### Config Object (Optional)
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `qoeAggregate` | `boolean` | `true` | Enable Quality of Experience event aggregation. QoE is enabled out of the box; set to `false` to disable. |
 | `qoeIntervalFactor` | `number` | `2` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
 | `obfuscate` | `array` | `[]` | Regex-based rules to mask sensitive data before transmission. See [Obfuscation Rules](#obfuscation-rules). |
 
