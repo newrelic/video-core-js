@@ -1,0 +1,73 @@
+name: Deploy to S3
+
+on:
+  workflow_dispatch:
+    inputs:
+      s3-path:
+        description: 'Path within the S3 bucket (e.g. browser/video-core-js)'
+        required: true
+        default: 'browser/video-core-js'
+        type: string
+  workflow_call:
+    inputs:
+      s3-path:
+        description: 'Path within the S3 bucket'
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Get package version
+        id: pkg
+        run: echo "version=$(jq -r '.version' package.json)" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Upload versioned and latest files to S3
+        run: |
+          VERSION="${{ steps.pkg.outputs.version }}"
+          S3_PATH="${{ inputs.s3-path }}"
+          S3_BUCKET="nr-downloads-main"
+          UMD_FILE="dist/umd/nrvideo.min.js"
+
+          VERSIONED="nrvideo.${VERSION}.min.js"
+          LATEST="nrvideo.latest.min.js"
+
+          cp "$UMD_FILE" "$VERSIONED"
+          cp "$UMD_FILE" "$LATEST"
+
+          aws s3 cp "$VERSIONED" "s3://${S3_BUCKET}/${S3_PATH}/${VERSIONED}"
+          aws s3 cp "$LATEST"    "s3://${S3_BUCKET}/${S3_PATH}/${LATEST}"
+
+          echo "## S3 Upload Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${S3_BUCKET}/${S3_PATH}/${VERSIONED}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`s3://${S3_BUCKET}/${S3_PATH}/${LATEST}\`" >> $GITHUB_STEP_SUMMARY
