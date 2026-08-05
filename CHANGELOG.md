@@ -1,3 +1,10 @@
+## [5.0.1](https://github.com/newrelic/video-core-js/compare/v5.0.0...v5.0.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* Add JP region support ([d3a9663](https://github.com/newrelic/video-core-js/commit/d3a9663b14ca68d5f56290927ad0bb8c08938f6d))
+
 # Changelog
 All notable changes to this project will be documented in this file.
 
