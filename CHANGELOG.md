@@ -1,6 +1,57 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [5.0.0] - 2026/07/28
+
+### Feat
+
+- **Vega (Connected Device) monitoring support**
+  Introduced a full Vega / connected-device analytics pipeline alongside the existing browser one. Adds `ConnectedDeviceHarvester` (`/v5/connect` + `/v3/data`), a `VegaAnalyticsAgent` singleton that mirrors `VideoAnalyticsAgent`, and a `ConnectedDeviceAgent` entry-point. Source routing is driven by a new `options.src` field: trackers that pass `src: 'Vega'` are dispatched to the Vega harvester; all others continue using the browser harvester unchanged.
+
+- **Japan (JP) region collector endpoint**
+  Added `JP: "bam.jp.nr-data.net"` to `Constants.COLLECTOR` so applications targeting Japanese accounts can route to the correct regional collector.
+
+
+### Fix
+
+- **GOV (FedRAMP) endpoint for connected-device harvester**
+  Added `MOBILE_ENDPOINT_GOV` (`gov-mobile-collector.newrelic.com`) and a `GOV` key to `NR_ENDPOINT` in `connectedDeviceConstants.js`, supporting US government accounts.
+
+- **QoE enabled by default for connected-device agent**
+  `qoeAggregate` now defaults to `true` in `videoConfiguration.js`, matching the browser-side default set in v4.1.7.
+
+- **Obfuscation applied to connected-device payloads**
+  Obfuscation rules are now enforced on harvest payloads sent by the connected-device harvester, keeping behaviour consistent with the browser harvester.
+
+- **Connect retry capped at 3 attempts**
+  The `/v5/connect` exponential-backoff retry loop in `ConnectedDeviceHarvester` is now limited to `CD_CONNECT_MAX_ATTEMPTS` (3), preventing runaway retries on persistent failures.
+
+- **Ad src routing**
+  Ad events now correctly propagate `att.src` through the tracker chain so they are dispatched to the right harvester.
+
+## [4.1.8] - 2026/07/07
+
+### Feat
+
+- **New download QoE metrics**
+  Added download-throughput KPIs to `VideoTrackerState`: tracks bytes received and elapsed time per segment download to derive a per-session download bitrate signal for QoE reporting.
+
+- **Additional QoE attributes**
+  Extended `videotrackerstate.js` and `videotracker.js` with new per-session QoE attributes (`weightedBitrate`, min/max bitrate, segment count, and related accumulators) emitted alongside existing QoE aggregate events.
+
+### Fix
+
+- **Exclude mid-roll ad pause time from `timeSincePaused`**
+  When an ad ends and control returns to content, `parentTracker.state.timeSincePaused` is now reset so that the pause time accumulated during the ad break is not incorrectly attributed to a subsequent content pause.
+
+- **Initialize `weightedBitrate` to `0` in `VideoTrackerState`**
+  `weightedBitrate` is now explicitly set to `0` in both the constructor and `resetValues()`, preventing `undefined` from being emitted as an attribute value before the first bitrate sample arrives.
+
+### Refactor
+
+- **Inline `WeightedAverage` helper**
+  Removed the standalone `WeightedAverage.js` module and folded the time-weighted average logic directly into `trackContentBitrateState` in `videotrackerstate.js`, reducing indirection without changing behaviour.
+
 ## [4.1.7] - 2026/06/11
 
 ### Changed
