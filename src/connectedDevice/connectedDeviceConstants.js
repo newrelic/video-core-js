@@ -6,25 +6,16 @@
 // Only `connectedDeviceHarvester.js` imports these — browser builds
 // never reference this file, keeping the browser bundle lean.
 
-/** US production mobile collector base URL. */
-export const MOBILE_ENDPOINT_US = "https://mobile-collector.newrelic.com/mobile";
-
-/** EU production mobile collector base URL. Routes EU-account events to the EU datacenter. */
-export const MOBILE_ENDPOINT_EU = "https://mobile-collector.eu01.nr-data.net/mobile";
-
-/** Staging mobile collector base URL. */
-export const STAGING_MOBILE_ENDPOINT =
-  "https://staging-mobile-collector.newrelic.com/mobile";
-
-/** FedRAMP/GOV mobile collector base URL. Required for US government accounts. */
-export const MOBILE_ENDPOINT_GOV = "https://gov-mobile-collector.newrelic.com/mobile";
-
-/** Endpoint region selector. Each value routes to its regional collector. */
-export const NR_ENDPOINT = {
-  US:      "US",
-  EU:      "EU",
-  STAGING: "staging",
-  GOV:     "GOV",
+/**
+ * Maps region key (lowercase) directly to the regional mobile collector base URL.
+ * Accepts global.region.key values: us, eu, gov, jp, staging.
+ */
+export const ENDPOINT_URL = {
+  us:      "https://mobile-collector.newrelic.com/mobile",
+  eu:      "https://mobile-collector.eu01.nr-data.net/mobile",
+  staging: "https://staging-mobile-collector.newrelic.com/mobile",
+  gov:     "https://gov-mobile-collector.newrelic.com/mobile",
+  jp:      "https://mobile-collector.jp.nr-data.net/mobile",
 };
 
 /** Default harvest cadence in ms. */

@@ -3,9 +3,7 @@ import fs from "fs";
 import path from "path";
 import ConnectedDeviceHarvester from "../src/connectedDevice/connectedDeviceHarvester";
 import {
-  MOBILE_ENDPOINT_US,
-  MOBILE_ENDPOINT_EU,
-  STAGING_MOBILE_ENDPOINT,
+  ENDPOINT_URL,
   CD_DEVICE_INFO,
   CD_METADATA,
   CD_CONNECT_MAX_ATTEMPTS,
@@ -97,7 +95,7 @@ describe("ConnectedDeviceHarvester", () => {
       await Promise.resolve();
       expect(fetchStub.called).toBe(true);
       const [url, opts] = fetchStub.firstCall.args;
-      expect(url).toBe(`${MOBILE_ENDPOINT_US}/v5/connect`);
+      expect(url).toBe(`${ENDPOINT_URL.us}/v5/connect`);
       expect(opts.method).toBe("POST");
       expect(opts.headers["Content-Type"]).toBe("application/json");
       expect(opts.headers["X-App-License-Key"]).toBe("tok-1");
@@ -109,7 +107,7 @@ describe("ConnectedDeviceHarvester", () => {
       await Promise.resolve();
       await Promise.resolve();
       expect(fetchStub.firstCall.args[0]).toBe(
-        `${STAGING_MOBILE_ENDPOINT}/v5/connect`
+        `${ENDPOINT_URL.staging}/v5/connect`
       );
       h.dispose();
     });
@@ -235,7 +233,7 @@ describe("ConnectedDeviceHarvester", () => {
 
       expect(dataFetch.calledOnce).toBe(true);
       const [url, opts] = dataFetch.firstCall.args;
-      expect(url).toBe(`${MOBILE_ENDPOINT_US}/v3/data`);
+      expect(url).toBe(`${ENDPOINT_URL.us}/v3/data`);
       const body = JSON.parse(opts.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body).toHaveLength(10);

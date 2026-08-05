@@ -1,10 +1,6 @@
 import { NrVideoEventAggregator } from "../eventAggregator";
 import {
-  MOBILE_ENDPOINT_US,
-  MOBILE_ENDPOINT_EU,
-  MOBILE_ENDPOINT_GOV,
-  STAGING_MOBILE_ENDPOINT,
-  NR_ENDPOINT,
+  ENDPOINT_URL,
   DEFAULT_HARVEST_TIME,
   DEFAULT_BUFFER_SIZE,
   CD_DATA_TOKENS_PAYLOAD,
@@ -60,13 +56,14 @@ export default class ConnectedDeviceHarvester {
     if (!applicationToken) {
       throw new Error("applicationToken is required"); 
     }
-    if (!Object.values(NR_ENDPOINT).includes(endpoint)) {
-      throw new Error("Invalid endpoint"); 
+    const normalizedEndpoint = endpoint?.toLowerCase();
+    if (!(normalizedEndpoint in ENDPOINT_URL)) {
+      throw new Error("Invalid endpoint");
     }
 
     this.accountId = accountId;
     this.applicationToken = applicationToken;
-    this.endpoint = endpoint;
+    this.endpoint = normalizedEndpoint;
     this.harvestInterval = DEFAULT_HARVEST_TIME;
     this.maxBufferSize = DEFAULT_BUFFER_SIZE;
 
@@ -136,12 +133,7 @@ export default class ConnectedDeviceHarvester {
    * @returns {string}
    */
   getEndpointBaseUrl() {
-    switch (this.endpoint) {
-      case NR_ENDPOINT.EU:      return MOBILE_ENDPOINT_EU;
-      case NR_ENDPOINT.STAGING: return STAGING_MOBILE_ENDPOINT;
-      case NR_ENDPOINT.GOV:     return MOBILE_ENDPOINT_GOV;
-      default:                  return MOBILE_ENDPOINT_US;
-    }
+    return ENDPOINT_URL[this.endpoint] ?? ENDPOINT_URL.us;
   }
 
   /**
