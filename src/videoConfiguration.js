@@ -1,5 +1,6 @@
 import Log from "./log";
 import Constants from "./constants";
+import { ENDPOINT_URL } from "./connectedDevice/connectedDeviceConstants";
 
 const { COLLECTOR } = Constants;
 
@@ -44,8 +45,8 @@ class VideoConfiguration {
       Log.error("applicationToken is required");
       return false;
     }
-    if (!["US", "EU", "staging", "GOV"].includes(info.endpoint)) {
-      Log.error("Invalid endpoint (must be US, EU, staging, or GOV)");
+    if (!(info.endpoint?.toLowerCase() in ENDPOINT_URL)) {
+      Log.error("Invalid endpoint (must be us, eu, staging, gov, or jp)");
       return false;
     }
     return true;
@@ -176,7 +177,7 @@ class VideoConfiguration {
         info: {
           accountId: userInfo.accountId,
           applicationToken: userInfo.applicationToken,
-          endpoint: userInfo.endpoint,
+          endpoint: userInfo.endpoint?.toLowerCase(),
           ...(userInfo.appName ? { appName: userInfo.appName } : {}),
           ...(userInfo.applicationID ? { applicationID: userInfo.applicationID } : {}),
           ...(userInfo.deviceInfo ? { deviceInfo: userInfo.deviceInfo } : {}),

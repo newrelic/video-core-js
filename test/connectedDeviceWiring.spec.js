@@ -282,7 +282,7 @@ describe("Vega core wiring", () => {
       expect(g.info).toEqual({
         accountId: "acct",
         applicationToken: "tok",
-        endpoint: "US",
+        endpoint: "us",
         appName: "myApp",
         applicationID: "appId",
       });
@@ -319,7 +319,7 @@ describe("Vega core wiring", () => {
         "Vega"
       );
       expect(globalThis.__NRVIDEO_CD__.info.applicationToken).toBe("tok-2");
-      expect(globalThis.__NRVIDEO_CD__.info.endpoint).toBe("EU");
+      expect(globalThis.__NRVIDEO_CD__.info.endpoint).toBe("eu");
       expect(globalThis.__NRVIDEO_CD__.config.qoeIntervalFactor).toBe(3);
       expect("harvester" in globalThis.__NRVIDEO_CD__).toBe(false);
     });
