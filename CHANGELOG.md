@@ -3,8 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [5.0.1](https://github.com/newrelic/video-core-js/compare/v5.0.0...v5.0.1) (2026-08-05)
 
-### Bug Fixes
-* Add JP region support for Vega 
+### Bug fixes
+
+- Added Japan (JP) as a supported collector region for connected-device (Vega/Fire TV) tracking — the `endpoint` config now accepts `jp` alongside `us`/`eu`/`staging`/`gov`, routing events to the JP regional collector.
 
 ## [5.0.0] - 2026/07/28
 
