@@ -1,3 +1,10 @@
+## <small>5.0.2 (2026-08-12)</small>
+
+* Merge pull request #103 from newrelic/chore/align-release-notes-format ([d0fa066](https://github.com/newrelic/video-core-js/commit/d0fa066)), closes [#103](https://github.com/newrelic/video-core-js/issues/103)
+* Merge pull request #104 from newrelic/fix/shared-mock-jest-fns ([525583c](https://github.com/newrelic/video-core-js/commit/525583c)), closes [#104](https://github.com/newrelic/video-core-js/issues/104)
+* fix: upgrade shared mock stubs to jest.fn() for call-count assertions ([b49c6e9](https://github.com/newrelic/video-core-js/commit/b49c6e9))
+* chore: align release notes and changelog format with docs template ([96d251a](https://github.com/newrelic/video-core-js/commit/96d251a))
+
 # Changelog
 All notable changes to this project will be documented in this file.
 
