@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [5.0.2](https://github.com/newrelic/video-core-js/compare/v5.0.1...v5.0.2) (2026-08-12)
+
+### Fix
+
+* fixed shared mock stubs to jest.fn() for call-count assertions
+
 ## [5.0.1](https://github.com/newrelic/video-core-js/compare/v5.0.0...v5.0.1) (2026-08-05)
 
 ### Bug fixes
