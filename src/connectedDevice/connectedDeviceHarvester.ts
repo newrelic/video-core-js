@@ -10,6 +10,7 @@ import {
   CD_CONNECT_RETRY_DELAY_MS,
   CD_CONNECT_TIMEOUT_MS,
   CD_DATA_TIMEOUT_MS,
+  VegaEndpoint,
 } from "./connectedDeviceConstants";
 import {
   bufferEventWithQoeDedup,
@@ -17,9 +18,27 @@ import {
   partitionByQoeCycle,
   applyQoeDirtyFilter,
 } from "../utils/qoeFilters";
-import { createHarvestTimer } from "../utils/harvestTimer";
+import { createHarvestTimer, HarvestTimer } from "../utils/harvestTimer";
 import { applyObfuscationRules } from "../obfuscate";
 import Log from "../log";
+import { EventAttributes } from "../utils/eventBuilder";
+
+export interface ConnectedDeviceHarvesterOptions {
+  accountId?: string;
+  applicationToken: string;
+  endpoint: string;
+  deviceInfo?: Record<string, any>;
+}
+
+interface DeviceInfo {
+  uuid: any;
+  osVersion: any;
+  deviceModel: any;
+  deviceManufacturer: any;
+  osBuild: any;
+  appBuild: any;
+  architecture: any;
+}
 
 /**
  * Generic NR mobile-collector harvester for the connected-device pipeline
@@ -32,11 +51,29 @@ import Log from "../log";
  *
  */
 export default class ConnectedDeviceHarvester {
+  accountId?: string;
+  applicationToken: string;
+  endpoint: VegaEndpoint;
+  harvestInterval: number;
+  maxBufferSize: number;
+  deviceInfo: DeviceInfo;
+  eventBuffer: NrVideoEventAggregator;
+  dataToken: string | null;
+  isHarvesting: boolean;
+  isDisposed: boolean;
+  _isFetchingToken: boolean;
+  timer: HarvestTimer;
+  qoeCycleCount: number;
+  forceQoeNextCycle: boolean;
+  beforeDrainCallback: (() => void) | null;
+  _lastSentQoeKpis: Record<string, any>;
+  _connectAttempt: number;
+
   /**
    * @param {object} opts
    * @param {string} [opts.accountId]         Captured for parity with CAF; not transmitted.
-   * @param {string} opts.applicationToken    Sent as `X-App-License-Key` header. 
-   * @param {string} opts.endpoint            One of `US`, `EU`, `staging`. 
+   * @param {string} opts.applicationToken    Sent as `X-App-License-Key` header.
+   * @param {string} opts.endpoint            One of `US`, `EU`, `staging`.
    * @param {object} [opts.deviceInfo]        Customer-collected device identity. Any of:
    *   uuid, osVersion, deviceModel, deviceManufacturer, osBuild, appBuild, architecture.
    *   Each field optional — missing values fall back to placeholders from
@@ -52,18 +89,18 @@ export default class ConnectedDeviceHarvester {
     applicationToken,
     endpoint,
     deviceInfo,
-  } = {}) {
+  }: Partial<ConnectedDeviceHarvesterOptions> = {}) {
     if (!applicationToken) {
-      throw new Error("applicationToken is required"); 
+      throw new Error("applicationToken is required");
     }
     const normalizedEndpoint = endpoint?.toLowerCase();
-    if (!(normalizedEndpoint in ENDPOINT_URL)) {
+    if (!((normalizedEndpoint as string) in ENDPOINT_URL)) {
       throw new Error("Invalid endpoint");
     }
 
     this.accountId = accountId;
     this.applicationToken = applicationToken;
-    this.endpoint = normalizedEndpoint;
+    this.endpoint = normalizedEndpoint as VegaEndpoint;
     this.harvestInterval = DEFAULT_HARVEST_TIME;
     this.maxBufferSize = DEFAULT_BUFFER_SIZE;
 
@@ -90,16 +127,16 @@ export default class ConnectedDeviceHarvester {
       architecture:       architecture       || CD_METADATA.architecture,
     };
 
-    this.eventBuffer = new NrVideoEventAggregator(); 
+    this.eventBuffer = new NrVideoEventAggregator();
 
     // Smart-harvest wiring: buffer triggers an early drain at 60% (smart) and
     // 90% (overflow) capacity, before makeRoom()'s drop-oldest FIFO eviction
-    // would silently lose events. 
+    // would silently lose events.
     this.eventBuffer.setSmartHarvestCallback((type, threshold) =>
       this.triggerSmartHarvest(type, threshold)
     );
 
-    this.dataToken = null; 
+    this.dataToken = null;
     this.isHarvesting = false;
     this.isDisposed = false;
     this._isFetchingToken = false; // guard: prevents parallel /v5/connect sequences
@@ -112,13 +149,13 @@ export default class ConnectedDeviceHarvester {
       errorLabel: "ConnectedDeviceHarvester",
     });
 
-    // QoE state 
+    // QoE state
     this.qoeCycleCount = 1;
     this.forceQoeNextCycle = false;
     this.beforeDrainCallback = null;
     this._lastSentQoeKpis = {};
 
-    // Connect retry state 
+    // Connect retry state
     this._connectAttempt = 0;
 
     // fire-and-forget initialise.
@@ -132,15 +169,15 @@ export default class ConnectedDeviceHarvester {
    *
    * @returns {string}
    */
-  getEndpointBaseUrl() {
+  getEndpointBaseUrl(): string {
     return ENDPOINT_URL[this.endpoint] ?? ENDPOINT_URL.us;
   }
 
   /**
-   * Two-phase init: fetch dataToken, then start harvest interval. 
+   * Two-phase init: fetch dataToken, then start harvest interval.
    * @returns {Promise<void>}
    */
-  async initialise() {
+  async initialise(): Promise<void> {
     await this.fetchDataTokens();
     // Defensive guard: if dispose() ran while fetchDataTokens was awaiting,
     // do not start an interval that will outlive the harvester.
@@ -153,7 +190,7 @@ export default class ConnectedDeviceHarvester {
   /**
    * POST `/v5/connect` to obtain a dataToken. Retries up to
    * CD_CONNECT_MAX_ATTEMPTS times with a fixed CD_CONNECT_RETRY_DELAY_MS
-   * wait between attempts. 
+   * wait between attempts.
    *
    * Iterative loop keeps the call stack flat across all attempts.
    * `_isFetchingToken` guard ensures only one connect sequence runs at a
@@ -163,7 +200,7 @@ export default class ConnectedDeviceHarvester {
    *
    * @returns {Promise<void>}
    */
-  async fetchDataTokens() {
+  async fetchDataTokens(): Promise<void> {
     if (this._isFetchingToken) return;
     this._isFetchingToken = true;
 
@@ -205,7 +242,7 @@ export default class ConnectedDeviceHarvester {
           this._connectAttempt = attempt + 1;
           Log.notice("ConnectedDeviceHarvester: dataToken acquired");
           return;
-        } catch (err) {
+        } catch (err: any) {
           this._connectAttempt = attempt + 1;
           Log.error(
             `ConnectedDeviceHarvester: /v5/connect failed (attempt ${this._connectAttempt}/${CD_CONNECT_MAX_ATTEMPTS}):`,
@@ -231,7 +268,7 @@ export default class ConnectedDeviceHarvester {
    * Starts the periodic harvest timer.
    * Idempotent — safe to call repeatedly.
    */
-  startHarvestInterval() {
+  startHarvestInterval(): void {
     if (this.isDisposed) return;
     this.timer.start();
   }
@@ -247,14 +284,14 @@ export default class ConnectedDeviceHarvester {
    * @param {number} threshold - The threshold percentage that triggered the harvest (60 or 90).
    * @returns {Promise<void>}
    */
-  async triggerSmartHarvest(type, threshold) {
+  async triggerSmartHarvest(type: string, threshold: number): Promise<void> {
     Log.notice(
       `ConnectedDeviceHarvester: smart-harvest trigger (${type} at ${threshold}%)`
     );
     if (!this.eventBuffer || this.eventBuffer.isEmpty()) return;
     try {
       await this.sendBufferedEvents();
-    } catch (error) {
+    } catch (error: any) {
       Log.error(`${type} smart-harvest failed:`, error.message);
     } finally {
       // Reset the periodic clock — next periodic tick happens `harvestInterval`
@@ -269,13 +306,13 @@ export default class ConnectedDeviceHarvester {
    * @param {object} eventObject
    * @returns {boolean}
    */
-  addEvent(eventObject) {
+  addEvent(eventObject: EventAttributes): boolean {
     try {
       // Shared QOE_AGGREGATE dedup + non-QoE append. Timestamp
       // is preserved from `recordEvent.js` (emit-time), matching the Browser
       // pipeline. Cross-pipeline analytics produce consistent timestamps.
       return bufferEventWithQoeDedup(this.eventBuffer, eventObject);
-    } catch (err) {
+    } catch (err: any) {
       Log.error("ConnectedDeviceHarvester.addEvent failed:", err.message);
       return false;
     }
@@ -285,7 +322,7 @@ export default class ConnectedDeviceHarvester {
    * Forces the next harvest cycle to ship QOE_AGGREGATE regardless of cycle
    * multiplier or dirty check. Used at CONTENT_END for final QoE flush.
    */
-  forceQoeNextHarvest() {
+  forceQoeNextHarvest(): void {
     this.forceQoeNextCycle = true;
   }
 
@@ -295,7 +332,7 @@ export default class ConnectedDeviceHarvester {
    * before they ship.
    * @param {Function|null} cb
    */
-  setBeforeDrainCallback(cb) {
+  setBeforeDrainCallback(cb: (() => void) | null): void {
     if (typeof cb === "function" || cb === null) {
       this.beforeDrainCallback = cb;
     }
@@ -309,7 +346,7 @@ export default class ConnectedDeviceHarvester {
    * @param {object} freshKpis - Object with latest KPI values
    * @param {string} [viewId] - The viewId of the player whose QoE event to update
    */
-  refreshQoeKpis(freshKpis, viewId) {
+  refreshQoeKpis(freshKpis: EventAttributes, viewId?: string): void {
     refreshQoeKpisInBuffer(this.eventBuffer, freshKpis, viewId);
   }
 
@@ -320,7 +357,7 @@ export default class ConnectedDeviceHarvester {
    *
    * @param {number} interval - New cadence in ms.
    */
-  setHarvestInterval(interval) {
+  setHarvestInterval(interval: number): void {
     if (typeof interval !== "number" || interval <= 0) return;
     this.harvestInterval = interval;
     this.timer.updateInterval(interval);
@@ -336,7 +373,7 @@ export default class ConnectedDeviceHarvester {
    *
    * @returns {Promise<void>}
    */
-  async sendBufferedEvents() {
+  async sendBufferedEvents(): Promise<void> {
     if (this.isHarvesting) return;
     if (!this.dataToken) return;
     if (this.eventBuffer.isEmpty()) return;
@@ -345,7 +382,7 @@ export default class ConnectedDeviceHarvester {
     if (typeof this.beforeDrainCallback === "function") {
       try {
         this.beforeDrainCallback();
-      } catch (e) {
+      } catch (e: any) {
         Log.error("ConnectedDeviceHarvester beforeDrainCallback failed:", e.message);
       }
     }
@@ -426,7 +463,7 @@ export default class ConnectedDeviceHarvester {
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       Log.notice(`ConnectedDeviceHarvester: sent ${filtered.length} events`);
-    } catch (err) {
+    } catch (err: any) {
       Log.error("ConnectedDeviceHarvester: /v3/data send failed:", err.message);
       // Re-queue drained events into buffer; next tick retries.
       for (const e of filtered) this.eventBuffer.add(e);
@@ -443,7 +480,7 @@ export default class ConnectedDeviceHarvester {
    * @returns {Array}
    * @private
    */
-  _buildDeviceInfo() {
+  _buildDeviceInfo(): any[] {
     const d = this.deviceInfo;
     return [
       CD_DEVICE_INFO[0],          // osName        — fixed ("Vega")
@@ -469,7 +506,7 @@ export default class ConnectedDeviceHarvester {
    * @returns {object}
    * @private
    */
-  _buildMetadata() {
+  _buildMetadata(): Record<string, any> {
     const d = this.deviceInfo;
     return {
       ...CD_METADATA,
@@ -495,7 +532,7 @@ export default class ConnectedDeviceHarvester {
    * @returns {Promise<Response>}
    * @private
    */
-  _fetchWithTimeout(url, options, timeoutMs) {
+  _fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
     const controller = new AbortController();
     const timerId = setTimeout(() => controller.abort(), timeoutMs);
     return fetch(url, { ...options, signal: controller.signal })
@@ -506,7 +543,7 @@ export default class ConnectedDeviceHarvester {
    * Stops the harvest interval and attempts one final best-effort send.
    * @returns {Promise<void>}
    */
-  async dispose() {
+  async dispose(): Promise<void> {
     this.isDisposed = true;
     this.timer.stop();
     return this.sendBufferedEvents();

@@ -2,7 +2,7 @@ import sinon from 'sinon';
 import { videoAnalyticsHarvester } from '../src/browser/agent';
 import Log from '../src/log';
 import { JSDOM } from "jsdom";
-import { HarvestScheduler } from '../src/browser/harvestScheduler.js';
+import { HarvestScheduler } from '../src/browser/harvestScheduler';
 
 describe('videoAnalyticsHarvester', function() {
   let stubs = [];

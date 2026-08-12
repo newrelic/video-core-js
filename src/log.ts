@@ -5,12 +5,18 @@
  * @static
  */
 class Log {
+  static Levels: Record<string, number>;
+  static level: number | string;
+  static colorful: boolean;
+  static includeTime: boolean;
+  static prefix: string;
+
   /**
    * Sends an error console log.
    * @param {...any} [msg] Message to show
    * @static
    */
-  static error(...msg) {
+  static error(...msg: any[]) {
     _report(msg, Log.Levels.ERROR, "darkred");
   }
 
@@ -20,7 +26,7 @@ class Log {
    * @static
    * @param {...any} msg Message to show
    */
-  static warn(...msg) {
+  static warn(...msg: any[]) {
     _report(msg, Log.Levels.WARNING, "darkorange");
   }
 
@@ -30,7 +36,7 @@ class Log {
    * @static
    * @param {...any} msg Message to show
    */
-  static notice(...msg) {
+  static notice(...msg: any[]) {
     _report([].slice.call(arguments), Log.Levels.NOTICE, "darkcyan");
   }
 
@@ -40,7 +46,7 @@ class Log {
    * @static
    * @param {...any} msg Message to show
    */
-  static debug(...msg) {
+  static debug(...msg: any[]) {
     _report(msg, Log.Levels.DEBUG, "indigo");
   }
 
@@ -63,12 +69,12 @@ class Log {
    * @param {function} [report] Callback function called to report events.
    * Default calls Log.debug()
    */
-  static debugCommonVideoEvents(o, extraEvents, report) {
+  static debugCommonVideoEvents(o: any, extraEvents?: any[], report?: (e: any) => void) {
     try {
-      if (Log.level <= Log.Levels.DEBUG) {
+      if ((Log.level as any) <= Log.Levels.DEBUG) {
         report =
           report ||
-          function (e) {
+          function (e: any) {
             Log.debug("Event: " + e.type);
           };
 
@@ -186,7 +192,7 @@ Log.prefix = "[nrvideo]";
  * @param {string} [color='darkgreen'] Color of the header
  * @see {@link Log.level}
  */
-function _report(msg, level, color) {
+function _report(msg: any[], level?: number | string, color?: string) {
   level = level || Log.Levels.NOTICE;
   color = color || "darkcyan";
 
@@ -195,23 +201,23 @@ function _report(msg, level, color) {
   prefix += _level2letter(level) + ":";
 
   // Show messages in actual console if level is enought
-  if (Log.level <= level && level !== Log.Levels.SILENT) {
+  if ((Log.level as any) <= level && level !== Log.Levels.SILENT) {
     if (
       !Log.colorful ||
-      (typeof document !== "undefined" && document.documentMode)
+      (typeof document !== "undefined" && (document as any).documentMode)
     ) {
       // document.documentMode exits only in IE
       _plainReport(msg, prefix);
     } else {
       // choose log method
-      var logMethod;
+      var logMethod: (...args: any[]) => void;
       if (level === Log.Levels.ERROR && console.error) {
         logMethod = console.error;
       } else if (level === Log.Levels.WARNING && console.warn) {
         logMethod = console.warn;
       } else if (level === Log.Levels.DEBUG && console.debug) {
         // NOTE: for some reason console.debug doesn't work on CAF Receivers.
-        if (window.cast == undefined) {
+        if ((window as any).cast == undefined) {
           logMethod = console.debug;
         } else {
           logMethod = console.log;
@@ -233,7 +239,7 @@ function _report(msg, level, color) {
  * @private
  * @return {string} Current time.
  */
-function _getCurrentTime() {
+function _getCurrentTime(): string {
   var d = new Date();
   var hh = ("0" + d.getDate()).slice(-2);
   var mm = ("0" + d.getMinutes()).slice(-2);
@@ -249,7 +255,7 @@ function _getCurrentTime() {
  * @param {(string|object|array)} msg Message string, object or array of messages.
  * @param {string} prefix Prefix of the message.
  */
-function _plainReport(msg, prefix) {
+function _plainReport(msg: any, prefix: string) {
   if (msg instanceof Array) {
     for (var m in msg) {
       _plainReport(msg[m], prefix);
@@ -264,7 +270,7 @@ function _plainReport(msg, prefix) {
   }
 }
 
-const _letters = {
+const _letters: Record<number, string> = {
   4: "e", // Error
   3: "w", // Warning
   2: "n", // Notice
@@ -277,8 +283,8 @@ const _letters = {
  * @private
  * @param {sLog.Level} level Level of the message
  */
-function _level2letter(level) {
-  return _letters[level];
+function _level2letter(level: number | string): string {
+  return _letters[level as number];
 }
 
 /**

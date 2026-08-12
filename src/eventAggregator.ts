@@ -1,8 +1,11 @@
 import Log from "./log";
 import Constants from "./constants";
 import { dataSize } from "./utils";
+import { EventAttributes } from "./utils/eventBuilder";
 
 const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
+
+export type SmartHarvestCallback = (reason: "overflow" | "smart", percentage: number) => void;
 
 /**
  * Enhanced event buffer that manages video events with unified priority handling
@@ -10,6 +13,17 @@ const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
  * unless explicitly specified otherwise.
  */
 export class NrVideoEventAggregator {
+  buffer: EventAttributes[];
+  maxPayloadSize: number;
+  maxEventsPerBatch: number;
+  currentPayloadSize: number;
+  totalEvents: number;
+  smartHarvestPayloadThreshold: number;
+  overflowPayloadThreshold: number;
+  smartHarvestEventThreshold: number;
+  overflowEventThreshold: number;
+  onSmartHarvestTrigger: SmartHarvestCallback | null;
+
   constructor() {
     // Simplified to single priority queue for equal treatment
 
@@ -39,7 +53,7 @@ export class NrVideoEventAggregator {
    * @param {object} eventObject - The event object to add or use as replacement. Should contain an actionName property.
    * @returns {boolean} True if the operation succeeded, false if an error occurred
    */
-  addOrReplaceByActionName(actionName, eventObject) {
+  addOrReplaceByActionName(actionName: string, eventObject: EventAttributes): boolean {
       const i = this.buffer.findIndex(e => e.actionName === actionName);
 
       try {
@@ -49,7 +63,7 @@ export class NrVideoEventAggregator {
               this.add(eventObject, i);
           }
           return true;
-      } catch (error) {
+      } catch (error: any) {
           Log.error("Failed to set or replace the event to buffer:", error.message);
           return false;
       }
@@ -63,7 +77,7 @@ export class NrVideoEventAggregator {
    * @param {object} eventObject - The event object to add or use as replacement.
    * @returns {boolean} True if the operation succeeded, false if an error occurred
    */
-  addOrReplaceByActionNameAndViewId(actionName, viewId, eventObject) {
+  addOrReplaceByActionNameAndViewId(actionName: string, viewId: string, eventObject: EventAttributes): boolean {
       const i = this.buffer.findIndex(
           e => e.actionName === actionName && e.viewId === viewId
       );
@@ -74,7 +88,7 @@ export class NrVideoEventAggregator {
               this.add(eventObject, i);
           }
           return true;
-      } catch (error) {
+      } catch (error: any) {
           Log.error("Failed to set or replace the event to buffer:", error.message);
           return false;
       }
@@ -86,7 +100,7 @@ export class NrVideoEventAggregator {
    * @param {string} viewId
    * @returns {object|null}
    */
-  findByActionNameAndViewId(actionName, viewId) {
+  findByActionNameAndViewId(actionName: string, viewId: string): EventAttributes | null {
       const event = this.buffer.find(
           e => e.actionName === actionName && e.viewId === viewId
       );
@@ -98,7 +112,7 @@ export class NrVideoEventAggregator {
    * @param {string} actionName
    * @returns {object|null}
    */
-  findByActionName(actionName) {
+  findByActionName(actionName: string): EventAttributes | null {
       const event = this.buffer.find(e => e.actionName === actionName);
       return event || null;
   }
@@ -109,10 +123,10 @@ export class NrVideoEventAggregator {
    * @param {object} eventObject - The event to add
    * @param {number} index - index at which the event should be replaced with
    */
-  add(eventObject, index) {
+  add(eventObject: EventAttributes, index?: number): boolean {
     try {
       // Calculate event payload size
-      const eventSize = dataSize(eventObject);
+      const eventSize = dataSize(eventObject) as number;
 
       // Check if we need to make room based on EITHER payload size OR event count limits
       const wouldExceedPayload =
@@ -126,7 +140,7 @@ export class NrVideoEventAggregator {
 
       if(index !== undefined && index !== null && index > -1) {
           // replace in unified buffer
-          const previousPayloadSize = dataSize(this.buffer[index]);
+          const previousPayloadSize = dataSize(this.buffer[index]) as number;
           this.buffer[index] = eventObject;
           // Updating the payload size for the replaced event
           this.currentPayloadSize += eventSize - previousPayloadSize;
@@ -141,7 +155,7 @@ export class NrVideoEventAggregator {
       this.checkSmartHarvestTrigger();
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       Log.error("Failed to add event to buffer:", error.message);
       return false;
     }
@@ -154,7 +168,7 @@ export class NrVideoEventAggregator {
    * - 90% of payload size (900KB) OR 90% of event count (900 events)
    * @private
    */
-  checkSmartHarvestTrigger() {
+  checkSmartHarvestTrigger(): void {
     const payloadPercentage = this.currentPayloadSize / this.maxPayloadSize;
     const eventPercentage = this.totalEvents / this.maxEventsPerBatch;
 
@@ -209,7 +223,7 @@ export class NrVideoEventAggregator {
    * Sets the callback function for smart harvest triggers.
    * @param {Function} callback - Function to call when smart harvest is triggered
    */
-  setSmartHarvestCallback(callback) {
+  setSmartHarvestCallback(callback: SmartHarvestCallback): void {
     this.onSmartHarvestTrigger = callback;
   }
 
@@ -218,7 +232,7 @@ export class NrVideoEventAggregator {
    * No limits needed since buffer already manages size via makeRoom() and smart harvest triggers.
    * @returns {Array} Array of events in order they were added
    */
-  drain() {
+  drain(): EventAttributes[] {
     try {
       // Drain ALL events - buffer size is already managed by makeRoom() and smart harvest
       const events = this.buffer.splice(0);
@@ -228,7 +242,7 @@ export class NrVideoEventAggregator {
       this.currentPayloadSize = 0;
 
       return events;
-    } catch (error) {
+    } catch (error: any) {
       Log.error("Failed to drain events from buffer:", error.message);
       return [];
     }
@@ -238,7 +252,7 @@ export class NrVideoEventAggregator {
    * Checks if the buffer is empty.
    * @returns {boolean} True if all buffers are empty
    */
-  isEmpty() {
+  isEmpty(): boolean {
     return this.totalEvents === 0;
   }
 
@@ -246,14 +260,14 @@ export class NrVideoEventAggregator {
    * Gets the total number of events across all buffers.
    * @returns {number} Total event count
    */
-  size() {
+  size(): number {
     return this.totalEvents;
   }
 
   /**
    * Clears the entire buffer.
    */
-  clear() {
+  clear(): void {
     this.buffer = [];
     this.totalEvents = 0;
   }
@@ -263,7 +277,7 @@ export class NrVideoEventAggregator {
    * Uses FIFO approach - removes the first (oldest) event.
    * @private
    */
-  makeRoom(newEventSize) {
+  makeRoom(newEventSize: number): void {
     // Before the while loop in makeRoom()
     if (newEventSize > this.maxPayloadSize) {
       Log.error("Event dropped: Event size exceeds maximum payload size.");
@@ -281,7 +295,7 @@ export class NrVideoEventAggregator {
         const removed = this.buffer.shift(); // Remove the oldest event (FIFO)
 
         // Recalculate size and count after removal
-        const removedSize = dataSize(removed);
+        const removedSize = dataSize(removed) as number;
         this.totalEvents--;
         this.currentPayloadSize -= removedSize;
 

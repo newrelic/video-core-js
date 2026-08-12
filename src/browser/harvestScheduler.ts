@@ -6,10 +6,24 @@ import {
   partitionByQoeCycle,
   applyQoeDirtyFilter,
 } from "../utils/qoeFilters";
-import { createHarvestTimer } from "../utils/harvestTimer";
+import { createHarvestTimer, HarvestTimer } from "../utils/harvestTimer";
 import Constants from "../constants";
 import Tracker from "../tracker";
 import Log from "../log";
+import { EventAttributes } from "../utils/eventBuilder";
+
+interface HarvestOptions {
+  isFinalHarvest?: boolean;
+  force?: boolean;
+}
+
+interface HarvestResult {
+  success: boolean;
+  reason?: string;
+  totalChunks?: number;
+  results?: any[];
+  error?: string;
+}
 
 /**
  * Enhanced harvest scheduler that orchestrates the video analytics data collection,
@@ -17,7 +31,20 @@ import Log from "../log";
  */
 
 export class HarvestScheduler {
-  constructor(eventAggregator) {
+  eventBuffer: NrVideoEventAggregator;
+  retryQueueHandler: RetryQueueHandler;
+  httpClient: OptimizedHttpClient;
+  fallBackUrl: string;
+  retryCount: number;
+  harvestCycle: number;
+  isHarvesting: boolean;
+  qoeCycleCount: number;
+  forceNextQoeCycle: boolean;
+  beforeDrainCallback: (() => void) | null;
+  _lastSentQoeKpis: Record<string, any>;
+  timer: HarvestTimer;
+
+  constructor(eventAggregator: NrVideoEventAggregator) {
     // Core components
     this.eventBuffer = eventAggregator;
     this.retryQueueHandler = new RetryQueueHandler();
@@ -55,14 +82,14 @@ export class HarvestScheduler {
    * Whether the scheduler is currently running. Backed by the shared timer.
    * @returns {boolean}
    */
-  get isStarted() {
+  get isStarted(): boolean {
     return this.timer.isRunning();
   }
 
   /**
    * Starts the harvest scheduler.
    */
-  startScheduler() {
+  startScheduler(): void {
     if (this.timer.isRunning()) {
       Log.warn("Harvest scheduler is already started");
       return;
@@ -79,7 +106,7 @@ export class HarvestScheduler {
   /**
    * Stops the harvest scheduler.
    */
-  stopScheduler() {
+  stopScheduler(): void {
     if (!this.timer.isRunning()) return;
     this.timer.stop();
     Log.notice("Harvest scheduler stopped");
@@ -90,7 +117,7 @@ export class HarvestScheduler {
    * @param {string} type - Type of harvest trigger ('smart' or 'overflow')
    * @param {number} threshold - Threshold percentage that triggered the harvest (60 or 90)
    */
-  async triggerSmartHarvest(type, threshold) {
+  async triggerSmartHarvest(type: string, threshold: number): Promise<void> {
     Log.notice(`${type} harvest triggered at ${threshold}% threshold`, {
       type,
       threshold,
@@ -101,7 +128,7 @@ export class HarvestScheduler {
 
     try {
       await this.triggerHarvest({});
-    } catch (error) {
+    } catch (error: any) {
       Log.error(`${type} harvest failed:`, error.message);
     } finally {
       // Reset the periodic clock — next periodic tick happens `harvestCycle`
@@ -114,7 +141,7 @@ export class HarvestScheduler {
    * Periodic-tick callback. Invoked by the shared harvest timer on each cycle.
    * @private
    */
-  async onHarvestInterval() {
+  async onHarvestInterval(): Promise<void> {
     // Check if there's any data to harvest (buffer or retry queue) before
     // starting the harvest process — avoids unnecessary network calls when
     // there's nothing to ship.
@@ -132,7 +159,7 @@ export class HarvestScheduler {
    * @param {boolean} options.force - Force harvest even if buffer is empty
    * @returns {Promise<object>} Harvest result
    */
-  async triggerHarvest(options = {}) {
+  async triggerHarvest(options: HarvestOptions = {}): Promise<HarvestResult> {
     if (this.isHarvesting) {
       return { success: false, reason: "harvest_in_progress" };
     }
@@ -146,7 +173,7 @@ export class HarvestScheduler {
       // For beacon harvests, trim events to fit beacon size if necessary
       if (options.isFinalHarvest) {
         const maxBeaconSize = Constants.MAX_BEACON_SIZE;
-        const payloadSize = dataSize(events);
+        const payloadSize = dataSize(events) as number;
 
         if (payloadSize > maxBeaconSize) {
           // Trim events to fit beacon size (keep most recent events)
@@ -162,7 +189,7 @@ export class HarvestScheduler {
         totalChunks: 1,
         results: [result],
       };
-    } catch (error) {
+    } catch (error: any) {
       Log.error("Harvest cycle failed:", error.message);
       this.handleHarvestFailure(error);
 
@@ -183,18 +210,18 @@ export class HarvestScheduler {
    * @returns {Array} Trimmed events that fit within size limit
    * @private
    */
-  trimEventsToFit(events, maxSize) {
+  trimEventsToFit(events: EventAttributes[], maxSize: number): EventAttributes[] {
     if (events.length === 0) return events;
 
     // Start from the most recent events (end of array) and work backwards
-    const trimmedEvents = [];
+    const trimmedEvents: EventAttributes[] = [];
     let currentSize = 0;
 
     for (let i = events.length - 1; i >= 0; i--) {
       const event = events[i];
 
       // Check if adding this event would exceed the limit
-      const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] });
+      const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] }) as number;
 
       if (testPayloadSize > maxSize) continue;
 
@@ -231,7 +258,7 @@ export class HarvestScheduler {
    * @returns {Array} Drained events
    * @private
    */
-  drainEvents(options = {}) {
+  drainEvents(options: HarvestOptions = {}): EventAttributes[] {
     // Determine if this cycle should include the QOE_AGGREGATE event
     const multiplier = window.NRVIDEO?.config?.qoeIntervalFactor ?? 1;
     const isForced = !!options.isFinalHarvest || this.forceNextQoeCycle;
@@ -245,7 +272,7 @@ export class HarvestScheduler {
     if (this.beforeDrainCallback && typeof this.beforeDrainCallback === 'function') {
       try {
         this.beforeDrainCallback();
-      } catch (e) {
+      } catch (e: any) {
         Log.error("Before drain callback failed:", e.message);
       }
     }
@@ -265,7 +292,7 @@ export class HarvestScheduler {
     applyQoeDirtyFilter(filteredFreshEvents, this._lastSentQoeKpis, isForced);
 
     let events = [...filteredFreshEvents];
-    let currentPayloadSize = dataSize(filteredFreshEvents);
+    let currentPayloadSize = dataSize(filteredFreshEvents) as number;
 
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {
@@ -298,8 +325,8 @@ export class HarvestScheduler {
    * @returns {Promise<object>} Send result
    * @private
    */
-  async sendChunk(chunk, options, isLastChunk) {
-    const url = buildUrl(this.fallBackUrl); //
+  async sendChunk(chunk: EventAttributes[], options: HarvestOptions, isLastChunk: boolean): Promise<{ success: boolean; status: number; error?: string; chunk: EventAttributes[]; eventCount: number }> {
+    const url = buildUrl(this.fallBackUrl) as string; //
     const payload = { body: { ins: chunk } };
     const requestOptions = {
       url,
@@ -334,7 +361,7 @@ export class HarvestScheduler {
    * @param {Array} chunk - Failed chunk to add to retry queue
    * @private
    */
-  handleRequestFailure(chunk) {
+  handleRequestFailure(chunk: EventAttributes[]): void {
     // Add failed events to retry queue
     this.retryQueueHandler.addFailedEvents(chunk);
     // Only apply failover logic for US region
@@ -346,7 +373,7 @@ export class HarvestScheduler {
       this.fallBackUrl = "";
     } else if (this.retryCount >= 2) {
       // Switch to fallback after 2 consecutive failures
-      this.fallBackUrl = Constants.COLLECTOR["US"][1];
+      this.fallBackUrl = (Constants.COLLECTOR["US"] as string[])[1];
     }
   }
 
@@ -355,7 +382,7 @@ export class HarvestScheduler {
    * @param {Error} error - Harvest error
    * @private
    */
-  handleHarvestFailure(error) {
+  handleHarvestFailure(error: Error): void {
     Log.warn("Harvest failure handled", { error: error.message });
   }
 
@@ -365,7 +392,7 @@ export class HarvestScheduler {
    * @returns {boolean} - True if interval was updated successfully, false otherwise
    */
 
-  updateHarvestInterval(newInterval) {
+  updateHarvestInterval(newInterval: number): void {
     if (typeof newInterval !== "number" || isNaN(newInterval)) {
       Log.warn("Invalid newInterval provided to updateHarvestInterval");
       return;
@@ -388,7 +415,7 @@ export class HarvestScheduler {
    * Sets up page lifecycle event handlers.
    * @private
    */
-  setupPageLifecycleHandlers() {
+  setupPageLifecycleHandlers(): void {
     let finalHarvestTriggered = false;
 
     const triggerFinalHarvest = () => {

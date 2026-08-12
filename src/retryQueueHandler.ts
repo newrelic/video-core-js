@@ -1,6 +1,7 @@
 import Log from "./log";
 import { dataSize } from "./utils";
 import Constants from "./constants";
+import { EventAttributes } from "./utils/eventBuilder";
 
 const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
 
@@ -9,6 +10,10 @@ const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
  * backoff strategies, and persistent storage capabilities.
  */
 export class RetryQueueHandler {
+  retryQueue: EventAttributes[];
+  maxQueueSize: number;
+  maxQueueSizeBytes: number;
+
   constructor() {
     this.retryQueue = [];
     this.maxQueueSize = MAX_EVENTS_PER_BATCH; // Max 1000 events
@@ -19,7 +24,7 @@ export class RetryQueueHandler {
    * Adds failed events to the retry queue for retry processing.
    * @param {Array|object} events - Failed event(s) to add to retry queue
    */
-  addFailedEvents(events) {
+  addFailedEvents(events: EventAttributes | EventAttributes[]): void {
     try {
       const eventsArray = Array.isArray(events) ? events : [events];
 
@@ -34,15 +39,15 @@ export class RetryQueueHandler {
         }
 
         // Check queue memory size and make room if necessary
-        const eventSize = dataSize(event);
-        while (dataSize(this.retryQueue) + eventSize > this.maxQueueSizeBytes) {
+        const eventSize = dataSize(event) as number;
+        while ((dataSize(this.retryQueue) as number) + eventSize > this.maxQueueSizeBytes) {
           this.evictOldestEvent();
         }
 
         // Store event directly - no wrapper needed
         this.retryQueue.push({ ...event });
       }
-    } catch (err) {
+    } catch (err: any) {
       Log.error("Failed to add events to retry queue:", err.message);
     }
   }
@@ -53,7 +58,7 @@ export class RetryQueueHandler {
    * @param {string} reason - Reason for discarding
    * @private
    */
-  discardEvent(event, reason) {
+  discardEvent(event: EventAttributes, reason: string): void {
     Log.warn(`Discarded event`, {
       reason,
       eventType: event.eventType,
@@ -64,10 +69,10 @@ export class RetryQueueHandler {
    * Evicts the oldest event from the queue to make room.
    * @private
    */
-  evictOldestEvent() {
+  evictOldestEvent(): void {
     if (this.retryQueue.length > 0) {
       const oldest = this.retryQueue.shift();
-      this.discardEvent(oldest, "Queue full - evicted oldest");
+      this.discardEvent(oldest as EventAttributes, "Queue full - evicted oldest");
     }
   }
 
@@ -78,8 +83,8 @@ export class RetryQueueHandler {
    * @param {number} availableEventCount - Available event count
    * @returns {Array} Array of events that fit within limits
    */
-  getRetryEventsToFit(availableSpace, availableEventCount) {
-    const retryEvents = [];
+  getRetryEventsToFit(availableSpace: number, availableEventCount: number): EventAttributes[] {
+    const retryEvents: EventAttributes[] = [];
     let usedSpace = 0;
     let eventCount = 0;
 
@@ -90,7 +95,7 @@ export class RetryQueueHandler {
 
       if (eventCount >= availableEventCount) break;
 
-      const eventSize = dataSize(event);
+      const eventSize = dataSize(event) as number;
       if (usedSpace + eventSize > availableSpace) break;
 
       // Add to beginning of retryEvents to maintain chronological order (oldest first)
@@ -109,14 +114,14 @@ export class RetryQueueHandler {
    * Gets the current retry queue size.
    * @returns {number} Queue size
    */
-  getQueueSize() {
+  getQueueSize(): number {
     return this.retryQueue.length;
   }
 
   /**
    * Clears the retry queue.
    */
-  clear() {
+  clear(): void {
     this.retryQueue = [];
   }
 }
