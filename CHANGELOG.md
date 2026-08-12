@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-### [5.0.2](https://github.com/newrelic/video-core-js/compare/v5.0.1...v5.0.2) (2026-08-12)
+## [5.0.2](https://github.com/newrelic/video-core-js/compare/v5.0.1...v5.0.2) (2026-08-12)
 
 ### Fix
 
