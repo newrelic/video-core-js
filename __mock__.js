@@ -25,8 +25,7 @@
  * - This mock is ONLY for testing purposes
  * - It provides the minimal interface needed for Jest-based unit tests
  * - It is NOT included in the built dist/ bundles
- * - Function stubs are intentionally simple (no jest.fn() or sinon) to remain framework-agnostic
- * - Consumer tests can override these stubs with their own mocks/spies as needed
+ * - All consumers use Jest; stubs use jest.fn() to support call-count assertions
  */
 
 const nrvideo = {
@@ -65,7 +64,7 @@ const nrvideo = {
    * Handles tracker registration and management
    */
   Core: {
-    addTracker: function() {}
+    addTracker: jest.fn(),
   },
 
   /**
@@ -73,7 +72,12 @@ const nrvideo = {
    * Handles debug logging
    */
   Log: {
-    debugCommonVideoEvents: function() {}
+    debugCommonVideoEvents: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    notice: jest.fn(),
   }
 };
 
