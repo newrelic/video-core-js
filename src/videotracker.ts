@@ -697,10 +697,10 @@ class VideoTracker extends Tracker {
         this.sendVideoAction(ev, att);
 
         const harvester = this.getHarvester?.();
-        harvester?.setBeforeDrainCallback?.(() => {
+        harvester?.setBeforeDrainCallback(() => {
           if (this.state) {
             const freshKpis = this.state.getQoeAttributes({}).qoe;
-            harvester.refreshQoeKpis?.(freshKpis, this.getViewId());
+            harvester.refreshQoeKpis(freshKpis, this.getViewId());
           }
         });
       }
@@ -750,7 +750,7 @@ class VideoTracker extends Tracker {
         harvester?.forceNextQoeCycle?.();
         // Clear the before-drain callback so the next harvest doesn't overwrite
         // the final QoE (already in buffer) with zeroed-out state values
-        harvester?.setBeforeDrainCallback?.(null);
+        harvester?.setBeforeDrainCallback(null);
         // reset the states after the view count is up
         if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
         this.state.resetViewIdTrackedState();

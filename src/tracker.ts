@@ -301,7 +301,7 @@ class Tracker extends Emitter {
     }
 
     try {
-      harvester.setHarvestInterval?.(interval);
+      harvester.setHarvestInterval(interval);
     } catch (error: any) {
       Log.error("Failed to set harvest interval:", error.message);
       return;

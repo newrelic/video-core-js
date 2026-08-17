@@ -2,17 +2,16 @@ import Constants from "../constants";
 import Tracker from "../tracker";
 import { getObjectEntriesForKeys } from "./index";
 
-/** Event payloads are heterogeneous by design (QoE keys, ad keys, custom keys all merge in). */
 export type EventAttributes = Record<string, any>;
 
 export interface Harvester {
   addEvent(eventObject: EventAttributes): boolean;
-  setHarvestInterval?(ms: number): void;
+  setHarvestInterval(ms: number): void;
   /** Set (or clear, with `null`) the callback run just before the next harvest drain. */
-  setBeforeDrainCallback?(callback: (() => void) | null): void;
+  setBeforeDrainCallback(callback: (() => void) | null): void;
   /** Merge fresh QoE KPI values into the buffered QOE_AGGREGATE event for a view. */
-  refreshQoeKpis?(freshKpis: EventAttributes, viewId?: string): void;
-  /** Force the next harvest cycle to be treated as a QoE cycle. */
+  refreshQoeKpis(freshKpis: EventAttributes, viewId?: string): void;
+  /** Force the next harvest cycle to be treated as a QoE cycle. Only the browser harvester supports this — the connected-device harvester does not implement it. */
   forceNextQoeCycle?(): void;
 }
 
