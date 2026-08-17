@@ -126,7 +126,7 @@ export class NrVideoEventAggregator {
   add(eventObject: EventAttributes, index?: number): boolean {
     try {
       // Calculate event payload size
-      const eventSize = dataSize(eventObject) as number;
+      const eventSize = dataSize(eventObject) ?? 0;
 
       // Check if we need to make room based on EITHER payload size OR event count limits
       const wouldExceedPayload =
@@ -140,7 +140,7 @@ export class NrVideoEventAggregator {
 
       if(index !== undefined && index !== null && index > -1) {
           // replace in unified buffer
-          const previousPayloadSize = dataSize(this.buffer[index]) as number;
+          const previousPayloadSize = dataSize(this.buffer[index]) ?? 0;
           this.buffer[index] = eventObject;
           // Updating the payload size for the replaced event
           this.currentPayloadSize += eventSize - previousPayloadSize;
@@ -295,7 +295,7 @@ export class NrVideoEventAggregator {
         const removed = this.buffer.shift(); // Remove the oldest event (FIFO)
 
         // Recalculate size and count after removal
-        const removedSize = dataSize(removed) as number;
+        const removedSize = dataSize(removed) ?? 0;
         this.totalEvents--;
         this.currentPayloadSize -= removedSize;
 

@@ -39,8 +39,8 @@ export class RetryQueueHandler {
         }
 
         // Check queue memory size and make room if necessary
-        const eventSize = dataSize(event) as number;
-        while ((dataSize(this.retryQueue) as number) + eventSize > this.maxQueueSizeBytes) {
+        const eventSize = dataSize(event) ?? 0;
+        while ((dataSize(this.retryQueue) ?? 0) + eventSize > this.maxQueueSizeBytes) {
           this.evictOldestEvent();
         }
 
@@ -95,7 +95,7 @@ export class RetryQueueHandler {
 
       if (eventCount >= availableEventCount) break;
 
-      const eventSize = dataSize(event) as number;
+      const eventSize = dataSize(event) ?? 0;
       if (usedSpace + eventSize > availableSpace) break;
 
       // Add to beginning of retryEvents to maintain chronological order (oldest first)

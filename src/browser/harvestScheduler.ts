@@ -173,7 +173,7 @@ export class HarvestScheduler {
       // For beacon harvests, trim events to fit beacon size if necessary
       if (options.isFinalHarvest) {
         const maxBeaconSize = Constants.MAX_BEACON_SIZE;
-        const payloadSize = dataSize(events) as number;
+        const payloadSize = dataSize(events) ?? 0;
 
         if (payloadSize > maxBeaconSize) {
           // Trim events to fit beacon size (keep most recent events)
@@ -221,7 +221,7 @@ export class HarvestScheduler {
       const event = events[i];
 
       // Check if adding this event would exceed the limit
-      const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] }) as number;
+      const testPayloadSize = dataSize({ ins: [event, ...trimmedEvents] }) ?? 0;
 
       if (testPayloadSize > maxSize) continue;
 
@@ -292,7 +292,7 @@ export class HarvestScheduler {
     applyQoeDirtyFilter(filteredFreshEvents, this._lastSentQoeKpis, isForced);
 
     let events = [...filteredFreshEvents];
-    let currentPayloadSize = dataSize(filteredFreshEvents) as number;
+    let currentPayloadSize = dataSize(filteredFreshEvents) ?? 0;
 
     // Always check retry queue if it has data - no flags needed
     if (this.retryQueueHandler && this.retryQueueHandler.getQueueSize() > 0) {
