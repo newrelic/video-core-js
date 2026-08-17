@@ -3,6 +3,13 @@ import Emitter from "./emitter";
 import Chrono from "./chrono";
 import Constants from "./constants";
 import Log from "./log";
+import { Harvester } from "./utils/eventBuilder";
+
+export interface TrackerOptions {
+  heartbeat?: number;
+  customData?: Record<string, any>;
+  parentTracker?: Tracker;
+}
 
 /**
  * Tracker class provides the basic logic to extend Newrelic's Browser Agent capabilities.
@@ -17,12 +24,31 @@ import Log from "./log";
  * @extends Emitter
  */
 class Tracker extends Emitter {
+  static Events: Record<string, string>;
+
+  customData: Record<string, any>;
+  heartbeat: number | null;
+  parentTracker: Tracker | null;
+  /**
+   * Set externally by subclasses (VideoTracker, which assigns a real
+   * VideoTrackerState instance) / tests (which assign plain `{ _isAd }`
+   * objects) before any method that reads `this.state._isAd` is invoked.
+   * Not initialized in the base constructor. Loosely typed (`any`) since
+   * both shapes need to be assignable here without a circular import of
+   * VideoTrackerState into the base Tracker.
+   */
+  state?: any;
+  _trackerReadyChrono: Chrono;
+  _actionTable: any;
+  _actionAdTable: any;
+  _heartbeatInterval?: ReturnType<typeof setInterval>;
+
   /**
    * Constructor, receives options. You should call {@see registerListeners} after this.
    *
    * @param {Object} [options] Options for the tracker. See {@link setOptions}.
    */
-  constructor(options) {
+  constructor(options?: TrackerOptions) {
     super();
 
     /**
@@ -56,8 +82,8 @@ class Tracker extends Emitter {
     /**
      * Store the initial table of actions with time 0 ms
      */
-    this._actionTable = Constants.ACTION_TABLE;
-    this._actionAdTable = Constants.ACTION_AD_TABLE;
+    this._actionTable = (Constants as any).ACTION_TABLE;
+    this._actionAdTable = (Constants as any).ACTION_AD_TABLE;
 
     options = options || {};
     this.setOptions(options);
@@ -71,7 +97,7 @@ class Tracker extends Emitter {
    * @param {Object} [options.customData] Set custom data. See {@link customData}.
    * @param {Tracker} [options.parentTracker] Set parent tracker. See {@link parentTracker}.
    */
-  setOptions(options) {
+  setOptions(options?: TrackerOptions): void {
     if (options) {
       if (options.parentTracker) this.parentTracker = options.parentTracker;
       if (options.customData) this.customData = options.customData;
@@ -82,7 +108,7 @@ class Tracker extends Emitter {
   /**
    * Prepares tracker to dispose. Calls {@see unregisterListeners} and drops references.
    */
-  dispose() {
+  dispose(): void {
     this.unregisterListeners();
   }
 
@@ -100,7 +126,7 @@ class Tracker extends Emitter {
    *  }
    * }
    */
-  registerListeners() {}
+  registerListeners(): void {}
 
   /**
    * Override this method to unregister listeners to third party elements created with
@@ -121,15 +147,15 @@ class Tracker extends Emitter {
    *  }
    * }
    */
-  unregisterListeners() {}
+  unregisterListeners(): void {}
 
   /**
    * Returns heartbeat time interval. 30000 (30s) if not set. See {@link setOptions}.
    * @return {number} Heartbeat interval in ms.
    * @final
    */
-  getHeartbeat() {
-    if (this.state._isAd) {
+  getHeartbeat(): number {
+    if (this.state?._isAd) {
       // modifying heartbeat for Ad Tracker
       return 2000;
     } else {
@@ -147,7 +173,7 @@ class Tracker extends Emitter {
    * Starts heartbeating. Interval period set by options.heartbeat. Min 2000 ms.
    * This method is automaticaly called by the tracker once sendRequest is called.
    */
-  startHeartbeat() {
+  startHeartbeat(): void {
     this._heartbeatInterval = setInterval(
       this.sendHeartbeat.bind(this),
       Math.max(this.getHeartbeat(), 2000)
@@ -157,7 +183,7 @@ class Tracker extends Emitter {
   /**
    * Stops heartbeating. This method is automaticaly called by the tracker.
    */
-  stopHeartbeat() {
+  stopHeartbeat(): void {
     if (this._heartbeatInterval) {
       clearInterval(this._heartbeatInterval);
     }
@@ -181,7 +207,7 @@ class Tracker extends Emitter {
    *
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendHeartbeat(att) {
+  sendHeartbeat(att?: Record<string, any>): void {
     this.sendVideoAction(Tracker.Events.HEARTBEAT, att);
   }
 
@@ -201,7 +227,7 @@ class Tracker extends Emitter {
    * @return {object} Filled attributes
    * @final
    */
-  getAttributes(att, eventType) {
+  getAttributes(att?: Record<string, any>, eventType?: string): Record<string, any> {
     att = att || {};
     att.trackerName = this.getTrackerName();
     att.trackerVersion = this.getTrackerVersion();
@@ -220,12 +246,12 @@ class Tracker extends Emitter {
   }
 
   /** Override to change of the Version of tracker. ie: '1.0.1' */
-  getTrackerVersion() {
+  getTrackerVersion(): string {
     return pkg.version;
   }
 
   /** Override to change of the Name of the tracker. ie: 'custom-html5' */
-  getTrackerName() {
+  getTrackerName(): string {
     return "base-tracker";
   }
 
@@ -240,20 +266,20 @@ class Tracker extends Emitter {
    * @param {object} [att] Key:value dictionary filled with attributes.
    */
 
-  sendVideoAction(event, att) {
+  sendVideoAction(event: string, att?: Record<string, any>): void {
     this.emit("VideoAction", event, this.getAttributes(att));
   }
 
-  sendVideoAdAction(event, att) {
+  sendVideoAdAction(event: string, att?: Record<string, any>): void {
     this.emit("VideoAdAction", event, this.getAttributes(att));
   }
 
-  sendVideoErrorAction(event, att) {
-    let ev = this.isAd() ? "adError" : "videoError";
+  sendVideoErrorAction(event: string, att?: Record<string, any>): void {
+    let ev = (this as any).isAd() ? "adError" : "videoError";
     this.emit("VideoErrorAction", event, this.getAttributes(att, ev));
   }
 
-  sendVideoCustomAction(event, att) {
+  sendVideoCustomAction(event: string, att?: Record<string, any>): void {
     this.emit(
       "VideoCustomAction",
       event,
@@ -267,7 +293,7 @@ class Tracker extends Emitter {
    * @returns {void}
    */
 
-  setHarvestInterval(interval) {
+  setHarvestInterval(interval: number): void {
     const harvester = this.getHarvester?.();
     if (!harvester) {
       Log.error("Tracker has no harvester; setHarvestInterval ignored");
@@ -276,7 +302,7 @@ class Tracker extends Emitter {
 
     try {
       harvester.setHarvestInterval(interval);
-    } catch (error) {
+    } catch (error: any) {
       Log.error("Failed to set harvest interval:", error.message);
       return;
     }
@@ -288,9 +314,16 @@ class Tracker extends Emitter {
    * means a tracker that doesn't override `getHarvester()` will silently no-op
    * on harvester-bound calls (setHarvestInterval, QoE drain wiring).
    */
-  getHarvester() {
+  getHarvester(): Harvester | null {
     return null;
   }
+
+  // Note: base Tracker has no `isAd` member at all (matching original JS —
+  // calling sendVideoErrorAction on a bare Tracker throws the native "not a
+  // function" error). VideoTracker defines its own `isAd()`; the one call
+  // site above (sendVideoErrorAction) casts to `any` rather than declaring
+  // an `isAd` member here, since TS treats a `declare`d property and a real
+  // subclass method as incompatible override kinds (TS2425).
 }
 
 /**

@@ -1,6 +1,19 @@
 import Log from "./log";
 import { recordEvent } from "./recordEvent";
-import { setVideoConfig } from "./videoConfiguration";
+import { setVideoConfig, RawVideoConfigInfo, RawVideoConfigOptions } from "./videoConfiguration";
+import Emitter from "./emitter";
+
+/** Structural contract Core needs from anything passed to addTracker/removeTracker. */
+export interface TrackerLike extends Emitter {
+  dispose(): void;
+  trackerInit?(): void;
+}
+
+export interface CoreAddTrackerOptions {
+  info?: RawVideoConfigInfo;
+  config?: RawVideoConfigOptions;
+  src?: string;
+}
 
 /**
  * Static class that sums up core functionalities of the library.
@@ -13,14 +26,14 @@ class Core {
    * @param {(Emitter|Tracker)} tracker Tracker instance to add.
    * @param {object} options Configuration options including video analytics settings.
    */
-  static addTracker(tracker, options) {
+  static addTracker(tracker: TrackerLike, options?: CoreAddTrackerOptions): void {
     // Set video analytics configuration. The optional `options.src` field
     // selects the pipeline: `'Vega'` writes globalThis.__NRVIDEO_CD__,
-    // anything else writes window.NRVIDEO. 
+    // anything else writes window.NRVIDEO.
     if (options?.info) {
       setVideoConfig(options.info, options?.config, options?.src);
     }
-    
+
     if (tracker.on && tracker.emit) {
       trackers.push(tracker);
       tracker.on("*", eventHandler);
@@ -37,7 +50,7 @@ class Core {
    *
    * @param {Tracker} tracker Tracker to remove.
    */
-  static removeTracker(tracker) {
+  static removeTracker(tracker: TrackerLike): void {
     tracker.off("*", eventHandler);
     tracker.dispose();
     let index = trackers.indexOf(tracker);
@@ -49,7 +62,7 @@ class Core {
    *
    * @returns {Tracker[]} Array of trackers.
    */
-  static getTrackers() {
+  static getTrackers(): TrackerLike[] {
     return trackers;
   }
 
@@ -59,13 +72,13 @@ class Core {
    * @param {string} actionName - Action name
    * @param {object} data - Event data
    */
-  static send(eventType, actionName, data) {
+  static send(eventType: string, actionName: string, data?: Record<string, any>): boolean | undefined {
     const enrichedData = {
       actionName,
       ...data,
-     
+
     };
-    
+
     return recordEvent(eventType, enrichedData);
   }
 
@@ -77,7 +90,7 @@ class Core {
    *
    * @param {object} att attributes to be sent along the error.
    */
-  static sendError(att) {
+  static sendError(att?: Record<string, any>): boolean | undefined {
     return recordEvent("VideoErrorAction", {
       actionName: "ERROR",
       ...att
@@ -86,8 +99,8 @@ class Core {
 
 }
 
-let trackers = [];
-let isErrorShown = false;
+let trackers: TrackerLike[] = [];
+let isErrorShown: boolean = false;
 
 /**
  * Enhanced event handler with error handling and performance monitoring.
@@ -95,11 +108,11 @@ let isErrorShown = false;
  * @private
  * @param {Event} e Event
  */
-function eventHandler(e) {
+function eventHandler(e: any) {
   try {
     let data = cleanData(e.data);
-    
-    if (Log.level <= Log.Levels.DEBUG) {
+
+    if ((Log.level as any) <= Log.Levels.DEBUG) {
       Log.notice("Sent", e.type, data);
     } else {
       Log.notice("Sent", e.type);
@@ -108,7 +121,7 @@ function eventHandler(e) {
     // Send event without priority discrimination
     Core.send(e.eventType, e.type, data);
 
-  } catch (error) {
+  } catch (error: any) {
     Log.error("Error in event handler:", error.message);
   }
 }
@@ -119,8 +132,8 @@ function eventHandler(e) {
  * @param {Object} data Data to clean
  * @returns {Object} Cleaned object
  */
-function cleanData(data) {
-  let ret = {};
+function cleanData(data: Record<string, any>): Record<string, any> {
+  let ret: Record<string, any> = {};
   for (let i in data) {
     if (data[i] !== null && typeof data[i] !== "undefined") ret[i] = data[i];
   }

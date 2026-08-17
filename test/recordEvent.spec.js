@@ -1,8 +1,8 @@
-import { recordEvent } from "../src/recordEvent.js";
-import { videoAnalyticsHarvester } from "../src/browser/agent.js";
-import Constants from "../src/constants.js";
-import Log from "../src/log.js";
-import Tracker from "../src/tracker.js";
+import { recordEvent } from "../src/recordEvent";
+import { videoAnalyticsHarvester } from "../src/browser/agent";
+import Constants from "../src/constants";
+import Log from "../src/log";
+import Tracker from "../src/tracker";
 import sinon from "sinon";
 import { JSDOM } from "jsdom";
 

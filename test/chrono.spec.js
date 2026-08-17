@@ -1,4 +1,4 @@
-import Chrono from "../src/chrono.js";
+import Chrono from "../src/chrono";
 
 describe("Chrono", () => {
   let chrono;

@@ -17,6 +17,17 @@
 import Constants from "../constants";
 import Tracker from "../tracker";
 
+type QoeEvent = Record<string, any>;
+type QoeSnapshots = Record<string, Record<string, any>>;
+
+interface QoeBuffer {
+  addOrReplaceByActionNameAndViewId(actionName: string, viewId: string, event: QoeEvent): boolean;
+  addOrReplaceByActionName(actionName: string, event: QoeEvent): boolean;
+  add(event: QoeEvent): boolean;
+  findByActionNameAndViewId(actionName: string, viewId: string): QoeEvent | null;
+  findByActionName(actionName: string): QoeEvent | null;
+}
+
 /**
  * Add an event to the buffer with QOE_AGGREGATE dedup. QOE_AGGREGATE events
  * are deduplicated by `(actionName, viewId)` so multiple players sharing one
@@ -28,7 +39,7 @@ import Tracker from "../tracker";
  * @param {object} eventObject
  * @returns {boolean} True if added/replaced.
  */
-export function bufferEventWithQoeDedup(buffer, eventObject) {
+export function bufferEventWithQoeDedup(buffer: QoeBuffer, eventObject: QoeEvent): boolean {
   if (!eventObject) return false;
   if (eventObject.actionName === Tracker.Events.QOE_AGGREGATE) {
     if (eventObject.viewId) {
@@ -53,7 +64,7 @@ export function bufferEventWithQoeDedup(buffer, eventObject) {
  * @param {object} freshKpis
  * @param {string} [viewId]
  */
-export function refreshQoeKpisInBuffer(buffer, freshKpis, viewId) {
+export function refreshQoeKpisInBuffer(buffer: QoeBuffer, freshKpis: QoeEvent, viewId?: string): void {
   if (!buffer || !freshKpis) return;
   const existing = viewId
     ? buffer.findByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId)
@@ -78,7 +89,7 @@ export function refreshQoeKpisInBuffer(buffer, freshKpis, viewId) {
  * @param {object} event
  * @returns {boolean}
  */
-export function qoeKpisUnchanged(snapshots, event) {
+export function qoeKpisUnchanged(snapshots: QoeSnapshots, event: QoeEvent): boolean {
   const snapshot = snapshots[event.viewId];
   if (!snapshot) return false;
   for (const key of Constants.QOE_KPI_KEYS) {
@@ -94,8 +105,8 @@ export function qoeKpisUnchanged(snapshots, event) {
  * @param {Object<string, object>} snapshots - viewId → KPI snapshot (mutated in place)
  * @param {object} event
  */
-export function saveQoeKpiSnapshot(snapshots, event) {
-  const snapshot = {};
+export function saveQoeKpiSnapshot(snapshots: QoeSnapshots, event: QoeEvent): void {
+  const snapshot: Record<string, any> = {};
   for (const key of Constants.QOE_KPI_KEYS) {
     snapshot[key] = event[key];
   }
@@ -112,9 +123,9 @@ export function saveQoeKpiSnapshot(snapshots, event) {
  * @param {NrVideoEventAggregator} buffer
  * @returns {object[]}
  */
-export function partitionByQoeCycle(drained, isQoeCycle, buffer) {
+export function partitionByQoeCycle(drained: QoeEvent[], isQoeCycle: boolean, buffer: QoeBuffer): QoeEvent[] {
   if (isQoeCycle) return drained;
-  const filtered = [];
+  const filtered: QoeEvent[] = [];
   for (const e of drained) {
     if (e.actionName === Tracker.Events.QOE_AGGREGATE) {
       buffer.add(e);
@@ -136,7 +147,7 @@ export function partitionByQoeCycle(drained, isQoeCycle, buffer) {
  * @param {boolean} isForced - When true, skip the dirty check and ship every
  *   QOE_AGGREGATE regardless of KPI sameness (final flush, CONTENT_END, etc.)
  */
-export function applyQoeDirtyFilter(filtered, snapshots, isForced) {
+export function applyQoeDirtyFilter(filtered: QoeEvent[], snapshots: QoeSnapshots, isForced: boolean): void {
   for (let i = filtered.length - 1; i >= 0; i--) {
     const e = filtered[i];
     if (e.actionName !== Tracker.Events.QOE_AGGREGATE) continue;
