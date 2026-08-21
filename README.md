@@ -288,6 +288,19 @@ Base class for video player trackers. Extends `Tracker`.
 | `unregisterListeners()` | **Override this.** Detach player event listeners. |
 | `getAttributes(att)` | **Do NOT override.** Collects all video/ad attributes. Use getter methods instead. |
 
+### Live Stream Configuration
+
+**Recommendations for Live Content:**
+
+For live streams, reduce the harvest interval to 5,000–10,000 ms for near-real-time data delivery:
+
+```javascript
+// Live content — flush every 5 seconds
+tracker.setHarvestInterval(5000)
+
+// VOD content — default 10s is sufficient or change it as required
+```
+
 **State-changing methods** (call these from `registerListeners`):
 
 | Method | Event Emitted (Content / Ad) | Description |

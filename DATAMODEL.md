@@ -48,6 +48,7 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | contentSegmentDownloadBitrate  | Measured bitrate (in bits per second) based on segment download performance.                                                                       |
 | contentNetworkDownloadBitrate  | Network download bitrate (in bits per second) measured during content delivery.                                                                    |
 | contentRenditionName           | Name of the rendition (e.g., 1080p).                                                                                                               |
+| contentRenditionBitrate        | Target bitrate of the active rendition, in bits per second.                                                                                        |
 | contentRenditionHeight   | Rendition actual Height (before re-scaling).                                                                                                       |
 | contentRenditionWidth    | Rendition actual Width (before re-scaling).                                                                                                        |
 | contentDuration          | Duration of the video, in ms.                                                                                                                      |
@@ -63,9 +64,20 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | contentFps               | Current FPS (Frames per second).                                                                                                                   |
 | isBackgroundEvent        | If the player is hidden by another window.                                                                                                         |
 | totalAdPlaytime          | Total time ad is played for this video session.                                                                                                    |
-| elapsedTime              | Time that has passed since the last event.                                                                                                         |
+| elapsedTime              | Active content watched between two consecutive heartbeats, in milliseconds.                                                                                                         |
 | bufferType               | When buffer starts, i.e., initial, seek, pause & connection.                                                                                       |
-| timeSinceLastError       | Time in milliseconds since the last content error occurred. Only included after an error has occurred.                                             |
+| timeSinceRequested       | Time (in milliseconds) since the video was requested.                                                                                              |
+| timeSinceStarted         | Time (in milliseconds) since the video started playing.                                                                                            |
+| timeSinceTrackerReady    | Time (in milliseconds) since the tracker was initialized (PLAYER_READY).                                                                           |
+| timeSinceLastHeartbeat   | Time (in milliseconds) since the last heartbeat event.                                                                                             |
+| timeSinceBufferBegin     | Time (in milliseconds) since the last buffer event began.                                                                                          |
+| timeSincePaused          | Time (in milliseconds) since the video was last paused.                                                                                            |
+| timeSinceLastError       | Time (in milliseconds) since the last content error occurred. Only included after an error has occurred.                                            |
+| numberOfVideos           | Number of videos played in this session.                                                                                                           |
+| numberOfErrors           | Number of errors occurred in this session.                                                                                                         |
+| trackerName              | Name of the tracker/agent.                                                                                                                         |
+| trackerVersion           | Version of the tracker/agent.                                                                                                                      |
+| playtimeSinceLastEvent   | Active content playtime (in milliseconds) since the last event. (JS players only)                                                                  |
 | asn                      | Autonomous System Number: a unique number identifying a group of IP networks that serves the content to the end user.                              |
 | asnLatitude              | The latitude of the geographic center of the postal code where the Autonomous System Network is registered. This is not the end user's latitude.   |
 | asnLongitude             | The longitude of the geographic center of the postal code where the Autonomous System Network is registered. This is not the end user's longitude. |
@@ -75,7 +87,10 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | instrumentation.name     | Name of the instrumentation collecting the data.                                                                                                   |
 | instrumentation.version  | Agent's version.                                                                                                                                   |
 
-**QoE (Quality of Experience) Attributes** - These attributes are sent with `actionName = QOE_AGGGREGATE` events:
+**QoE (Quality of Experience) Attributes** - These attributes are sent with `actionName = QOE_AGGREGATE` events:
+
+> **Note:** QoE aggregate events are opt-in and must be explicitly enabled. Reporting frequency is configurable per integration.
+
 
 | Attribute Name           | Definition                                                                                                                                         |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -105,7 +120,7 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | CONTENT_BUFFER_END       | Content video buffering ended.                                                                   |
 | CONTENT_HEARTBEAT        | Content video heartbeat, an event that happens once every 30 seconds while the video is playing. |
 | CONTENT_RENDITION_CHANGE | Content video stream quality changed.                                                            |
-| QOE_AGGGREGATE           | Quality of Experience aggregate event containing QoE KPI metrics for content playback.           |
+| QOE_AGGREGATE           | Quality of Experience aggregate event containing QoE KPI metrics for content playback.           |
 
 ### VideoAdAction
 
@@ -147,7 +162,7 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | asnLongitude             | The longitude of the geographic center of the postal code where the Autonomous System Network is registered. This is not the end user's longitude. |
 | asnOrganization          | The organization that owns the Autonomous System Number. Often an ISP, sometimes a private company or institution.                                 |
 | timestamp                | The time (date, hour, minute, second) at which the interaction occurred.                                                                           |
-| elapsedTime              | Time that has passed since the last event.                                                                                                         |
+| elapsedTime              | Active content watched between two consecutive heartbeats, in milliseconds.                                                                                                         |
 | instrumentation.provider | Player/agent name.                                                                                                                                 |
 | instrumentation.name     | Name of the instrumentation collecting the data.                                                                                                   |
 | instrumentation.version  | Agent’s version.                                                                                                                                   |
@@ -189,9 +204,8 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | viewId                   | Trackers will generate unique IDs for every new video iteration.                                                                                   |
 | contentId                | The ID of the video.                                                                                                                               |
 | contentTitle             | The title of the video.                                                                                                                            |
-| errorName                | Name of the error.                                                                                                                                 |
+| errorMessage                | Message describing the error.                                                                                                                                                                               |
 | errorCode                | Error code if it's known.                                                                                                                          |
-| backTrace                | Stack trace of the error.                                                                                                                          |
 | isBackgroundEvent        | If the player is hidden by another window.                                                                                                         |
 | contentSrc               | Content source URL.                                                                                                                                |
 | contentCdn               | Content CDN URL.                                                                                                                                   |
@@ -199,7 +213,7 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | asnLatitude              | The latitude of the geographic center of the postal code where the Autonomous System Network is registered. This is not the end user's latitude.   |
 | asnLongitude             | The longitude of the geographic center of the postal code where the Autonomous System Network is registered. This is not the end user's longitude. |
 | asnOrganization          | The organization that owns the Autonomous System Number. Often an ISP, sometimes a private company or institution.                                 |
-| elapsedTime              | Time that has passed since the last event.                                                                                                         |
+| elapsedTime              | Active content watched between two consecutive heartbeats, in milliseconds.                                                                                                         |
 | timestamp                | The time (date, hour, minute, second) at which the interaction occurred.                                                                           |
 | instrumentation.provider | Player/agent name.                                                                                                                                 |
 | instrumentation.name     | Name of the instrumentation collecting the data.                                                                                                   |
