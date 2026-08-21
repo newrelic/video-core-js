@@ -68,7 +68,7 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | bufferType               | When buffer starts, i.e., initial, seek, pause & connection.                                                                                       |
 | timeSinceRequested       | Time (in milliseconds) since the video was requested.                                                                                              |
 | timeSinceStarted         | Time (in milliseconds) since the video started playing.                                                                                            |
-| timeSinceTrackerReady    | Time (in milliseconds) since the tracker was initialized (PLAYER_READY).                                                                           |
+| timeSinceTrackerReady    | Time (in milliseconds) since the Tracker was constructed.                                                                           |
 | timeSinceLastHeartbeat   | Time (in milliseconds) since the last heartbeat event.                                                                                             |
 | timeSinceBufferBegin     | Time (in milliseconds) since the last buffer event began.                                                                                          |
 | timeSincePaused          | Time (in milliseconds) since the video was last paused.                                                                                            |
