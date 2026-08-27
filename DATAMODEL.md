@@ -102,6 +102,23 @@ An Attribute is a piece of data associated with an event. Attributes provide add
 | rebufferingRatio | Rebuffering time as a percentage of total playtime. Calculated as (totalRebufferingTime / totalPlaytime) × 100.                                    |
 | totalPlaytime    | Total milliseconds user spent watching content (excludes pausing, buffering, and ads). Represents actual content viewing time.                     |
 | averageBitrate   | Average bitrate (in bits per second) across all content playback weighted by playtime.                                                             |
+| numberOfErrors   | Number of content errors that occurred during the session.                                                                                          |
+
+### QoE v1.1 Attributes
+
+These attributes were added in `qoeAggregateVersion: "1.1.0"` and are included alongside the QoE Aggregate Attributes above:
+
+| Attribute Name           | Definition                                                                                                                                         |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| qoeAggregateVersion | Version tag of the QoE aggregate schema for this event. Currently "1.1.0".                                                                        |
+| avgDownloadRate  | Mean network download bitrate (in bits per second) across distinct throughput samples observed during the session. Only included if at least one sample was recorded. |
+| minDownloadRate  | Minimum network download bitrate (in bits per second) observed among distinct throughput samples in the session. Only included if at least one sample was recorded. |
+| maxDownloadRate  | Maximum network download bitrate (in bits per second) observed among distinct throughput samples in the session. Only included if at least one sample was recorded. |
+| totalSwitchUps   | Number of content rendition/quality changes where the new bitrate was higher than the previous one.                                                 |
+| totalSwitchDowns | Number of content rendition/quality changes where the new bitrate was lower than the previous one.                                                  |
+| totalPauseTime   | Total time, in milliseconds, spent in a paused state during the session.                                                                             |
+| totalViewSessionTime | Total content playtime, in milliseconds, for the session. Same value as totalPlaytime.                                                          |
+| totalRenditions  | Number of distinct content renditions (height x width combinations) played during the session.                                                     |
 
 #### List of possible Video Actions
 
