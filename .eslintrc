@@ -10,5 +10,6 @@
     "globals": {
         "newrelic": true,
         "nrvideo": true
-    }
+    },
+    "ignorePatterns": ["**/*.ts", "**/*.d.ts"]
 }

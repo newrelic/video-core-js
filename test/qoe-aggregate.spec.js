@@ -1,6 +1,6 @@
-import { videoAnalyticsHarvester } from "../src/browser/agent.js";
-import Tracker from "../src/tracker.js";
-import Log from "../src/log.js";
+import { videoAnalyticsHarvester } from "../src/browser/agent";
+import Tracker from "../src/tracker";
+import Log from "../src/log";
 
 
 describe("QOE_AGGREGATE Buffer Management", () => {

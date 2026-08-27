@@ -6,7 +6,7 @@ import Log from "../log";
  * @returns {string} Harvest URL
  */
 
-export function buildUrl(fallbackUrl) {
+export function buildUrl(fallbackUrl?: string): string | null {
   try {
     if (!window.NRVIDEO || !window.NRVIDEO.info) {
       throw new Error("NRVIDEO info is not available.");
@@ -30,7 +30,7 @@ export function buildUrl(fallbackUrl) {
     return `https://${
       fallbackUrl ? fallbackUrl : beacon
     }/ins/1/${licenseKey}?&v=${pkg.version}&ref=${window.location.href}&ca=VA`;
-  } catch (error) {
+  } catch (error: any) {
     console.error(error.message);
     return null; // Return null instead of undefined
   }
@@ -43,7 +43,7 @@ export function buildUrl(fallbackUrl) {
  */
 const getCircularReplacer = () => {
   const seen = new WeakSet();
-  return (key, value) => {
+  return (key: string, value: unknown) => {
     if (typeof value === "object" && value !== null) {
       if (seen.has(value)) {
         return;
@@ -60,16 +60,16 @@ const getCircularReplacer = () => {
  * @param {*} val - A value to be converted to a JSON string.
  * @returns {string} A JSON string representation of the value, with circular references handled.
  */
-function stringify(val) {
+function stringify(val: unknown): string {
   try {
     return JSON.stringify(val, getCircularReplacer()) ?? "";
-  } catch (e) {
+  } catch (e: any) {
     Log.error("Error stringifying value:", e.message);
     return "";
   }
 }
 
-export function dataSize(data) {
+export function dataSize(data: unknown): number | undefined {
   if (typeof data === "string" && data.length) return data.length;
   if (typeof data !== "object") return undefined;
   // eslint-disable-next-line
@@ -96,7 +96,7 @@ export function dataSize(data) {
  * @param {number} status - HTTP status code
  * @returns {boolean} - True if request should be retried
  */
-export function shouldRetry(status) {
+export function shouldRetry(status: number): boolean {
   switch (status) {
     case 408: // Request Timeout
     case 429: // Too Many Requests
@@ -118,7 +118,7 @@ export function shouldRetry(status) {
  * @returns {Promise<Blob>} A Promise that resolves with a Blob of the Gzipped data.
  */
 
-export function compressPayload(payload) {
+export function compressPayload(payload: unknown): Promise<Blob> {
   const stringifiedPayload = JSON.stringify(payload);
   const stream = new Blob([stringifiedPayload]).stream();
   const compressionStream = new CompressionStream("gzip");
@@ -132,7 +132,7 @@ export function compressPayload(payload) {
  * @param {Blob|ArrayBuffer|Uint8Array} compressedData - The gzipped data to decompress.
  * @returns {Promise<object>} A Promise that resolves with the decompressed JSON object.
  */
-export async function decompressPayload(compressedData) {
+export async function decompressPayload(compressedData: Blob | ArrayBuffer | Uint8Array): Promise<unknown> {
   try {
     // Convert different input types to a stream
     let stream;
@@ -141,7 +141,7 @@ export async function decompressPayload(compressedData) {
     } else if (compressedData instanceof ArrayBuffer) {
       stream = new Blob([compressedData]).stream();
     } else if (compressedData instanceof Uint8Array) {
-      stream = new Blob([compressedData]).stream();
+      stream = new Blob([compressedData as BlobPart]).stream();
     } else {
       throw new Error("Unsupported compressed data type");
     }
@@ -156,7 +156,7 @@ export async function decompressPayload(compressedData) {
 
     // Parse JSON
     return JSON.parse(decompressedText);
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Failed to decompress payload: ${error.message}`);
   }
 }
@@ -173,11 +173,11 @@ export async function decompressPayload(compressedData) {
  * const filtered = getObjectEntriesForKeys(['name', 'city'], data);
  * // Returns: { name: 'John', city: 'NYC' }
  */
-export function getObjectEntriesForKeys(keys, obj) {
+export function getObjectEntriesForKeys(keys: string[], obj: Record<string, unknown>): Record<string, unknown> {
     if(!keys || !Array.isArray(keys) || keys.length === 0) return obj;
     if(!obj || typeof obj !== 'object') return {};
 
-    return keys.reduce((result, key) => {
+    return keys.reduce((result: Record<string, unknown>, key) => {
         if(key in obj) {
             result[key] = obj[key];
         }

@@ -1,8 +1,42 @@
 import Log from "./log";
 import Constants from "./constants";
-import { ENDPOINT_URL } from "./connectedDevice/connectedDeviceConstants";
+import { ENDPOINT_URL, VegaEndpoint } from "./connectedDevice/connectedDeviceConstants";
+import { ObfuscationRule } from "./obfuscate";
 
 const { COLLECTOR } = Constants;
+
+export interface NrVideoBrowserInfo {
+  region?: string;
+  beacon: string;
+  licenseKey: string;
+  applicationID?: string;
+  appName?: string;
+}
+
+export interface NrVideoBrowserConfig {
+  qoeAggregate: boolean;
+  qoeIntervalFactor: number;
+  obfuscate: ObfuscationRule[];
+}
+
+export interface NrVideoCdInfo {
+  accountId?: string;
+  applicationToken: string;
+  endpoint: VegaEndpoint;
+  appName?: string;
+  applicationID?: string;
+  deviceInfo?: unknown;
+}
+
+export interface NrVideoCdConfig {
+  qoeAggregate: boolean;
+  qoeIntervalFactor: number;
+  obfuscate: ObfuscationRule[];
+}
+
+/** Raw, unvalidated user-supplied config — shape varies by pipeline (`src`). */
+export type RawVideoConfigInfo = Record<string, any>;
+export type RawVideoConfigOptions = Record<string, any>;
 
 /**
  * Enhanced video analytics configuration system that extends the existing auth configuration.
@@ -16,7 +50,7 @@ class VideoConfiguration {
    * @returns {boolean} True if configuration is valid and set
    */
 
-  setConfiguration(userInfo, config, src) {
+  setConfiguration(userInfo: RawVideoConfigInfo, config?: RawVideoConfigOptions, src?: string): boolean {
     const validated = src === "Vega"
       ? this.validateVegaFields(userInfo)
       : this.validateRequiredFields(userInfo);
@@ -36,7 +70,7 @@ class VideoConfiguration {
    * @param {object} info
    * @returns {boolean} True if valid
    */
-  validateVegaFields(info) {
+  validateVegaFields(info: RawVideoConfigInfo): boolean {
     if (!info || typeof info !== "object") {
       Log.error("Configuration must be an object");
       return false;
@@ -57,7 +91,7 @@ class VideoConfiguration {
    * @param {object} config - Configuration to validate
    * @returns {boolean} True if valid
    */
-  validateRequiredFields(info) {
+  validateRequiredFields(info: RawVideoConfigInfo): boolean {
     if (!info || typeof info !== "object") {
       Log.error("Configuration must be an object");
       return false;
@@ -107,7 +141,7 @@ class VideoConfiguration {
    * @param {object} config - Config to validate
    * @returns {boolean} True if valid
    */
-  validateConfigFields(config) {
+  validateConfigFields(config?: RawVideoConfigOptions): boolean {
     if (config === null || config === undefined) {
       return true;
     }
@@ -137,7 +171,7 @@ class VideoConfiguration {
    * @param {Array} rules - Raw obfuscation rules
    * @returns {Array} Valid rules only
    */
-  filterObfuscateRules(rules) {
+  filterObfuscateRules(rules?: any[]): ObfuscationRule[] {
     if (!rules) return [];
     return rules.filter((rule) => {
       const hasRegex = rule.regex !== undefined && (typeof rule.regex === "string" || rule.regex instanceof RegExp);
@@ -156,7 +190,7 @@ class VideoConfiguration {
    * @param {*} value
    * @returns {number}
    */
-  sanitizeQoeIntervalFactor(value) {
+  sanitizeQoeIntervalFactor(value: unknown): number {
     if (value === undefined || value === null) return Constants.DEFAULT_QOE_INTERVAL_FACTOR;
     if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
     Log.warn(`Invalid qoeIntervalFactor "${value}" — must be a positive integer. Defaulting to ${Constants.DEFAULT_QOE_INTERVAL_FACTOR}.`);
@@ -168,7 +202,7 @@ class VideoConfiguration {
    * @param {object} userInfo - User provided configuration
    * @param {object} [config] - Optional configuration object
    */
-  initializeGlobalConfig(userInfo, config, src) {
+  initializeGlobalConfig(userInfo: RawVideoConfigInfo, config?: RawVideoConfigOptions, src?: string): void {
     // Vega path: write `globalThis.__NRVIDEO_CD__` with info+config only.
     // The harvester is owned by `connectedDeviceAgent.js` as a module singleton — no
     // harvester field on this global.
@@ -194,7 +228,7 @@ class VideoConfiguration {
     let { licenseKey, appName, region, beacon, applicationID } = userInfo;
 
     if (region === "US") {
-      beacon = Constants.COLLECTOR["US"][0];
+      beacon = (Constants.COLLECTOR["US"] as string[])[0];
     } else {
       beacon = beacon || COLLECTOR[region];
     }
@@ -226,7 +260,7 @@ const videoConfiguration = new VideoConfiguration();
  * @param {object} [config] - Optional configuration object
  * @returns {boolean} True if configuration was set successfully
  */
-export function setVideoConfig(info, config, src) {
+export function setVideoConfig(info: RawVideoConfigInfo, config?: RawVideoConfigOptions, src?: string): boolean {
   return videoConfiguration.setConfiguration(info, config, src);
 }
 

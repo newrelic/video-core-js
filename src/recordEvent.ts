@@ -1,6 +1,8 @@
-import Constants from "./constants.js";
-import Log from "./log.js";
-import { dispatchRecordEvent } from "./utils/eventBuilder";
+import Constants from "./constants";
+import Log from "./log";
+import { dispatchRecordEvent, EventAttributes, Harvester } from "./utils/eventBuilder";
+
+export type { EventAttributes, Harvester };
 
 /**
  * Registry-based recordEvent (split build).
@@ -8,7 +10,7 @@ import { dispatchRecordEvent } from "./utils/eventBuilder";
  * No static harvester imports. Each harvester self-registers under a key
  * (`'Browser'` or `'Vega'`) at module load time via `registerHarvester`.
  */
-const harvesters = Object.create(null);
+const harvesters: Record<string, Harvester> = Object.create(null);
 
 /**
  * Register a harvester implementation under a routing key.
@@ -18,7 +20,7 @@ const harvesters = Object.create(null);
  * @param {string} key  Routing key matching `attributes.src`.
  * @param {{ addEvent: function }} harvester
  */
-export function registerHarvester(key, harvester) {
+export function registerHarvester(key: string, harvester: Harvester): void {
   harvesters[key] = harvester;
 }
 
@@ -39,11 +41,11 @@ export function registerHarvester(key, harvester) {
  * @param {string} key
  * @returns {{ addEvent: function }|undefined}
  */
-export function getRegisteredHarvester(key) {
+export function getRegisteredHarvester(key: string): Harvester | undefined {
   return harvesters[key];
 }
 
-export function recordEvent(eventType, attributes = {}) {
+export function recordEvent(eventType: string, attributes: EventAttributes = {}): boolean | undefined {
   try {
     if (!Constants.VALID_EVENT_TYPES.includes(eventType)) {
       Log.warn("Invalid event type provided to recordEvent", { eventType });
@@ -67,10 +69,10 @@ export function recordEvent(eventType, attributes = {}) {
       : w?.NRVIDEO?.config?.qoeAggregate;
 
     return dispatchRecordEvent(
-      eventType, attributes, info, harvester, qoeEnabled,
+      eventType, attributes, info, harvester, !!qoeEnabled,
       { addTimeSinceLoad: !isVega }
     );
-  } catch (error) {
+  } catch (error: any) {
     Log.error("Failed to record event:", error.message);
     return false;
   }

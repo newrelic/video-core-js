@@ -1,5 +1,10 @@
 import Log from "./log";
 
+export interface ObfuscationRule {
+  regex: string | RegExp;
+  replacement: string;
+}
+
 /**
  * Applies obfuscation rules to a JSON string before sending to the collector.
  * Each rule replaces matches of `regex` with `replacement` in the string.
@@ -8,7 +13,7 @@ import Log from "./log";
  * @param {Array<{regex: string|RegExp, replacement: string}>} rules - Obfuscation rules
  * @returns {string} Obfuscated string
  */
-export function applyObfuscationRules(jsonString, rules) {
+export function applyObfuscationRules(jsonString: string, rules?: ObfuscationRule[]): string {
   if (!rules || rules.length === 0) return jsonString;
 
   return rules.reduce((str, rule) => {

@@ -344,7 +344,7 @@ describe("ConnectedDeviceHarvester", () => {
   describe("(no DOM APIs)", () => {
     it("T-CDH-13: source contains no document, window.location, sendBeacon, localStorage, or addEventListener (outside JSDoc comments)", () => {
       const src = fs.readFileSync(
-        path.resolve(__dirname, "../src/connectedDevice/connectedDeviceHarvester.js"),
+        path.resolve(__dirname, "../src/connectedDevice/connectedDeviceHarvester.ts"),
         "utf8"
       );
       // Strip JSDoc comment blocks before grepping.
