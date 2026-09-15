@@ -1,3 +1,14 @@
+## 5.1.0 (2026-09-15)
+
+* Merge pull request #107 from newrelic/fix/dependabot-transitive-deps ([c2e4cba](https://github.com/newrelic/video-core-js/commit/c2e4cba)), closes [#107](https://github.com/newrelic/video-core-js/issues/107)
+* Merge pull request #110 from newrelic/release/14SEP2026 ([3718dfa](https://github.com/newrelic/video-core-js/commit/3718dfa)), closes [#110](https://github.com/newrelic/video-core-js/issues/110)
+* Merge remote-tracking branch 'origin/chore/NR-600627-typescript-conversion' into release/14SEP2026-l ([c87e778](https://github.com/newrelic/video-core-js/commit/c87e778))
+* docs: add harvest cycle configuration documentation (#108) ([04e070f](https://github.com/newrelic/video-core-js/commit/04e070f)), closes [#108](https://github.com/newrelic/video-core-js/issues/108)
+* fix: guard dataSize() undefined return instead of casting to number ([341c158](https://github.com/newrelic/video-core-js/commit/341c158))
+* fix: tighten Harvester interface to match actual implementations ([9592c21](https://github.com/newrelic/video-core-js/commit/9592c21))
+* chore: patch transitive dev-dependency vulnerabilities flagged by Dependabot ([4b5cb31](https://github.com/newrelic/video-core-js/commit/4b5cb31)), closes [#55](https://github.com/newrelic/video-core-js/issues/55) [#64](https://github.com/newrelic/video-core-js/issues/64) [#95](https://github.com/newrelic/video-core-js/issues/95) [#96](https://github.com/newrelic/video-core-js/issues/96) [#98](https://github.com/newrelic/video-core-js/issues/98) [#102](https://github.com/newrelic/video-core-js/issues/102) [#103](https://github.com/newrelic/video-core-js/issues/103) [#104](https://github.com/newrelic/video-core-js/issues/104) [#105](https://github.com/newrelic/video-core-js/issues/105) [#106](https://github.com/newrelic/video-core-js/issues/106)
+* feat: convert video-core to TypeScript with type declarations ([e540f71](https://github.com/newrelic/video-core-js/commit/e540f71))
+
 # Changelog
 All notable changes to this project will be documented in this file.
 
