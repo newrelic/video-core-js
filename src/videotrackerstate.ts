@@ -5,6 +5,70 @@ import Log from "./log";
  * State machine for a VideoTracker and its monitored video.
  */
 class VideoTrackerState {
+  _viewSession: string | null = null;
+  _viewCount: number = 0;
+  _isAd: boolean = false;
+  numberOfErrors: number = 0;
+  numberOfAds: number = 0;
+  numberOfVideos: number = 0;
+  totalPlaytime: number = 0;
+  weightedAverageBitrate: number = 0;
+  totalAdPlaytime: number = 0;
+  isAdBreak: boolean = false;
+  initialBufferingHappened: boolean = false;
+  startupTime: number | null = null;
+  peakBitrate: number = 0;
+  partialAverageBitrate: number = 0;
+  _totalBitrateDuration: number = 0;
+  weightedBitrate: number = 0;
+  _lastBitrate: number | null = null;
+  _lastBitrateChangeTimestamp: number | null = null;
+  _downloadBitrates: number[] = [];
+  _lastDownloadBitrate: number | null = null;
+  totalSwitchUps: number = 0;
+  totalSwitchDowns: number = 0;
+  totalPauseTime: number = 0;
+  _playedRenditions: Set<string> = new Set();
+  hadStartupError: boolean = false;
+  hadPlaybackError: boolean = false;
+  totalRebufferingTime: number = 0;
+
+  isPlayerReady: boolean = false;
+  isRequested: boolean = false;
+  isStarted: boolean = false;
+  isPaused: boolean = false;
+  isSeeking: boolean = false;
+  isBuffering: boolean = false;
+  isPlaying: boolean = false;
+
+  timeSinceRequested!: Chrono;
+  timeSinceStarted!: Chrono;
+  timeSincePaused!: Chrono;
+  timeSinceSeekBegin!: Chrono;
+  timeSinceBufferBegin!: Chrono;
+  timeSinceAdBreakStart!: Chrono;
+  timeSinceLastDownload!: Chrono;
+  timeSinceLastHeartbeat!: Chrono;
+  timeSinceLastRenditionChange!: Chrono;
+  timeSinceLastAdQuartile!: Chrono;
+  timeSinceLastAd!: Chrono;
+  timeSinceLastError!: Chrono;
+  timeSinceLastAdError!: Chrono;
+  timeSinceResumed!: Chrono;
+  timeSinceSeekEnd!: Chrono;
+  playtimeSinceLastEvent!: Chrono;
+  customTimeSinceAttributes: Record<string, Chrono> = {};
+  elapsedTime!: Chrono;
+  bufferElapsedTime!: Chrono;
+  _totalAdPlaytime!: Chrono;
+
+  /** @private */
+  _createdAt: number;
+  _hb: boolean;
+  _acc: number;
+  _bufferAcc: number;
+  isError?: boolean;
+
   /** Constructor */
   constructor() {
     this.reset();
@@ -22,7 +86,7 @@ class VideoTrackerState {
   }
 
   /** Resets all flags and chronos. */
-  reset() {
+  reset(): void {
     /**
      * Unique identifier of the view.
      * @private
@@ -149,7 +213,7 @@ class VideoTrackerState {
   }
 
   /** Resets flags. */
-  resetFlags() {
+  resetFlags(): void {
     /** True once the player has finished loading. */
     this.isPlayerReady = false;
 
@@ -173,7 +237,7 @@ class VideoTrackerState {
   }
 
   /** Resets chronos. */
-  resetChronos() {
+  resetChronos(): void {
     /** Chrono that counts time since last requested event. */
     this.timeSinceRequested = new Chrono();
 
@@ -234,12 +298,12 @@ class VideoTrackerState {
   }
 
   /** Returns true if the tracker is currently on ads. */
-  isAd() {
+  isAd(): boolean {
     return this._isAd;
   }
 
   /** Sets if the tracker is currenlty tracking ads */
-  setIsAd(isAd) {
+  setIsAd(isAd: boolean): void {
     this._isAd = isAd;
   }
 
@@ -248,7 +312,7 @@ class VideoTrackerState {
    *
    * @param {object} name Time since attribute name.
    */
-  setTimeSinceAttribute(name) {
+  setTimeSinceAttribute(name: string): void {
     this.customTimeSinceAttributes[name] = new Chrono();
     this.customTimeSinceAttributes[name].start();
   }
@@ -258,14 +322,14 @@ class VideoTrackerState {
    *
    * @param {object} name Time since attribute name.
    */
-  removeTimeSinceAttribute(name) {
+  removeTimeSinceAttribute(name: string): void {
     delete this.customTimeSinceAttributes[name];
   }
 
   /**
    * Returns a random-generated view Session ID, useful to sort by views.
    */
-  getViewSession() {
+  getViewSession(): string {
     if (!this._viewSession) {
       let time = new Date().getTime();
       let random =
@@ -282,7 +346,7 @@ class VideoTrackerState {
    * Returns a random-generated view Session ID, plus a view count, allowing you to distinguish
    * between two videos played in the same session.
    */
-  getViewId() {
+  getViewId(): string {
     return this.getViewSession() + "-" + this._viewCount;
   }
 
@@ -292,7 +356,7 @@ class VideoTrackerState {
    * @param {object} att Collection fo key value attributes
    * @return {object} Filled attributes
    */
-  getStateAttributes(att) {
+  getStateAttributes(att?: Record<string, any>): Record<string, any> {
     att = att || {};
 
     if (this.isAd()) {
@@ -368,9 +432,9 @@ class VideoTrackerState {
     return att;
   }
 
-  getQoeAttributes(att) {
+  getQoeAttributes(att?: Record<string, any>): Record<string, any> {
       att = att || {};
-      const kpi = {};
+      const kpi: Record<string, any> = {};
 
       try {
           // QoE v1 KPIs
@@ -412,7 +476,7 @@ class VideoTrackerState {
           // Version tag
           kpi["qoeAggregateVersion"] = "1.1.0";
 
-      } catch (error) {
+      } catch (error: any) {
           Log.error("Failed to add attributes for QOE KPIs", error.message);
       }
 
@@ -425,7 +489,7 @@ class VideoTrackerState {
    *
    * @param {boolean} isInitialBuffering Is initial buffering event.
    */
-  calculateBufferType(isInitialBuffering) {
+  calculateBufferType(isInitialBuffering: boolean): string {
     let bufferType = "";
     if (isInitialBuffering) {
       bufferType = "initial";
@@ -445,7 +509,7 @@ class VideoTrackerState {
   /**
    * Augments view count. This will be called with each *_START and *_END.
    */
-  goViewCountUp() {
+  goViewCountUp(): void {
     this._viewCount++;
   }
 
@@ -453,7 +517,7 @@ class VideoTrackerState {
    * Checks flags and changes state.
    * @returns {boolean} True if the state changed.
    */
-  goPlayerReady() {
+  goPlayerReady(): boolean {
     if (!this.isPlayerReady) {
       this.isPlayerReady = true;
       return true;
@@ -466,7 +530,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goRequest() {
+  goRequest(): boolean {
     if (!this.isRequested) {
       this.isRequested = true;
 
@@ -482,7 +546,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goStart() {
+  goStart(): boolean {
     if (this.isRequested && !this.isStarted) {
       if (this.isAd()) {
         this.numberOfAds++;
@@ -503,7 +567,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goEnd() {
+  goEnd(): boolean {
     if (this.isRequested) {
       this.numberOfErrors = 0;
       this.resetFlags();
@@ -521,7 +585,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goPause() {
+  goPause(): boolean {
     if (this.isStarted && !this.isPaused) {
       this.isPaused = true;
       this.isPlaying = false;
@@ -529,7 +593,7 @@ class VideoTrackerState {
       this.playtimeSinceLastEvent.stop();
       this.timeSinceResumed.reset();
       if (this.isBuffering) {
-        this._bufferAcc += this.bufferElapsedTime.getDeltaTime();
+        this._bufferAcc += this.bufferElapsedTime.getDeltaTime() as number;
       }
       this.elapsedTime.start();
       return true;
@@ -542,20 +606,20 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goResume() {
+  goResume(): boolean {
     if (this.isStarted && this.isPaused) {
       this.isPaused = false;
       this.isPlaying = true;
       this.timeSincePaused.stop();
       this.timeSinceResumed.start();
       if (this._hb) {
-        this._acc = this.elapsedTime.getDeltaTime();
+        this._acc = this.elapsedTime.getDeltaTime() as number;
         this._hb = false;
       } else {
         if (this.isBuffering) {
           this.bufferElapsedTime.start();
         }
-        this._acc += this.elapsedTime.getDeltaTime();
+        this._acc += this.elapsedTime.getDeltaTime() as number;
       }
       return true;
     } else {
@@ -567,7 +631,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goBufferStart() {
+  goBufferStart(): boolean {
     if (this.isRequested && !this.isBuffering) {
       this.isBuffering = true;
       this.isPlaying = false;
@@ -584,16 +648,16 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goBufferEnd() {
+  goBufferEnd(): boolean {
     if (this.isRequested && this.isBuffering) {
       this.isBuffering = false;
       this.isPlaying = true;
       this.timeSinceBufferBegin.stop();
       if (this._hb) {
-        this._bufferAcc = this.bufferElapsedTime.getDeltaTime();
+        this._bufferAcc = this.bufferElapsedTime.getDeltaTime() as number;
         this._hb = false;
       } else {
-        this._bufferAcc += this.bufferElapsedTime.getDeltaTime();
+        this._bufferAcc += this.bufferElapsedTime.getDeltaTime() as number;
       }
 
       // Accumulate total rebuffering time for content only
@@ -613,7 +677,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goSeekStart() {
+  goSeekStart(): boolean {
     if (this.isStarted && !this.isSeeking) {
       this.isSeeking = true;
       this.isPlaying = false;
@@ -633,7 +697,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goSeekEnd() {
+  goSeekEnd(): boolean {
     if (this.isStarted && this.isSeeking) {
       this.isSeeking = false;
       this.isPlaying = true;
@@ -654,7 +718,7 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goAdBreakStart() {
+  goAdBreakStart(): boolean {
     if (!this.isAdBreak) {
       this.isAdBreak = true;
       this.timeSinceAdBreakStart.start();
@@ -668,11 +732,11 @@ class VideoTrackerState {
    * Checks flags and changes state
    * @returns {boolean} True if the state changed.
    */
-  goAdBreakEnd() {
+  goAdBreakEnd(): boolean {
     if (this.isAdBreak) {
       this.isRequested = false;
       this.isAdBreak = false;
-      this.totalAdPlaytime = this.timeSinceAdBreakStart.getDeltaTime();
+      this.totalAdPlaytime = this.timeSinceAdBreakStart.getDeltaTime() as number;
       this.timeSinceAdBreakStart.stop();
       return true;
     } else {
@@ -683,35 +747,35 @@ class VideoTrackerState {
   /**
    * Restarts download chrono.
    */
-  goDownload() {
+  goDownload(): void {
     this.timeSinceLastDownload.start();
   }
 
   /**
    * Restarts heartbeat chrono.
    */
-  goHeartbeat() {
+  goHeartbeat(): void {
     this.timeSinceLastHeartbeat.start();
   }
 
   /**
    * Restarts rendition change chrono.
    */
-  goRenditionChange() {
+  goRenditionChange(): void {
     this.timeSinceLastRenditionChange.start();
   }
 
   /**
    * Restarts ad quartile chrono.
    */
-  goAdQuartile() {
+  goAdQuartile(): void {
     this.timeSinceLastAdQuartile.start();
   }
 
   /**
    * Increments error counter and starts appropriate error timer.
    */
-  goError() {
+  goError(): void {
     this.isError = true;
     this.numberOfErrors++;
 
@@ -734,7 +798,7 @@ class VideoTrackerState {
   /**
    * Restarts last ad chrono.
    */
-  goLastAd() {
+  goLastAd(): void {
     this.timeSinceLastAd.start();
   }
 
@@ -742,7 +806,7 @@ class VideoTrackerState {
    * Updates peak bitrate and time-weighted average bitrate (content only).
    * @param {number} bitrate Current content bitrate in bps.
    */
-  trackContentBitrateState(bitrate) {
+  trackContentBitrateState(bitrate: number): void {
     if (bitrate && typeof bitrate === "number") {
       this.peakBitrate = Math.max(this.peakBitrate, bitrate);
 
@@ -804,7 +868,7 @@ class VideoTrackerState {
    * Records network download bitrate observation. Only tracks values that differ from previous.
    * @param {number} bps Network throughput in bits per second.
    */
-  trackDownloadRate(bps) {
+  trackDownloadRate(bps: number): void {
     if (!bps || typeof bps !== "number" || bps <= 0) return;
     if (bps !== this._lastDownloadBitrate) {
       this._downloadBitrates.push(bps);
@@ -817,7 +881,7 @@ class VideoTrackerState {
    * @param {number} height Rendition height in pixels.
    * @param {number} width Rendition width in pixels.
    */
-  addPlayedRendition(height, width) {
+  addPlayedRendition(height: number, width: number): void {
     if (height && width) {
       this._playedRenditions.add(`${height}x${width}`);
     }
@@ -827,7 +891,7 @@ class VideoTrackerState {
   /**
    * Resets tracked variable for view id change
    * */
-  resetViewIdTrackedState() {
+  resetViewIdTrackedState(): void {
     this.peakBitrate = 0;
     this.startupTime = null;
     this.partialAverageBitrate = 0;
@@ -844,28 +908,28 @@ class VideoTrackerState {
   }
 
   /** Methods to manage total ads time chrono */
-  clearTotalAdsTime() {
+  clearTotalAdsTime(): void {
     Log.debug("clear total ads time", this.totalAdTime);
     this._totalAdPlaytime.reset();
   }
 
-  totalAdTime() {
+  totalAdTime(): number {
     return this._totalAdPlaytime.getDuration();
   }
 
-  startAdsTime() {
+  startAdsTime(): void {
     Log.debug("startAdsTime");
     return this._totalAdPlaytime.start();
   }
 
-  stopAdsTime() {
+  stopAdsTime(): number | null {
     Log.debug("stopAdsTime");
     return this._totalAdPlaytime.stop();
   }
 
-  setStartupTime(totalAdTime) {
+  setStartupTime(totalAdTime: number): void {
     if (this.startupTime === null) {
-      this.startupTime = Math.max(this.timeSinceRequested.getDeltaTime() - totalAdTime, 0)
+      this.startupTime = Math.max((this.timeSinceRequested.getDeltaTime() as number) - totalAdTime, 0)
     }
   }
 

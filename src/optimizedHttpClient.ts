@@ -2,6 +2,30 @@ import { shouldRetry } from "./utils";
 import Log from "./log";
 import { applyObfuscationRules } from "./obfuscate";
 
+export interface HttpRequestOptions {
+  url: string;
+  payload: { body: any };
+  options?: { isFinalHarvest?: boolean };
+}
+
+export interface HttpResultCallback {
+  (result: { retry?: boolean; status: number; statusText?: string; error?: string }): void;
+}
+
+interface InternalRequest {
+  url: string;
+  payload: { body: any };
+  options: { isFinalHarvest?: boolean };
+  callback: HttpResultCallback;
+}
+
+interface RequestResult {
+  success: boolean;
+  status: number;
+  statusText?: string;
+  error?: string;
+}
+
 /**
  * Optimized HTTP client for video analytics data transmission with
  * performance monitoring and efficient request handling.
@@ -16,7 +40,7 @@ export class OptimizedHttpClient {
    * @param {Function} callback - Callback function for handling response
    * @returns {Promise<void>}
    */
-  async send(requestOptions, callback) {
+  async send(requestOptions: HttpRequestOptions, callback: HttpResultCallback): Promise<void> {
     const { url, payload, options = {} } = requestOptions;
 
     try {
@@ -26,7 +50,7 @@ export class OptimizedHttpClient {
       }
 
       // Create request object
-      const request = {
+      const request: InternalRequest = {
         url,
         payload,
         options,
@@ -35,7 +59,7 @@ export class OptimizedHttpClient {
 
       // Execute request immediately
       await this.executeRequest(request);
-    } catch (error) {
+    } catch (error: any) {
       Log.error("Failed to send request:", error.message);
       callback({ retry: false, status: 0, error: error.message });
     }
@@ -46,7 +70,7 @@ export class OptimizedHttpClient {
    * @param {object} request - Request object
    * @private
    */
-  async executeRequest(request) {
+  async executeRequest(request: InternalRequest): Promise<void> {
     const { url, payload, options, callback } = request;
     const startTime = Date.now();
 
@@ -59,7 +83,7 @@ export class OptimizedHttpClient {
       // Handle final harvest with sendBeacon
       if (options.isFinalHarvest && navigator.sendBeacon) {
         const success = await this.sendWithBeacon(url, requestBody);
-        const result = { success, status: success ? 204 : 0 };
+        const result: RequestResult = { success, status: success ? 204 : 0 };
         this.handleRequestComplete(request, result, startTime);
         return;
       }
@@ -78,15 +102,15 @@ export class OptimizedHttpClient {
         10000
       );
 
-      const result = {
+      const result: RequestResult = {
         success: response.ok,
         status: response.status,
         statusText: response.statusText,
       };
 
       this.handleRequestComplete(request, result, startTime);
-    } catch (error) {
-      const result = {
+    } catch (error: any) {
+      const result: RequestResult = {
         success: false,
         status: 0,
         error: error.message,
@@ -104,7 +128,7 @@ export class OptimizedHttpClient {
    * @param {string} endpoint - The endpoint that was used for the request
    * @private
    */
-  handleRequestComplete(request, result) {
+  handleRequestComplete(request: InternalRequest, result: RequestResult, startTime?: number): void {
     const { callback } = request;
 
     // Use smart retry logic based on HTTP status codes
@@ -127,10 +151,10 @@ export class OptimizedHttpClient {
    * @returns {Promise<boolean>} True if successful
    * @private
    */
-  async sendWithBeacon(url, body) {
+  async sendWithBeacon(url: string, body: string): Promise<boolean> {
     try {
       return navigator.sendBeacon(url, body);
-    } catch (error) {
+    } catch (error: any) {
       Log.warn("sendBeacon failed, falling back to fetch:", error.message);
       return false;
     }
@@ -145,7 +169,7 @@ export class OptimizedHttpClient {
    * @returns {Promise<Response>} Fetch response
    * @private
    */
-  async fetchWithTimeout(url, options, timeout) {
+  async fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -156,7 +180,7 @@ export class OptimizedHttpClient {
       });
       clearTimeout(timeoutId);
       return response;
-    } catch (error) {
+    } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
         throw new Error(`Request timeout after ${timeout}ms`);

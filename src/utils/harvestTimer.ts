@@ -1,5 +1,22 @@
 import Log from "../log";
 
+export interface HarvestTimerOptions {
+  /** Initial tick interval in ms. */
+  interval: number;
+  /** Pipeline-specific drain callback. Awaited; the next tick is scheduled in `finally`. */
+  onTick: () => Promise<void> | void;
+  /** Prefix for the error log when `onTick` throws (e.g. "HarvestScheduler"). */
+  errorLabel: string;
+}
+
+export interface HarvestTimer {
+  start: () => void;
+  stop: () => void;
+  cancelAndReschedule: () => void;
+  updateInterval: (ms: number) => void;
+  isRunning: () => boolean;
+}
+
 /**
  * Periodic harvest timer using chained `setTimeout`. Each tick schedules the
  * next one only after the current `onTick` callback resolves — by construction
@@ -29,9 +46,9 @@ import Log from "../log";
  *   isRunning: () => boolean,
  * }}
  */
-export function createHarvestTimer({ interval, onTick, errorLabel }) {
+export function createHarvestTimer({ interval, onTick, errorLabel }: HarvestTimerOptions): HarvestTimer {
   let isStarted = false;
-  let currentTimerId = null;
+  let currentTimerId: ReturnType<typeof setTimeout> | null = null;
   let currentInterval = interval;
 
   function scheduleNext() {
@@ -40,7 +57,7 @@ export function createHarvestTimer({ interval, onTick, errorLabel }) {
       currentTimerId = null;
       try {
         await onTick();
-      } catch (error) {
+      } catch (error: any) {
         Log.error(`${errorLabel}: scheduled tick failed:`, error.message);
       } finally {
         if (isStarted) scheduleNext();
@@ -93,7 +110,7 @@ export function createHarvestTimer({ interval, onTick, errorLabel }) {
      * @param {number} ms - New interval in milliseconds. Must be a positive
      *   number; invalid values are silently ignored.
      */
-    updateInterval(ms) {
+    updateInterval(ms: number) {
       if (typeof ms !== "number" || ms <= 0) return;
       currentInterval = ms;
       if (isStarted && currentTimerId) {

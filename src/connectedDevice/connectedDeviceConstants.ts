@@ -6,11 +6,13 @@
 // Only `connectedDeviceHarvester.js` imports these — browser builds
 // never reference this file, keeping the browser bundle lean.
 
+export type VegaEndpoint = "us" | "eu" | "staging" | "gov" | "jp";
+
 /**
  * Maps region key (lowercase) directly to the regional mobile collector base URL.
  * Accepts global.region.key values: us, eu, gov, jp, staging.
  */
-export const ENDPOINT_URL = {
+export const ENDPOINT_URL: Record<VegaEndpoint, string> = {
   us:      "https://mobile-collector.newrelic.com/mobile",
   eu:      "https://mobile-collector.eu01.nr-data.net/mobile",
   staging: "https://staging-mobile-collector.newrelic.com/mobile",
@@ -55,7 +57,7 @@ export const CD_DATA_TIMEOUT_MS = 30000;
  * `agentName='AndroidAgent'` for collector auth; the real device identity
  * is recorded in slot [1] / slot [8] of `/v3/data`.
  */
-export const CD_DATA_TOKENS_PAYLOAD = [
+export const CD_DATA_TOKENS_PAYLOAD: any[] = [
   // appInfo
   [
     "newrelic_mobile_example", // appName
@@ -86,7 +88,7 @@ export const CD_DATA_TOKENS_PAYLOAD = [
  * (Vega + Amazon by default). Customer-supplied `info.deviceInfo` overrides
  * the runtime fields; static slots (osName, agentName, etc.) stay fixed.
  */
-export const CD_DEVICE_INFO = [
+export const CD_DEVICE_INFO: any[] = [
   "Vega",                                    // osName
   "1.0",                                     // osVersion
   "VegaDevice",                              // deviceModel

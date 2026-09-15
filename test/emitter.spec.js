@@ -1,4 +1,4 @@
-import Emitter from "../src/emitter.js";
+import Emitter from "../src/emitter";
 
 describe("Emitter", () => {
   let emitter;

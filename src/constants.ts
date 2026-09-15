@@ -1,0 +1,62 @@
+/**
+ * Constants for the library.
+ * @class Constants
+ * @static
+ */
+class Constants {
+  /**
+   * Enum for types/positions of ads.
+   * @example var type = Constants.AdPositions.PRE
+   * @enum {String}
+   */
+  static AdPositions = {
+    /** For ads shown before the content. */
+    PRE: "pre",
+    /** For ads shown during the content. */
+    MID: "mid",
+    /** For ads shown after the content. */
+    POST: "post",
+  };
+
+  // bam.nr-data.net
+  //bam-cell.nr-data.net
+  static COLLECTOR: Record<string, string | string[]> = {
+    US: ["bam.nr-data.net", "bam-cell.nr-data.net"],
+    EU: "bam.eu01.nr-data.net",
+    JP: "bam.jp.nr-data.net",
+    Staging: "staging-bam-cell.nr-data.net",
+    GOV: "gov-bam.nr-data.net",
+  };
+
+  // ====== VALID EVENT TYPES ======
+  static VALID_EVENT_TYPES = [
+    "VideoAction",
+    "VideoAdAction",
+    "VideoErrorAction",
+    "VideoCustomAction",
+  ];
+
+  static MAX_PAYLOAD_SIZE = 1048576; // 1MB = 1024 × 1024 bytes
+  static MAX_BEACON_SIZE = 61440; // 60KB = 60 × 1024 bytes
+  static MAX_EVENTS_PER_BATCH = 1000;
+  static INTERVAL = 10000; //10 seconds
+  static DEFAULT_QOE_INTERVAL_FACTOR = 2;
+
+  static QOE_KPI_KEYS = [
+    "startupTime", "peakBitrate", "averageBitrate", "totalPlaytime",
+    "totalRebufferingTime", "rebufferingRatio", "hadStartupError",
+    "hadPlaybackError", "numberOfErrors"
+  ];
+
+  static QOE_AGGREGATE_KEYS = [
+    "coreVersion", "instrumentation.name",
+    "instrumentation.provider", "instrumentation.version", "isBackgroundEvent", "playerName", "playerVersion",
+    "src", "viewId", "viewSession", "contentIsAutoplayed", "contentIsMuted", "contentRenditionHeight", "contentRenditionWidth",
+    "contentSrc", "numberOfVideos", "pageUrl", "trackerName", "trackerVersion", "contentDuration", "contentPlayrate", "contentPlayhead",
+    "contentPreload", "elapsedTime", "contentTitle", "contentId", "contentIsLive", "deviceType", "deviceGroup", "deviceManufacturer",
+    "deviceModel", "deviceName", "deviceSize", "deviceUuid", "contentRenditionName", "contentIsFullscreen", "contentCdn",
+    "contentFps", "asnOrganization", "asnLongitude", "asnLatitude", "asn", "timeSinceRequested", "timeSinceStarted"
+  ];
+}
+
+export default Constants;

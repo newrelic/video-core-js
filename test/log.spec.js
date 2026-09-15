@@ -1,4 +1,4 @@
-import Log from '../src/log.js'
+import Log from '../src/log'
 import sinon from 'sinon'
 
 describe('Log', () => {

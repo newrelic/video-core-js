@@ -1,7 +1,14 @@
 import Log from "./log";
-import Tracker from "./tracker";
+import Tracker, { TrackerOptions } from "./tracker";
 import TrackerState from "./videotrackerstate";
 import pkg from "../package.json";
+
+export interface VideoTrackerOptions extends TrackerOptions {
+  isAd?: boolean;
+  adsTracker?: VideoTracker;
+  src?: string;
+  tag?: any;
+}
 
 /**
  * Base video tracker class provides extensible tracking over video elements. See {@link Tracker}.
@@ -15,6 +22,40 @@ import pkg from "../package.json";
  * @extends Tracker
  */
 class VideoTracker extends Tracker {
+  static Events: Record<string, string>;
+
+  /**
+   * TrackerState instance. Stores the state of the view. Tracker will automatically update the
+   * state of its instance, so there's no need to modify/interact with it manually.
+   * @type TrackerState
+   */
+  state: TrackerState;
+
+  /**
+   * Another Tracker instance to track ads.
+   * @type Tracker
+   */
+  adsTracker: VideoTracker | null;
+
+  /** Redeclared narrower than base Tracker's `Tracker | null` — VideoTracker's own
+   * methods (getViewId, getAdPosition, sendStart, ...) always call it as a VideoTracker.
+   * Type-only (`declare`); the real assignment happens in the base Tracker constructor. */
+  declare parentTracker: VideoTracker | null;
+
+  /**
+   * Last bufferType value.
+   * @private
+   */
+  _lastBufferType: string | null;
+  _userId: any;
+  _src: string | null;
+
+  player?: any;
+  tag?: any;
+  _lastWebkitBitrate?: number;
+  _lastAdRendition?: number | null;
+  _lastRendition?: number | null;
+
   /**
    * Constructor, receives player and options.
    * Lifecycle: constructor > {@link setOptions} > {@link setPlayer} > {@link registerListeners}.
@@ -22,7 +63,7 @@ class VideoTracker extends Tracker {
    * @param {Object} [player] Player to track. See {@link setPlayer}.
    * @param {Object} [options] Options for the tracker. See {@link setOptions}.
    */
-  constructor(player, options) {
+  constructor(player?: any, options?: VideoTrackerOptions) {
     super();
 
     /**
@@ -61,7 +102,7 @@ class VideoTracker extends Tracker {
 
   /* user can set the user Id  */
 
-  setUserId(userId) {
+  setUserId(userId: any): void {
     this._userId = userId;
   }
 
@@ -76,7 +117,7 @@ class VideoTracker extends Tracker {
    * @param {Tracker} [options.adsTracker] Set ads tracker. See {@link adsTracker}.
    * @param {Object} [options.tag] DOM element to track. See {@link setPlayer}.
    */
-  setOptions(options) {
+  setOptions(options?: VideoTrackerOptions): void {
     if (options) {
       if (options.adsTracker) {
         this.setAdsTracker(options.adsTracker);
@@ -88,13 +129,13 @@ class VideoTracker extends Tracker {
         if (this._src !== null && this._src !== options.src) {
           Log.warn(`setOptions: src is locked to '${this._src}'. Ignoring override '${options.src}'.`);
         } else {
-          this._src = options.src;
+          this._src = options.src as string;
           if (this.adsTracker && this.adsTracker._src == null) {
             this.adsTracker._src = this._src;
           }
         }
       }
-      Tracker.prototype.setOptions.apply(this, arguments);
+      Tracker.prototype.setOptions.apply(this, arguments as any);
     }
   }
 
@@ -108,7 +149,7 @@ class VideoTracker extends Tracker {
    * document.getElementById will be called.
    */
 
-  setPlayer(player, tag) {
+  setPlayer(player: any, tag?: any): void {
     if (this.player || this.tag) this.dispose();
 
     if (typeof document !== "undefined" && document.getElementById) {
@@ -124,12 +165,12 @@ class VideoTracker extends Tracker {
   }
 
   /** Returns true if the tracker is currently on ads. */
-  isAd() {
+  isAd(): boolean {
     return this.state.isAd();
   }
 
   /** Sets if the tracker is currenlty tracking ads */
-  setIsAd(isAd) {
+  setIsAd(isAd: boolean): void {
     this.state.setIsAd(isAd);
   }
 
@@ -139,7 +180,7 @@ class VideoTracker extends Tracker {
    *
    * @param {Tracker} tracker Ad tracker to add
    */
-  setAdsTracker(tracker) {
+  setAdsTracker(tracker?: VideoTracker | null): void {
     this.disposeAdsTracker(); // dispose current one
     if (tracker) {
       this.adsTracker = tracker;
@@ -151,16 +192,16 @@ class VideoTracker extends Tracker {
       if (this._src != null && tracker._src == null) {
         tracker._src = this._src;
       }
-      this.adsTracker.on("*", funnelAdEvents.bind(this));
+      this.adsTracker.on("*", funnelAdEvents.bind(this) as any);
     }
   }
 
   /**
    * Dispose current adsTracker.
    */
-  disposeAdsTracker() {
+  disposeAdsTracker(): void {
     if (this.adsTracker) {
-      this.adsTracker.off("*", funnelAdEvents);
+      this.adsTracker.off("*", funnelAdEvents as any);
       this.adsTracker.dispose();
     }
   }
@@ -168,7 +209,7 @@ class VideoTracker extends Tracker {
   /**
    * Prepares tracker to dispose. Calls unregisterListener and drops references to player and tag.
    */
-  dispose() {
+  dispose(): void {
     this.stopHeartbeat();
     this.disposeAdsTracker();
     this.unregisterListeners();
@@ -189,7 +230,7 @@ class VideoTracker extends Tracker {
    *  }
    * }
    */
-  registerListeners() {}
+  registerListeners(): void {}
 
   /**
    * Override this method to unregister listeners to player/tag created in registerListeners
@@ -208,14 +249,14 @@ class VideoTracker extends Tracker {
    *  }
    * }
    */
-  unregisterListeners() {}
+  unregisterListeners(): void {}
 
   /**
    * Trackers will generate unique id's for every new video iteration. If you have your own unique
    * view value, you can override this method to return it.
    * If the tracker has a parentTracker defined, parent viewId will be used.
    */
-  getViewId() {
+  getViewId(): string {
     if (this.parentTracker) {
       return this.parentTracker.getViewId();
     } else {
@@ -228,7 +269,7 @@ class VideoTracker extends Tracker {
    * view value, you can override this method to return it.
    * If the tracker has a parentTracker defined, parent viewId will be used.
    */
-  getViewSession() {
+  getViewSession(): string {
     if (this.parentTracker) {
       return this.parentTracker.getViewSession();
     } else {
@@ -237,42 +278,42 @@ class VideoTracker extends Tracker {
   }
 
   /** Override to return the Id of the video. */
-  getVideoId() {
+  getVideoId(): any {
     return null;
   }
 
   /** Override to return Title of the video. */
-  getTitle() {
+  getTitle(): any {
     return null;
   }
 
   /** Override to return True if the video is live. */
-  isLive() {
+  isLive(): any {
     return null;
   }
 
   /** Override to return Bitrate (in bits) of the video. */
-  getBitrate() {
+  getBitrate(): number | null {
     return null;
   }
 
   /** Override to return the manifest-declared bitrate in bps (Indicated Bitrate). */
-  getManifestBitrate() {
+  getManifestBitrate(): number | null {
     return null;
   }
 
   /** Override to return the measured network bitrate in bps (Observed Bitrate). */
-  getSegmentDownloadBitrate() {
+  getSegmentDownloadBitrate(): number | null {
     return null;
   }
 
   /** Override to return the download throughput in bps. */
-  getNetworkDownloadBitrate() {
+  getNetworkDownloadBitrate(): number | null {
     return null;
   }
 
   /** Calculates consumed bitrate using webkitVideoDecodedByteCount. */
-  getWebkitBitrate() {
+  getWebkitBitrate(): number | null | undefined {
     if (this.tag && this.tag.webkitVideoDecodedByteCount) {
       let bitrate;
       if (this._lastWebkitBitrate) {
@@ -287,12 +328,12 @@ class VideoTracker extends Tracker {
   }
 
   /** Override to return Name of the rendition (ie: 1080p). */
-  getRenditionName() {
+  getRenditionName(): any {
     return null;
   }
 
   /** Override to return Target Bitrate of the rendition. */
-  getRenditionBitrate() {
+  getRenditionBitrate(): any {
     return null;
   }
 
@@ -304,7 +345,7 @@ class VideoTracker extends Tracker {
    * the next time this method is called. This allows you to call this.getRenditionShift() without
    * saving the current rendition and thus preventing interferences with RENDITION_CHANGE events.
    */
-  getRenditionShift(saveNewRendition) {
+  getRenditionShift(saveNewRendition?: boolean): "up" | "down" | null {
     let current = this.getManifestBitrate();
     let last;
     if (this.isAd()) {
@@ -329,22 +370,22 @@ class VideoTracker extends Tracker {
   }
 
   /** Override to return renidtion actual Height (before re-scaling). */
-  getRenditionHeight() {
+  getRenditionHeight(): any {
     return this.tag ? this.tag.videoHeight : null;
   }
 
   /** Override to return rendition actual Width (before re-scaling). */
-  getRenditionWidth() {
+  getRenditionWidth(): any {
     return this.tag ? this.tag.videoWidth : null;
   }
 
   /** Override to return Duration of the video, in ms. */
-  getDuration() {
+  getDuration(): any {
     return this.tag ? this.tag.duration : null;
   }
 
   /** Override to return Playhead (currentTime) of the video, in ms. */
-  getPlayhead() {
+  getPlayhead(): any {
     return this.tag ? this.tag.currentTime : null;
   }
 
@@ -352,61 +393,61 @@ class VideoTracker extends Tracker {
    * Override to return Language of the video. We recommend using locale notation, ie: en_US.
    * {@see https://gist.github.com/jacobbubu/1836273}
    */
-  getLanguage() {
+  getLanguage(): any {
     return null;
   }
 
   /** Override to return URL of the resource being played. */
-  getSrc() {
+  getSrc(): any {
     return this.tag ? this.tag.currentSrc : null;
   }
 
   /** Override to return Playrate (speed) of the video. ie: 1.0, 0.5, 1.25... */
-  getPlayrate() {
+  getPlayrate(): any {
     return this.tag ? this.tag.playbackRate : null;
   }
 
   /** Override to return True if the video is currently muted. */
-  isMuted() {
+  isMuted(): any {
     return this.tag ? this.tag.muted : null;
   }
 
   /** Override to return True if the video is currently fullscreen. */
-  isFullscreen() {
+  isFullscreen(): any {
     return null;
   }
 
   /** Override to return the CDN serving the content. */
-  getCdn() {
+  getCdn(): any {
     return null;
   }
 
   /** Override to return the Name of the player. */
-  getPlayerName() {
+  getPlayerName(): string {
     return this.getTrackerName();
   }
 
   /** Override to return the Version of the player. */
-  getPlayerVersion() {
+  getPlayerVersion(): string {
     return pkg.version;
   }
 
   /** Override to return current FPS (Frames per second). */
-  getFps() {
+  getFps(): any {
     return null;
   }
 
   /**
    * Override to return if the player was autoplayed. By default: this.tag.autoplay
    */
-  isAutoplayed() {
+  isAutoplayed(): any {
     return this.tag ? this.tag.autoplay : null;
   }
 
   /**
    * Override to return the player preload attribute. By default: this.tag.preload
    */
-  getPreload() {
+  getPreload(): any {
     return this.tag ? this.tag.preload : null;
   }
 
@@ -415,7 +456,7 @@ class VideoTracker extends Tracker {
    * Override to return Quartile of the ad. 0 before first, 1 after first quartile, 2 after
    * midpoint, 3 after third quartile, 4 when completed.
    */
-  getAdQuartile() {
+  getAdQuartile(): any {
     return null;
   }
 
@@ -423,7 +464,7 @@ class VideoTracker extends Tracker {
    * Override to return the position of the ad. Use {@link Constants.AdPositions} enum
    * to fill this data.
    */
-  getAdPosition() {
+  getAdPosition(): any {
     if (this.parentTracker) {
       return this.parentTracker.state.isStarted ? "mid" : "pre";
     } else {
@@ -434,14 +475,14 @@ class VideoTracker extends Tracker {
   /**
    * Override to return the ad partner. ie: ima, freewheel...
    */
-  getAdPartner() {
+  getAdPartner(): any {
     return null;
   }
 
   /**
    * Override to return the creative id of the ad.
    */
-  getAdCreativeId() {
+  getAdCreativeId(): any {
     return null;
   }
 
@@ -449,15 +490,15 @@ class VideoTracker extends Tracker {
    * Override to return the instrumentation of the player.
    */
 
-  getInstrumentationProvider() {
+  getInstrumentationProvider(): any {
     return null;
   }
 
-  getInstrumentationName() {
+  getInstrumentationName(): any {
     return null;
   }
 
-  getInstrumentationVersion() {
+  getInstrumentationVersion(): any {
     return null;
   }
 
@@ -468,8 +509,8 @@ class VideoTracker extends Tracker {
    * @return {object} Filled attributes
    * @final
    */
-  getAttributes(att, type) {
-    att = Tracker.prototype.getAttributes.apply(this, arguments);
+  getAttributes(att?: Record<string, any>, type?: string): Record<string, any> {
+    att = Tracker.prototype.getAttributes.apply(this, arguments as any);
 
     if (typeof att.isAd === "undefined") att.isAd = this.isAd();
 
@@ -586,7 +627,7 @@ class VideoTracker extends Tracker {
    * @param {Object} [timeSinceAttName] Custom timeSince attribute name.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendCustom(actionName, timeSinceAttName, att) {
+  sendCustom(actionName: string, timeSinceAttName: string, att?: Record<string, any>): void {
     att = att || {};
     this.sendVideoCustomAction(actionName, att);
     this.state.setTimeSinceAttribute(timeSinceAttName);
@@ -597,7 +638,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendPlayerReady(att) {
+  sendPlayerReady(att?: Record<string, any>): void {
     if (this.state.goPlayerReady()) {
       att = att || {};
       this.sendVideoAction(VideoTracker.Events.PLAYER_READY, att);
@@ -610,7 +651,7 @@ class VideoTracker extends Tracker {
    * {@link startHeartbeat}.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendRequest(att) {
+  sendRequest(att?: Record<string, any>): void {
     if (this.state.goRequest()) {
       let ev;
       if (this.isAd()) {
@@ -631,7 +672,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendStart(att) {
+  sendStart(att?: Record<string, any>): void {
     if (this.state.goStart()) {
       let ev;
       if (this.isAd()) {
@@ -675,7 +716,7 @@ class VideoTracker extends Tracker {
    * {@link stopHeartbeat}.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendEnd(att) {
+  sendEnd(att?: Record<string, any>): void {
     if (this.state.goEnd()) {
       att = att || {};
       let ev;
@@ -709,7 +750,7 @@ class VideoTracker extends Tracker {
         harvester?.forceNextQoeCycle?.();
         // Clear the before-drain callback so the next harvest doesn't overwrite
         // the final QoE (already in buffer) with zeroed-out state values
-        harvester?.setBeforeDrainCallback?.(null);
+        harvester?.setBeforeDrainCallback(null);
         // reset the states after the view count is up
         if(this.adsTracker) this.adsTracker.state.clearTotalAdsTime();
         this.state.resetViewIdTrackedState();
@@ -722,7 +763,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendPause(att) {
+  sendPause(att?: Record<string, any>): void {
     if (this.state.goPause()) {
       let ev = this.isAd()
         ? VideoTracker.Events.AD_PAUSE
@@ -739,7 +780,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendResume(att) {
+  sendResume(att?: Record<string, any>): void {
     if (this.state.goResume()) {
       att = att || {};
       let ev;
@@ -762,7 +803,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendBufferStart(att) {
+  sendBufferStart(att?: Record<string, any>): void {
     if (this.state.goBufferStart()) {
       att = att || {};
       let ev;
@@ -787,7 +828,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendBufferEnd(att) {
+  sendBufferEnd(att?: Record<string, any>): void {
     if (this.state.goBufferEnd()) {
       att = att || {};
       let ev;
@@ -815,7 +856,7 @@ class VideoTracker extends Tracker {
     }
   }
 
-  buildBufferAttributes(att) {
+  buildBufferAttributes(att: Record<string, any>): Record<string, any> {
     if (att.timeSinceStarted == undefined || att.timeSinceStarted < 100) {
       att.isInitialBuffering = !this.state.initialBufferingHappened;
     } else {
@@ -835,7 +876,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendSeekStart(att) {
+  sendSeekStart(att?: Record<string, any>): void {
     if (this.state.goSeekStart()) {
       let ev;
       if (this.isAd()) {
@@ -856,7 +897,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendSeekEnd(att) {
+  sendSeekEnd(att?: Record<string, any>): void {
     if (this.state.goSeekEnd()) {
       att = att || {};
       let ev;
@@ -881,7 +922,7 @@ class VideoTracker extends Tracker {
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {String} att.state Download requires a string to distinguish different states.
    */
-  sendDownload(att) {
+  sendDownload(att?: Record<string, any>): void {
     att = att || {};
     if (!att.state) Log.warn("Called sendDownload without { state: xxxxx }.");
     this.sendVideoAction(VideoTracker.Events.DOWNLOAD, att);
@@ -893,7 +934,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendError(att) {
+  sendError(att?: Record<string, any>): void {
     att = att || {};
 
     att.isAd = this.isAd();
@@ -911,7 +952,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendRenditionChanged(att) {
+  sendRenditionChanged(att?: Record<string, any>): void {
     att = att || {};
     att.timeSinceLastRenditionChange =
       this.state.timeSinceLastRenditionChange.getDeltaTime();
@@ -956,7 +997,7 @@ class VideoTracker extends Tracker {
    * @param {number} att.url Url of the clicked ad.
    *
    */
-  sendHeartbeat(att) {
+  sendHeartbeat(att?: Record<string, any>): void {
     if (this.state.isRequested) {
       let ev;
 
@@ -979,14 +1020,14 @@ class VideoTracker extends Tracker {
     }
   }
 
-  adjustElapsedTimeForPause(elapsedTime) {
+  adjustElapsedTimeForPause(elapsedTime: number): number {
     if (this.state._acc) {
       elapsedTime -= this.state._acc;
       this.state._acc = 0;
     }
 
     if (this.state.isPaused) {
-      elapsedTime -= this.state.elapsedTime.getDeltaTime();
+      elapsedTime -= this.state.elapsedTime.getDeltaTime() as number;
       if (elapsedTime < 10) elapsedTime = 0;
       this.state.elapsedTime.start();
     }
@@ -995,7 +1036,7 @@ class VideoTracker extends Tracker {
       elapsedTime -= this.state._bufferAcc;
       this.state._bufferAcc = 0;
     } else if (this.state.isBuffering) {
-      elapsedTime -= this.state.bufferElapsedTime.getDeltaTime();
+      elapsedTime -= this.state.bufferElapsedTime.getDeltaTime() as number;
       if (elapsedTime < 5) {
         elapsedTime = 0;
       }
@@ -1011,7 +1052,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendAdBreakStart(att) {
+  sendAdBreakStart(att?: Record<string, any>): void {
     if (this.isAd() && this.state.goAdBreakStart()) {
       this.state.totalAdPlaytime = 0;
       if (this.parentTracker) this.parentTracker.state.isPlaying = false;
@@ -1025,7 +1066,7 @@ class VideoTracker extends Tracker {
    * duplicated events. Should be associated to an event using registerListeners.
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    */
-  sendAdBreakEnd(att) {
+  sendAdBreakEnd(att?: Record<string, any>): void {
     if (this.isAd() && this.state.goAdBreakEnd()) {
       att = att || {};
       att.timeSinceAdBreakBegin =
@@ -1046,7 +1087,7 @@ class VideoTracker extends Tracker {
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {number} att.quartile Number of the quartile.
    */
-  sendAdQuartile(att) {
+  sendAdQuartile(att?: Record<string, any>): void {
     if (this.isAd()) {
       att = att || {};
       if (!att.quartile)
@@ -1066,7 +1107,7 @@ class VideoTracker extends Tracker {
    * @param {Object} [att] Collection of key:value attributes to send with the request.
    * @param {number} att.url Url of the clicked ad.
    */
-  sendAdClick(att) {
+  sendAdClick(att?: Record<string, any>): void {
     if (this.isAd()) {
       att = att || {};
       if (!att.url) Log.warn("Called sendAdClick without { url: xxxxx }.");
@@ -1154,7 +1195,7 @@ VideoTracker.Events = {
 };
 
 // Private members
-function funnelAdEvents(e) {
+function funnelAdEvents(this: VideoTracker, e: any) {
   if (e.type === VideoTracker.Events.AD_ERROR) {
     this.sendVideoErrorAction(e.type, e.data);
     return;

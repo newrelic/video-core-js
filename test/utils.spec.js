@@ -6,7 +6,7 @@ import {
   compressPayload,
   decompressPayload
 } from "../src/utils";
-import Log from "../src/log.js";
+import Log from "../src/log";
 import sinon from "sinon";
 import { JSDOM } from "jsdom";
 

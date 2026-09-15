@@ -1,4 +1,4 @@
-import TrackerState from "../src/videotrackerstate.js";
+import TrackerState from "../src/videotrackerstate";
 
 describe("VideoTrackerState", () => {
   let state;

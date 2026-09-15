@@ -2,6 +2,23 @@ import Constants from "../constants";
 import Tracker from "../tracker";
 import { getObjectEntriesForKeys } from "./index";
 
+export type EventAttributes = Record<string, any>;
+
+export interface Harvester {
+  addEvent(eventObject: EventAttributes): boolean;
+  setHarvestInterval(ms: number): void;
+  /** Set (or clear, with `null`) the callback run just before the next harvest drain. */
+  setBeforeDrainCallback(callback: (() => void) | null): void;
+  /** Merge fresh QoE KPI values into the buffered QOE_AGGREGATE event for a view. */
+  refreshQoeKpis(freshKpis: EventAttributes, viewId?: string): void;
+  /** Force the next harvest cycle to be treated as a QoE cycle. Only the browser harvester supports this — the connected-device harvester does not implement it. */
+  forceNextQoeCycle?(): void;
+}
+
+interface BuildEventObjectsOptions {
+  addTimeSinceLoad?: boolean;
+}
+
 /**
  * Pure helper that constructs the wire-format event objects from `recordEvent`
  * arguments. Used by `src/recordEvent.js`, which is the single shared
@@ -26,11 +43,11 @@ import { getObjectEntriesForKeys } from "./index";
  * @returns {{ eventObject: object, qoeEventObject: object|null }}
  */
 export function buildEventObjects(
-  eventType,
-  attributes,
-  info,
-  { addTimeSinceLoad = false } = {}
-) {
+  eventType: string,
+  attributes: EventAttributes,
+  info: Record<string, any>,
+  { addTimeSinceLoad = false }: BuildEventObjectsOptions = {}
+): { eventObject: EventAttributes; qoeEventObject: EventAttributes | null } {
   const { appName, applicationID } = info;
   const { qoe, ...eventAttributes } = attributes;
   const qoeAttrs = qoe ? { ...qoe } : {};
@@ -54,7 +71,7 @@ export function buildEventObjects(
     ...otherAttrs,
   };
 
-  let qoeEventObject = null;
+  let qoeEventObject: EventAttributes | null = null;
   if (eventType === "VideoAction") {
     const metadataAttributes = getObjectEntriesForKeys(
       Constants.QOE_AGGREGATE_KEYS,
@@ -94,19 +111,19 @@ export function buildEventObjects(
  * @param {object} info - Resolved `info` from the pipeline's config global.
  * @param {{ addEvent: function }} harvester - The registered harvester for
  *   the current pipeline. Returns false if null/undefined.
- * @param {boolean} qoeEnabled 
+ * @param {boolean} qoeEnabled
  * @param {{ addTimeSinceLoad?: boolean }} [opts] - Forwarded to
  *   `buildEventObjects`.
  * @returns {boolean}
  */
 export function dispatchRecordEvent(
-  eventType,
-  attributes,
-  info,
-  harvester,
-  qoeEnabled,
-  { addTimeSinceLoad = false } = {}
-) {
+  eventType: string,
+  attributes: EventAttributes,
+  info: Record<string, any>,
+  harvester: Harvester | null | undefined,
+  qoeEnabled: boolean,
+  { addTimeSinceLoad = false }: BuildEventObjectsOptions = {}
+): boolean {
   if (!harvester) return false;
 
   const { eventObject, qoeEventObject } = buildEventObjects(

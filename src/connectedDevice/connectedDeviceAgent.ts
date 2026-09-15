@@ -1,11 +1,15 @@
 import ConnectedDeviceHarvester from "./connectedDeviceHarvester";
 import Log from "../log";
 import { registerHarvester } from "../recordEvent";
+import { EventAttributes, Harvester } from "../utils/eventBuilder";
 
 /**
  * Vega-side analytics agent. Mirror of `VideoAnalyticsAgent` in `agent.js`.
  */
-class ConnectedDeviceAnalyticsAgent {
+class ConnectedDeviceAnalyticsAgent implements Harvester {
+  isInitialized: boolean;
+  harvester: ConnectedDeviceHarvester | null;
+
   constructor() {
     this.isInitialized = false;
     this.harvester = null;
@@ -16,7 +20,7 @@ class ConnectedDeviceAnalyticsAgent {
    * constructs the wrapped `ConnectedDeviceHarvester`. If `info` is not yet populated,
    * returns without flipping `isInitialized` so the next `addEvent` retries.
    */
-  initialize() {
+  initialize(): void {
     if (this.isInitialized) return;
 
     const info = globalThis.__NRVIDEO_CD__?.info;
@@ -31,7 +35,7 @@ class ConnectedDeviceAnalyticsAgent {
       this.harvester = new ConnectedDeviceHarvester(info);
       this.isInitialized = true;
       Log.notice("ConnectedDeviceAnalyticsAgent initialized");
-    } catch (err) {
+    } catch (err: any) {
       Log.error("ConnectedDeviceAnalyticsAgent.initialize failed:", err.message);
     }
   }
@@ -46,17 +50,17 @@ class ConnectedDeviceAnalyticsAgent {
    * @param {object} eventObject
    * @returns {boolean}
    */
-  addEvent(eventObject) {
+  addEvent(eventObject: EventAttributes): boolean {
     if (!this.isInitialized) this.initialize();
     if (!this.isInitialized) return false;
-    return this.harvester.addEvent(eventObject);
+    return (this.harvester as ConnectedDeviceHarvester).addEvent(eventObject);
   }
 
   /**
    * Forwards to the underlying ConnectedDeviceHarvester. No-op if not yet initialized.
    * @see ConnectedDeviceHarvester#forceQoeNextHarvest
    */
-  forceQoeNextHarvest() {
+  forceQoeNextHarvest(): void {
     if (this.harvester) this.harvester.forceQoeNextHarvest();
   }
 
@@ -65,7 +69,7 @@ class ConnectedDeviceAnalyticsAgent {
    * single method name on whichever harvester `getHarvester()` returns —
    * Browser exposes `forceNextQoeCycle`, Vega exposes both names.
    */
-  forceNextQoeCycle() {
+  forceNextQoeCycle(): void {
     this.forceQoeNextHarvest();
   }
 
@@ -74,7 +78,7 @@ class ConnectedDeviceAnalyticsAgent {
    * @see ConnectedDeviceHarvester#setBeforeDrainCallback
    * @param {Function|null} cb
    */
-  setBeforeDrainCallback(cb) {
+  setBeforeDrainCallback(cb: (() => void) | null): void {
     if (this.harvester) this.harvester.setBeforeDrainCallback(cb);
   }
 
@@ -86,7 +90,7 @@ class ConnectedDeviceAnalyticsAgent {
    * @param {object} freshKpis
    * @param {string} [viewId]
    */
-  refreshQoeKpis(freshKpis, viewId) {
+  refreshQoeKpis(freshKpis: EventAttributes, viewId?: string): void {
     if (!this.isInitialized) this.initialize();
     if (this.harvester) this.harvester.refreshQoeKpis(freshKpis, viewId);
   }
@@ -98,7 +102,7 @@ class ConnectedDeviceAnalyticsAgent {
    *
    * @param {number} interval
    */
-  setHarvestInterval(interval) {
+  setHarvestInterval(interval: number): void {
     if (!this.isInitialized) this.initialize();
     if (this.harvester) this.harvester.setHarvestInterval(interval);
   }
