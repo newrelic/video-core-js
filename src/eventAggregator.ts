@@ -10,18 +10,18 @@ export type DropLogLevel = "INFO" | "WARNING" | "ERROR";
 const DROP_LOG_RANK: Record<DropLogLevel, number> = { INFO: 0, WARNING: 1, ERROR: 2 };
 
 /**
- * Reads the buffer-drop logging options from whichever pipeline config is active
- * (browser `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`).
- * Defaults: enableLogging=true, loggingLevel="INFO".
+ * Reads `enableLogging` from whichever pipeline config is active (browser
+ * `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`). `false` disables the
+ * messages; `true` or unset logs everything; a level string sets the minimum.
  */
 function getDropLogConfig(): { enabled: boolean; minRank: number } {
   const cfg: any =
     (typeof window !== "undefined" ? window.NRVIDEO?.config : undefined) ??
     globalThis.__NRVIDEO_CD__?.config;
-  const level = cfg?.loggingLevel as DropLogLevel | undefined;
+  const v = cfg?.enableLogging;
   return {
-    enabled: cfg?.enableLogging !== false,
-    minRank: DROP_LOG_RANK[level as DropLogLevel] ?? 0,
+    enabled: v !== false,
+    minRank: typeof v === "string" ? DROP_LOG_RANK[v as DropLogLevel] ?? 0 : 0,
   };
 }
 
@@ -44,7 +44,7 @@ export class NrVideoEventAggregator {
   overflowEventThreshold: number;
   onSmartHarvestTrigger: SmartHarvestCallback | null;
   /** Events evicted for the session. Cumulative; never reset by drain()/clear(). */
-  droppedEvents: number;
+  private droppedEvents: number;
   private smartLogged: boolean;
   private overflowLogged: boolean;
 
@@ -75,8 +75,7 @@ export class NrVideoEventAggregator {
   }
 
   /**
-   * Logs a buffer-drop message through Log, honouring `enableLogging` and
-   * `loggingLevel`. INFO maps to Log.notice, the library's closest level.
+   * Logs a buffer-drop message through Log, honouring `enableLogging`. INFO maps to Log.notice, the library's closest level.
    * @private
    */
   private logDrop(level: DropLogLevel, message: string): void {

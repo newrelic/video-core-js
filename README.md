@@ -241,8 +241,7 @@ All sub-fields are optional — missing values fall back to the SDK defaults. Ex
 |---|---|---|---|
 | `qoeIntervalFactor` | `number` | `2` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
 | `obfuscate` | `array` | `[]` | Regex-based rules to mask sensitive data before transmission. See [Obfuscation Rules](#obfuscation-rules). |
-| `enableLogging` | `boolean` | `true` | Log event-buffer capacity messages: INFO at 60% full (proactive harvest), WARNING at 90% (emergency harvest), and ERROR on every dropped event with the session's running drop count. Output still respects `Log.level`. Logging only; no change to buffering or harvesting. |
-| `loggingLevel` | `'INFO' \| 'WARNING' \| 'ERROR'` | `'INFO'` | Minimum severity of the buffer messages above. `'WARNING'` omits the 60% message; `'ERROR'` logs drops only. |
+| `enableLogging` | `boolean \| 'INFO' \| 'WARNING' \| 'ERROR'` | `true` | Log event-buffer capacity messages: INFO at 60% full (proactive harvest), WARNING at 90% (emergency harvest), and ERROR on every dropped event with the session's running drop count. `false` turns them off, `true` logs all, and a level string sets the minimum severity (`'WARNING'` omits the 60% message, `'ERROR'` logs drops only). Messages go through `Log`, so they also need `Log.level` to allow them: it defaults to `ERROR`, which shows only the drop messages; set `Log.level` to `WARNING` or lower (`NOTICE`, `DEBUG`, `ALL`) to see the 90% and 60% lines. Logging only; no change to buffering or harvesting. |
 
 ---
 

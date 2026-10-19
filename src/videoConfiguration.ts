@@ -19,8 +19,7 @@ export interface NrVideoBrowserConfig {
   qoeAggregate: boolean;
   qoeIntervalFactor: number;
   obfuscate: ObfuscationRule[];
-  enableLogging: boolean;
-  loggingLevel: "INFO" | "WARNING" | "ERROR";
+  enableLogging: boolean | "INFO" | "WARNING" | "ERROR";
 }
 
 export interface NrVideoCdInfo {
@@ -36,8 +35,7 @@ export interface NrVideoCdConfig {
   qoeAggregate: boolean;
   qoeIntervalFactor: number;
   obfuscate: ObfuscationRule[];
-  enableLogging: boolean;
-  loggingLevel: "INFO" | "WARNING" | "ERROR";
+  enableLogging: boolean | "INFO" | "WARNING" | "ERROR";
 }
 
 /** Raw, unvalidated user-supplied config — shape varies by pipeline (`src`). */
@@ -157,7 +155,7 @@ class VideoConfiguration {
       return false;
     }
 
-    const { qoeAggregate, obfuscate, enableLogging, loggingLevel } = config;
+    const { qoeAggregate, obfuscate, enableLogging } = config;
 
     if (qoeAggregate !== undefined && typeof qoeAggregate !== "boolean") {
       Log.error("qoeAggregate must be a boolean");
@@ -169,13 +167,12 @@ class VideoConfiguration {
       return false;
     }
 
-    if (enableLogging !== undefined && typeof enableLogging !== "boolean") {
-      Log.error("enableLogging must be a boolean");
-      return false;
-    }
-
-    if (loggingLevel !== undefined && !LOGGING_LEVELS.includes(loggingLevel)) {
-      Log.error(`loggingLevel must be one of ${LOGGING_LEVELS.join(", ")}`);
+    if (
+      enableLogging !== undefined &&
+      typeof enableLogging !== "boolean" &&
+      !LOGGING_LEVELS.includes(enableLogging)
+    ) {
+      Log.error(`enableLogging must be a boolean or one of ${LOGGING_LEVELS.join(", ")}`);
       return false;
     }
 
@@ -237,7 +234,6 @@ class VideoConfiguration {
           qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
           obfuscate: this.filterObfuscateRules(config?.obfuscate),
           enableLogging: config?.enableLogging ?? true,
-          loggingLevel: config?.loggingLevel ?? "INFO",
         },
       };
       return;
@@ -265,7 +261,6 @@ class VideoConfiguration {
         qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
         obfuscate: this.filterObfuscateRules(config?.obfuscate),
         enableLogging: config?.enableLogging ?? true,
-        loggingLevel: config?.loggingLevel ?? "INFO",
       }
     };
   }

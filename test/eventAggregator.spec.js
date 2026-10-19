@@ -319,15 +319,15 @@ describe('NrVideoEventAggregator buffer drop logging', function() {
   it('logs ERROR on every drop with a cumulative count that survives drain', function() {
     fill(aggregator.maxEventsPerBatch + 2);
     const errs = error.getCalls().map(c => c.args[0]);
-    expect(errs.length).toBe(aggregator.droppedEvents);
-    expect(aggregator.droppedEvents).toBeGreaterThanOrEqual(2);
-    expect(errs[errs.length - 1]).toContain(`Total dropped this session: ${aggregator.droppedEvents}`);
+    const total = (m) => Number(/Total dropped this session: (\d+)/.exec(m)[1]);
+    expect(errs.length).toBeGreaterThanOrEqual(2);
+    errs.forEach((m, i) => expect(total(m)).toBe(i + 1));
 
-    const before = aggregator.droppedEvents;
     aggregator.drain();
-    expect(aggregator.droppedEvents).toBe(before);
     fill(aggregator.maxEventsPerBatch + 1);
-    expect(aggregator.droppedEvents).toBeGreaterThan(before);
+    const after = error.getCalls().map(c => c.args[0]);
+    expect(total(after[after.length - 1])).toBe(after.length);
+    expect(after.length).toBeGreaterThan(errs.length);
   });
 
   it('does not change eviction behavior (buffer stays bounded)', function() {
@@ -335,24 +335,23 @@ describe('NrVideoEventAggregator buffer drop logging', function() {
     expect(aggregator.totalEvents).toBeLessThanOrEqual(aggregator.maxEventsPerBatch);
   });
 
-  it('enableLogging=false silences the new messages but still counts drops', function() {
+  it('enableLogging=false silences the new messages', function() {
     global.window.NRVIDEO = { config: { enableLogging: false } };
     fill(aggregator.maxEventsPerBatch + 2);
     expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
     expect(error.getCalls().filter(c => /Total dropped/.test(c.args[0])).length).toBe(0);
-    expect(aggregator.droppedEvents).toBeGreaterThan(0);
   });
 
-  it('loggingLevel=ERROR logs drops only', function() {
-    global.window.NRVIDEO = { config: { loggingLevel: 'ERROR' } };
+  it('enableLogging=ERROR logs drops only', function() {
+    global.window.NRVIDEO = { config: { enableLogging: 'ERROR' } };
     fill(aggregator.maxEventsPerBatch + 2);
     expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
     expect(warn.getCalls().filter(c => /near capacity/.test(c.args[0])).length).toBe(0);
     expect(error.getCalls().filter(c => /Total dropped/.test(c.args[0])).length).toBeGreaterThan(0);
   });
 
-  it('loggingLevel=WARNING omits INFO and reads Vega config', function() {
-    globalThis.__NRVIDEO_CD__ = { config: { loggingLevel: 'WARNING' } };
+  it('enableLogging=WARNING omits INFO and reads Vega config', function() {
+    globalThis.__NRVIDEO_CD__ = { config: { enableLogging: 'WARNING' } };
     fill(aggregator.maxEventsPerBatch * 0.95);
     expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
     expect(warn.getCalls().filter(c => /near capacity/.test(c.args[0])).length).toBe(1);
