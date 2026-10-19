@@ -233,7 +233,7 @@ class VideoConfiguration {
           qoeAggregate: config?.qoeAggregate ?? true,
           qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
           obfuscate: this.filterObfuscateRules(config?.obfuscate),
-          enableLogging: config?.enableLogging ?? true,
+          enableLogging: config?.enableLogging ?? false,
         },
       };
       return;
@@ -260,7 +260,7 @@ class VideoConfiguration {
         qoeAggregate: config?.qoeAggregate ?? true,
         qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
         obfuscate: this.filterObfuscateRules(config?.obfuscate),
-        enableLogging: config?.enableLogging ?? true,
+        enableLogging: config?.enableLogging ?? false,
       }
     };
   }

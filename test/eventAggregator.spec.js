@@ -280,52 +280,59 @@ describe('NrVideoEventAggregator', function() {
 
 describe('NrVideoEventAggregator buffer drop logging', function() {
   let aggregator;
-  let notice, warn, error;
+  let info, warn, error;
 
   const fill = (n) => {
     for (let i = 0; i < n; i++) aggregator.add({ actionName: 'E' + i });
   };
+  const msgs = (spy, re) => spy.getCalls().map(c => c.args[0]).filter(m => re.test(m));
 
   beforeEach(function() {
     delete global.window.NRVIDEO;
     delete globalThis.__NRVIDEO_CD__;
+    global.window.NRVIDEO = { config: { enableLogging: true } };
     aggregator = new NrVideoEventAggregator();
-    notice = sinon.stub(Log, 'notice');
-    warn = sinon.stub(Log, 'warn');
-    error = sinon.stub(Log, 'error');
+    info = sinon.stub(console, 'info');
+    warn = sinon.stub(console, 'warn');
+    error = sinon.stub(console, 'error');
   });
 
   afterEach(function() {
-    [notice, warn, error].forEach(st => st.restore());
+    [info, warn, error].forEach(st => st.restore());
     delete global.window.NRVIDEO;
     delete globalThis.__NRVIDEO_CD__;
   });
 
-  it('logs INFO once at 60% and WARNING once at 90%', function() {
+  it('logs INFO once at 85% and WARNING once at 90%, regardless of Log.level', function() {
+    Log.level = Log.Levels.SILENT;
     fill(aggregator.maxEventsPerBatch * 0.95);
-    const info = notice.getCalls().filter(c => /60%/.test(c.args[0]));
-    const near = warn.getCalls().filter(c => /near capacity/.test(c.args[0]));
-    expect(info.length).toBe(1);
-    expect(near.length).toBe(1);
+    expect(msgs(info, /event buffer 85% full \(\d+ of 1000 events\)/).length).toBe(1);
+    expect(msgs(warn, /event buffer 90% full \(\d+ of 1000 events\)/).length).toBe(1);
+  });
+
+  it('does not log at 60%', function() {
+    fill(aggregator.maxEventsPerBatch * 0.7);
+    expect(info.called).toBe(false);
   });
 
   it('re-arms the threshold logs after drain', function() {
-    fill(aggregator.smartHarvestEventThreshold);
+    fill(850);
     aggregator.drain();
-    fill(aggregator.smartHarvestEventThreshold);
-    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(2);
+    fill(850);
+    expect(msgs(info, /85% full/).length).toBe(2);
   });
 
   it('logs ERROR on every drop with a cumulative count that survives drain', function() {
     fill(aggregator.maxEventsPerBatch + 2);
-    const errs = error.getCalls().map(c => c.args[0]);
+    const errs = msgs(error, /Total dropped/);
     const total = (m) => Number(/Total dropped this session: (\d+)/.exec(m)[1]);
     expect(errs.length).toBeGreaterThanOrEqual(2);
+    expect(errs[0]).toMatch(/^\[nrvideo\] event buffer full \(capacity 1000\), oldest event dropped\./);
     errs.forEach((m, i) => expect(total(m)).toBe(i + 1));
 
     aggregator.drain();
     fill(aggregator.maxEventsPerBatch + 1);
-    const after = error.getCalls().map(c => c.args[0]);
+    const after = msgs(error, /Total dropped/);
     expect(total(after[after.length - 1])).toBe(after.length);
     expect(after.length).toBeGreaterThan(errs.length);
   });
@@ -335,25 +342,28 @@ describe('NrVideoEventAggregator buffer drop logging', function() {
     expect(aggregator.totalEvents).toBeLessThanOrEqual(aggregator.maxEventsPerBatch);
   });
 
-  it('enableLogging=false silences the new messages', function() {
-    global.window.NRVIDEO = { config: { enableLogging: false } };
-    fill(aggregator.maxEventsPerBatch + 2);
-    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
-    expect(error.getCalls().filter(c => /Total dropped/.test(c.args[0])).length).toBe(0);
+  it('is off by default and when enableLogging=false', function() {
+    [undefined, false].forEach(v => {
+      global.window.NRVIDEO = { config: { enableLogging: v } };
+      aggregator = new NrVideoEventAggregator();
+      fill(aggregator.maxEventsPerBatch + 2);
+    });
+    expect(info.called || warn.called || error.called).toBe(false);
   });
 
   it('enableLogging=ERROR logs drops only', function() {
     global.window.NRVIDEO = { config: { enableLogging: 'ERROR' } };
     fill(aggregator.maxEventsPerBatch + 2);
-    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
-    expect(warn.getCalls().filter(c => /near capacity/.test(c.args[0])).length).toBe(0);
-    expect(error.getCalls().filter(c => /Total dropped/.test(c.args[0])).length).toBeGreaterThan(0);
+    expect(msgs(info, /85% full/).length).toBe(0);
+    expect(msgs(warn, /90% full/).length).toBe(0);
+    expect(msgs(error, /Total dropped/).length).toBeGreaterThan(0);
   });
 
   it('enableLogging=WARNING omits INFO and reads Vega config', function() {
+    delete global.window.NRVIDEO;
     globalThis.__NRVIDEO_CD__ = { config: { enableLogging: 'WARNING' } };
     fill(aggregator.maxEventsPerBatch * 0.95);
-    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
-    expect(warn.getCalls().filter(c => /near capacity/.test(c.args[0])).length).toBe(1);
+    expect(msgs(info, /85% full/).length).toBe(0);
+    expect(msgs(warn, /90% full/).length).toBe(1);
   });
 });

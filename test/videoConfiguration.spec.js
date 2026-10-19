@@ -304,9 +304,9 @@ describe('VideoConfiguration logging options', function() {
   const info = { licenseKey: 'k', appName: 'A', region: 'US' };
   beforeEach(function() { global.window.NRVIDEO = undefined; });
 
-  it('defaults enableLogging to true', function() {
+  it('defaults enableLogging to false', function() {
     expect(setVideoConfig(info)).toBe(true);
-    expect(global.window.NRVIDEO.config.enableLogging).toBe(true);
+    expect(global.window.NRVIDEO.config.enableLogging).toBe(false);
   });
 
   it('accepts booleans and level strings', function() {
