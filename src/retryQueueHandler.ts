@@ -43,13 +43,15 @@ export class RetryQueueHandler {
 
         // Check queue memory size and make room if necessary
         const eventSize = dataSize(event) ?? 0;
-        while ((dataSize(this.retryQueue) ?? 0) + eventSize > this.maxQueueSizeBytes) {
+        let queueBytes = dataSize(this.retryQueue) ?? 0;
+        while (queueBytes + eventSize > this.maxQueueSizeBytes) {
           this.evictOldestEvent();
+          queueBytes = dataSize(this.retryQueue) ?? 0;
         }
 
         // Store event directly - no wrapper needed
         this.retryQueue.push({ ...event });
-        this.logFill();
+        this.logFill(queueBytes + eventSize);
       }
     } catch (err: any) {
       Log.error("Failed to add events to retry queue:", err.message);
@@ -59,14 +61,15 @@ export class RetryQueueHandler {
   /**
    * Reports queue fill (whichever of the event-count and byte limits is
    * closer to full) to the drop logger. Logging only.
+   * @param {number} [bytes] - Queue size in bytes if the caller already has it
    * @private
    */
-  private logFill(): void {
+  private logFill(bytes?: number): void {
     if (!this.dropLogger.isEnabled()) return;
     this.dropLogger.update(
       Math.max(
         this.retryQueue.length / this.maxQueueSize,
-        (dataSize(this.retryQueue) ?? 0) / this.maxQueueSizeBytes
+        (bytes ?? dataSize(this.retryQueue) ?? 0) / this.maxQueueSizeBytes
       ),
       this.retryQueue.length,
       this.maxQueueSize
