@@ -277,3 +277,84 @@ describe('NrVideoEventAggregator', function() {
     });
   });
 });
+
+describe('NrVideoEventAggregator buffer drop logging', function() {
+  let aggregator;
+  let notice, warn, error;
+
+  const fill = (n) => {
+    for (let i = 0; i < n; i++) aggregator.add({ actionName: 'E' + i });
+  };
+
+  beforeEach(function() {
+    delete global.window.NRVIDEO;
+    delete globalThis.__NRVIDEO_CD__;
+    aggregator = new NrVideoEventAggregator();
+    notice = sinon.stub(Log, 'notice');
+    warn = sinon.stub(Log, 'warn');
+    error = sinon.stub(Log, 'error');
+  });
+
+  afterEach(function() {
+    [notice, warn, error].forEach(st => st.restore());
+    delete global.window.NRVIDEO;
+    delete globalThis.__NRVIDEO_CD__;
+  });
+
+  it('logs INFO once at 60% and WARNING once at 90%', function() {
+    fill(aggregator.maxEventsPerBatch * 0.95);
+    const info = notice.getCalls().filter(c => /60%/.test(c.args[0]));
+    const near = warn.getCalls().filter(c => /near capacity/.test(c.args[0]));
+    expect(info.length).toBe(1);
+    expect(near.length).toBe(1);
+  });
+
+  it('re-arms the threshold logs after drain', function() {
+    fill(aggregator.smartHarvestEventThreshold);
+    aggregator.drain();
+    fill(aggregator.smartHarvestEventThreshold);
+    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(2);
+  });
+
+  it('logs ERROR on every drop with a cumulative count that survives drain', function() {
+    fill(aggregator.maxEventsPerBatch + 2);
+    const errs = error.getCalls().map(c => c.args[0]);
+    expect(errs.length).toBe(aggregator.droppedEvents);
+    expect(aggregator.droppedEvents).toBeGreaterThanOrEqual(2);
+    expect(errs[errs.length - 1]).toContain(`Total dropped this session: ${aggregator.droppedEvents}`);
+
+    const before = aggregator.droppedEvents;
+    aggregator.drain();
+    expect(aggregator.droppedEvents).toBe(before);
+    fill(aggregator.maxEventsPerBatch + 1);
+    expect(aggregator.droppedEvents).toBeGreaterThan(before);
+  });
+
+  it('does not change eviction behavior (buffer stays bounded)', function() {
+    fill(aggregator.maxEventsPerBatch * 2);
+    expect(aggregator.totalEvents).toBeLessThanOrEqual(aggregator.maxEventsPerBatch);
+  });
+
+  it('enableLogging=false silences the new messages but still counts drops', function() {
+    global.window.NRVIDEO = { config: { enableLogging: false } };
+    fill(aggregator.maxEventsPerBatch + 2);
+    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
+    expect(error.getCalls().filter(c => /Total dropped/.test(c.args[0])).length).toBe(0);
+    expect(aggregator.droppedEvents).toBeGreaterThan(0);
+  });
+
+  it('loggingLevel=ERROR logs drops only', function() {
+    global.window.NRVIDEO = { config: { loggingLevel: 'ERROR' } };
+    fill(aggregator.maxEventsPerBatch + 2);
+    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
+    expect(warn.getCalls().filter(c => /near capacity/.test(c.args[0])).length).toBe(0);
+    expect(error.getCalls().filter(c => /Total dropped/.test(c.args[0])).length).toBeGreaterThan(0);
+  });
+
+  it('loggingLevel=WARNING omits INFO and reads Vega config', function() {
+    globalThis.__NRVIDEO_CD__ = { config: { loggingLevel: 'WARNING' } };
+    fill(aggregator.maxEventsPerBatch * 0.95);
+    expect(notice.getCalls().filter(c => /60%/.test(c.args[0])).length).toBe(0);
+    expect(warn.getCalls().filter(c => /near capacity/.test(c.args[0])).length).toBe(1);
+  });
+});

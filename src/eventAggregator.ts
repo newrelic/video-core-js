@@ -5,6 +5,26 @@ import { EventAttributes } from "./utils/eventBuilder";
 
 const { MAX_PAYLOAD_SIZE, MAX_EVENTS_PER_BATCH } = Constants;
 
+export type DropLogLevel = "INFO" | "WARNING" | "ERROR";
+
+const DROP_LOG_RANK: Record<DropLogLevel, number> = { INFO: 0, WARNING: 1, ERROR: 2 };
+
+/**
+ * Reads the buffer-drop logging options from whichever pipeline config is active
+ * (browser `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`).
+ * Defaults: enableLogging=true, loggingLevel="INFO".
+ */
+function getDropLogConfig(): { enabled: boolean; minRank: number } {
+  const cfg: any =
+    (typeof window !== "undefined" ? window.NRVIDEO?.config : undefined) ??
+    globalThis.__NRVIDEO_CD__?.config;
+  const level = cfg?.loggingLevel as DropLogLevel | undefined;
+  return {
+    enabled: cfg?.enableLogging !== false,
+    minRank: DROP_LOG_RANK[level as DropLogLevel] ?? 0,
+  };
+}
+
 export type SmartHarvestCallback = (reason: "overflow" | "smart", percentage: number) => void;
 
 /**
@@ -23,6 +43,10 @@ export class NrVideoEventAggregator {
   smartHarvestEventThreshold: number;
   overflowEventThreshold: number;
   onSmartHarvestTrigger: SmartHarvestCallback | null;
+  /** Events evicted for the session. Cumulative; never reset by drain()/clear(). */
+  droppedEvents: number;
+  private smartLogged: boolean;
+  private overflowLogged: boolean;
 
   constructor() {
     // Simplified to single priority queue for equal treatment
@@ -44,6 +68,23 @@ export class NrVideoEventAggregator {
 
     // Callback for triggering harvest
     this.onSmartHarvestTrigger = null;
+
+    this.droppedEvents = 0;
+    this.smartLogged = false;
+    this.overflowLogged = false;
+  }
+
+  /**
+   * Logs a buffer-drop message through Log, honouring `enableLogging` and
+   * `loggingLevel`. INFO maps to Log.notice, the library's closest level.
+   * @private
+   */
+  private logDrop(level: DropLogLevel, message: string): void {
+    const { enabled, minRank } = getDropLogConfig();
+    if (!enabled || DROP_LOG_RANK[level] < minRank) return;
+    if (level === "ERROR") Log.error(message);
+    else if (level === "WARNING") Log.warn(message);
+    else Log.notice(message);
   }
 
   /**
@@ -191,6 +232,15 @@ export class NrVideoEventAggregator {
         `OVERFLOW PREVENTION: ${triggerReason} - Emergency harvest triggered`
       );
 
+      if (!this.overflowLogged) {
+        this.overflowLogged = true;
+        this.smartLogged = true;
+        this.logDrop(
+          "WARNING",
+          `Event buffer near capacity: ${triggerReason} - emergency harvest triggered`
+        );
+      }
+
       if (
         this.onSmartHarvestTrigger &&
         typeof this.onSmartHarvestTrigger === "function"
@@ -208,6 +258,13 @@ export class NrVideoEventAggregator {
         this.totalEvents >= this.smartHarvestEventThreshold;
 
       if (isPayloadSmartReached || isEventSmartReached) {
+        if (!this.smartLogged) {
+          this.smartLogged = true;
+          this.logDrop(
+            "INFO",
+            `Event buffer at 60% (events ${this.totalEvents}/${this.maxEventsPerBatch}, payload ${this.currentPayloadSize}/${this.maxPayloadSize} bytes) - proactive harvest triggered`
+          );
+        }
         if (
           this.onSmartHarvestTrigger &&
           typeof this.onSmartHarvestTrigger === "function"
@@ -240,6 +297,8 @@ export class NrVideoEventAggregator {
       // Reset counters since buffer is now empty
       this.totalEvents = 0;
       this.currentPayloadSize = 0;
+      this.smartLogged = false;
+      this.overflowLogged = false;
 
       return events;
     } catch (error: any) {
@@ -270,6 +329,8 @@ export class NrVideoEventAggregator {
   clear(): void {
     this.buffer = [];
     this.totalEvents = 0;
+    this.smartLogged = false;
+    this.overflowLogged = false;
   }
 
   /**
@@ -301,6 +362,13 @@ export class NrVideoEventAggregator {
 
         // Optional: Log a warning for a dropped event
         Log.warn("Event buffer full, oldest event removed.");
+
+        // Every eviction is logged (no rate limiting) with the session total.
+        this.droppedEvents++;
+        this.logDrop(
+          "ERROR",
+          `Event buffer full, oldest event dropped. Total dropped this session: ${this.droppedEvents}`
+        );
       } else {
         // Buffer is somehow empty, but conditions were met. Break the loop.
         break;

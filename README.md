@@ -241,6 +241,8 @@ All sub-fields are optional — missing values fall back to the SDK defaults. Ex
 |---|---|---|---|
 | `qoeIntervalFactor` | `number` | `2` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
 | `obfuscate` | `array` | `[]` | Regex-based rules to mask sensitive data before transmission. See [Obfuscation Rules](#obfuscation-rules). |
+| `enableLogging` | `boolean` | `true` | Log event-buffer capacity messages: INFO at 60% full (proactive harvest), WARNING at 90% (emergency harvest), and ERROR on every dropped event with the session's running drop count. Output still respects `Log.level`. Logging only; no change to buffering or harvesting. |
+| `loggingLevel` | `'INFO' \| 'WARNING' \| 'ERROR'` | `'INFO'` | Minimum severity of the buffer messages above. `'WARNING'` omits the 60% message; `'ERROR'` logs drops only. |
 
 ---
 

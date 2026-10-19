@@ -299,3 +299,25 @@ describe('videoConfiguration', function() {
     });
   });
 });
+
+describe('VideoConfiguration logging options', function() {
+  const info = { licenseKey: 'k', appName: 'A', region: 'US' };
+  beforeEach(function() { global.window.NRVIDEO = undefined; });
+
+  it('defaults enableLogging=true and loggingLevel=INFO', function() {
+    expect(setVideoConfig(info)).toBe(true);
+    expect(global.window.NRVIDEO.config.enableLogging).toBe(true);
+    expect(global.window.NRVIDEO.config.loggingLevel).toBe('INFO');
+  });
+
+  it('accepts valid values', function() {
+    expect(setVideoConfig(info, { enableLogging: false, loggingLevel: 'ERROR' })).toBe(true);
+    expect(global.window.NRVIDEO.config.enableLogging).toBe(false);
+    expect(global.window.NRVIDEO.config.loggingLevel).toBe('ERROR');
+  });
+
+  it('rejects invalid values', function() {
+    expect(setVideoConfig(info, { enableLogging: 'yes' })).toBe(false);
+    expect(setVideoConfig(info, { loggingLevel: 'DEBUG' })).toBe(false);
+  });
+});
