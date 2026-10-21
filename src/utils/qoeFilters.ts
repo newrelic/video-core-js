@@ -16,6 +16,8 @@
 
 import Constants from "../constants";
 import Tracker from "../tracker";
+import Log from "../log";
+import { getObjectEntriesForKeys } from "./index";
 
 type QoeEvent = Record<string, any>;
 type QoeSnapshots = Record<string, Record<string, any>>;
@@ -74,6 +76,7 @@ export function refreshQoeKpisInBuffer(buffer: QoeBuffer, freshKpis: QoeEvent, v
   for (const key of Constants.QOE_KPI_KEYS) {
     if (key in freshKpis) updated[key] = freshKpis[key];
   }
+  Log.debug(`[QOE_AGGREGATE] => ${JSON.stringify(getObjectEntriesForKeys(Constants.QOE_KPI_KEYS, updated))}`);
   if (viewId) {
     buffer.addOrReplaceByActionNameAndViewId(Tracker.Events.QOE_AGGREGATE, viewId, updated);
   } else {
