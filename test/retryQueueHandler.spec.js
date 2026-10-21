@@ -284,18 +284,20 @@ describe('RetryQueueHandler buffer drop logging', function() {
   let info, warn, error;
 
   const add = (n) => { for (let i = 0; i < n; i++) handler.addFailedEvents({ eventType: 'VideoAction', i }); };
-  const msgs = (spy, re) => spy.getCalls().map(c => c.args[0]).filter(m => re.test(m));
+  const msgs = (spy, re) => spy.getCalls().map(c => c.args[c.args.length - 1]).filter(m => re.test(m));
 
   beforeEach(function() {
     global.window.NRVIDEO = { config: { enableLogging: true } };
+    Log.level = Log.Levels.ALL;
     handler = new RetryQueueHandler();
-    info = sinon.stub(console, 'info');
+    info = sinon.stub(console, 'log');
     warn = sinon.stub(console, 'warn');
     error = sinon.stub(console, 'error');
   });
 
   afterEach(function() {
     [info, warn, error].forEach(st => st.restore());
+    Log.level = Log.Levels.ERROR;
     delete global.window.NRVIDEO;
   });
 
@@ -313,13 +315,13 @@ describe('RetryQueueHandler buffer drop logging', function() {
     add(1003);
     const errs = msgs(error, /Total dropped/);
     expect(errs.length).toBe(3);
-    expect(errs[2]).toBe('[nrvideo] retry queue buffer full (capacity 1000), oldest event dropped. Total dropped this session: 3');
+    expect(errs[2]).toBe('retry queue buffer full (capacity 1000), oldest event dropped. Total dropped this session: 3');
     expect(handler.retryQueue.length).toBe(1000);
   });
 
   it('is silent when enableLogging is unset', function() {
     delete global.window.NRVIDEO;
     add(1003);
-    expect(info.called || warn.called || error.called).toBe(false);
+    expect([info, warn, error].some(st => msgs(st, /oldest event dropped|[0-9]+% full/).length)).toBe(false);
   });
 });

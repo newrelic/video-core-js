@@ -2,30 +2,25 @@ import Log from "./log";
 
 export type DropLogLevel = "INFO" | "WARNING" | "ERROR";
 
-const RANK: Record<DropLogLevel, number> = { INFO: 0, WARNING: 1, ERROR: 2 };
 const INFO_RATIO = 0.85;
 const WARNING_RATIO = 0.9;
 
 /**
  * Reads `enableLogging` from whichever pipeline config is active (browser
- * `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`). Off unless `true`
- * (all levels) or a level string (minimum level).
+ * `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`). Off unless `true` or
+ * a level string; the minimum level itself is applied through `Log.level`.
  */
-function getConfig(): { enabled: boolean; minRank: number } {
+function isLoggingEnabled(): boolean {
   const cfg: any =
     (typeof window !== "undefined" ? window.NRVIDEO?.config : undefined) ??
     globalThis.__NRVIDEO_CD__?.config;
   const v = cfg?.enableLogging;
-  if (typeof v === "string" && v in RANK) {
-    return { enabled: true, minRank: RANK[v as DropLogLevel] };
-  }
-  return { enabled: v === true, minRank: 0 };
+  return v === true || (typeof v === "string" && v !== "");
 }
 
 /**
- * Logging-only capacity/drop reporter for one buffer. Gated solely by
- * `enableLogging`; it writes straight to the console (with the Log prefix)
- * because Log.report is filtered by Log.level, which must not apply here.
+ * Logging-only capacity/drop reporter for one buffer. Gated by `enableLogging`,
+ * which also sets `Log.level`, so output is filtered like any other agent log.
  * Holds the buffer's cumulative drop count and the once-per-crossing latches.
  */
 export class BufferDropLogger {
@@ -37,7 +32,7 @@ export class BufferDropLogger {
 
   /** Lets callers skip computing fill when logging is off. */
   isEnabled(): boolean {
-    return getConfig().enabled;
+    return isLoggingEnabled();
   }
 
   /**
@@ -69,11 +64,9 @@ export class BufferDropLogger {
   }
 
   private write(level: DropLogLevel, message: string): void {
-    const { enabled, minRank } = getConfig();
-    if (!enabled || RANK[level] < minRank) return;
-    const line = `${Log.prefix} ${message}`;
-    if (level === "ERROR") console.error(line);
-    else if (level === "WARNING") console.warn(line);
-    else console.info(line);
+    if (!isLoggingEnabled()) return;
+    if (level === "ERROR") Log.error(message);
+    else if (level === "WARNING") Log.warn(message);
+    else Log.notice(message);
   }
 }

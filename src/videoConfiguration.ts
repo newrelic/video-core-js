@@ -7,6 +7,13 @@ const { COLLECTOR } = Constants;
 
 const LOGGING_LEVELS = ["INFO", "WARNING", "ERROR"];
 
+// enableLogging level strings mapped to the minimum Log.level they allow
+const LOGGING_LOG_LEVELS: Record<string, number> = {
+  INFO: Log.Levels.NOTICE,
+  WARNING: Log.Levels.WARNING,
+  ERROR: Log.Levels.ERROR,
+};
+
 export interface NrVideoBrowserInfo {
   region?: string;
   beacon: string;
@@ -216,6 +223,14 @@ class VideoConfiguration {
    * @param {object} [config] - Optional configuration object
    */
   initializeGlobalConfig(userInfo: RawVideoConfigInfo, config?: RawVideoConfigOptions, src?: string): void {
+    // enableLogging is the single logging switch: it also sets Log.level.
+    // false/undefined leaves Log.level as is.
+    const { enableLogging } = config ?? {};
+    if (enableLogging === true) Log.level = Log.Levels.ALL;
+    else if (typeof enableLogging === "string" && enableLogging in LOGGING_LOG_LEVELS) {
+      Log.level = LOGGING_LOG_LEVELS[enableLogging];
+    }
+
     // Vega path: write `globalThis.__NRVIDEO_CD__` with info+config only.
     // The harvester is owned by `connectedDeviceAgent.js` as a module singleton — no
     // harvester field on this global.
