@@ -129,26 +129,27 @@ jobs:
 
     - name: Publish to NPM
       run: npm publish --tag ${{ env.NPM_TAG }}
-    - name: Configure AWS Credentials
-      if: ${{ inputs.s3-path != '' }}
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
 
-    - name: Upload to S3
-      if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
-      run: |
-        FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
-        BASE_NAME="${FILE_NAME%.min.js}"
-        VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
-        LATEST_NAME="${BASE_NAME}.latest.min.js"
-        S3_BUCKET="nr-downloads-main"
-        cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
-        cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
-        aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
-        aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
+    # - name: Configure AWS Credentials
+    #   if: ${{ inputs.s3-path != '' }}
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     aws-region: us-east-1
+
+    # - name: Upload to S3
+    #   if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+    #   run: |
+    #     FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
+    #     BASE_NAME="${FILE_NAME%.min.js}"
+    #     VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
+    #     LATEST_NAME="${BASE_NAME}.latest.min.js"
+    #     S3_BUCKET="nr-downloads-main"
+    #     cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
+    #     cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
+    #     aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
+    #     aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
 
     - name: Publish Summary
       run: |
