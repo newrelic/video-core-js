@@ -1,3 +1,10 @@
+## <small>5.1.1 (2026-10-30)</small>
+
+* Merge pull request #112 from newrelic/docs/changelog-update ([fc87910](https://github.com/newrelic/video-core-js/commit/fc87910)), closes [#112](https://github.com/newrelic/video-core-js/issues/112)
+* Merge pull request #114 from newrelic/fix/pin-deps-disable-s3-upload ([63c8721](https://github.com/newrelic/video-core-js/commit/63c8721)), closes [#114](https://github.com/newrelic/video-core-js/issues/114)
+* fix: pin dependency versions and disable S3 upload step ([f6ccfc9](https://github.com/newrelic/video-core-js/commit/f6ccfc9))
+* chore: Update changelog.md ([2d901c7](https://github.com/newrelic/video-core-js/commit/2d901c7))
+
 ## [5.1.0](https://github.com/newrelic/video-core-js/compare/v5.0.2...v5.1.0) (2026-09-15)
 
 ### New features
