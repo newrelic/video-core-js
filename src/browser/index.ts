@@ -15,6 +15,7 @@ import { getRegisteredHarvester } from "../recordEvent";
 // recordEvent is the single shared implementation from `src/recordEvent.js`
 // — handles both Browser and Vega pipelines via the registry.
 import { recordEvent } from "../recordEvent";
+import { setVideoConfig } from "../videoConfiguration";
 import { version } from "../../package.json";
 
 const nrvideo = {
@@ -27,6 +28,7 @@ const nrvideo = {
   VideoTrackerState,
   Core,
   version,
+  setVideoConfig,
 
   NrVideoEventAggregator,
   RetryQueueHandler,
@@ -52,6 +54,7 @@ export {
   videoAnalyticsHarvester,
   getRegisteredHarvester,
   recordEvent,
+  setVideoConfig,
   version,
 };
 
