@@ -1,22 +1,7 @@
 import Log from "./log";
 
-export type DropLogLevel = "INFO" | "WARNING" | "ERROR";
-
 const INFO_RATIO = 0.85;
 const WARNING_RATIO = 0.9;
-
-/**
- * Reads `enableLogging` from whichever pipeline config is active (browser
- * `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`). Off unless `true` or
- * a level string; the minimum level itself is applied through `Log.level`.
- */
-function isLoggingEnabled(): boolean {
-  const cfg: any =
-    (typeof window !== "undefined" ? window.NRVIDEO?.config : undefined) ??
-    globalThis.__NRVIDEO_CD__?.config;
-  const v = cfg?.enableLogging;
-  return v === true || (typeof v === "string" && v !== "");
-}
 
 /**
  * Logging-only capacity/drop reporter for one buffer. Gated by `enableLogging`,
@@ -32,7 +17,7 @@ export class BufferDropLogger {
 
   /** Lets callers skip computing fill when logging is off. */
   isEnabled(): boolean {
-    return isLoggingEnabled();
+    return Log.isEnabled();
   }
 
   /**
@@ -47,26 +32,19 @@ export class BufferDropLogger {
     if (ratio >= WARNING_RATIO && !this.warningLatched) {
       this.warningLatched = true;
       this.infoLatched = true;
-      this.write("WARNING", `${this.name} buffer 90% full (${count} of ${capacity} events)`);
+      Log.ifEnabled("warn", `${this.name} buffer 90% full (${count} of ${capacity} events)`);
     } else if (ratio >= INFO_RATIO && ratio < WARNING_RATIO && !this.infoLatched) {
       this.infoLatched = true;
-      this.write("INFO", `${this.name} buffer 85% full (${count} of ${capacity} events)`);
+      Log.ifEnabled("notice", `${this.name} buffer 85% full (${count} of ${capacity} events)`);
     }
   }
 
   /** Call on every eviction. Never rate limited; the count never resets. */
   drop(capacity: number): void {
     this.dropped++;
-    this.write(
-      "ERROR",
+    Log.ifEnabled(
+      "error",
       `${this.name} buffer full (capacity ${capacity}), oldest event dropped. Total dropped this session: ${this.dropped}`
     );
-  }
-
-  private write(level: DropLogLevel, message: string): void {
-    if (!isLoggingEnabled()) return;
-    if (level === "ERROR") Log.error(message);
-    else if (level === "WARNING") Log.warn(message);
-    else Log.notice(message);
   }
 }
