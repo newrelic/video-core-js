@@ -241,6 +241,7 @@ All sub-fields are optional — missing values fall back to the SDK defaults. Ex
 |---|---|---|---|
 | `qoeIntervalFactor` | `number` | `2` | Include QoE aggregate events once every N harvest cycles. Must be a positive integer. QoE events are always sent on the first and final harvest cycles. |
 | `obfuscate` | `array` | `[]` | Regex-based rules to mask sensitive data before transmission. See [Obfuscation Rules](#obfuscation-rules). |
+| `enableLogging` | `boolean \| 'INFO' \| 'WARNING' \| 'ERROR'` | `false` | Report event-buffer and retry-queue capacity to the console: INFO at 85% full, WARNING at 90%, and ERROR on every dropped event with the session's cumulative drop count (kept per buffer, never reset). Each INFO/WARNING line is logged once per crossing and re-armed when the buffer drains below the threshold. `true` logs all levels; a level string sets the minimum severity. Setting this option also sets `Log.level` (`true` is `ALL`; `'INFO'`, `'WARNING'` and `'ERROR'` map to `NOTICE`, `WARNING` and `ERROR`), so agent logs follow it; `false` leaves `Log.level` unchanged. Logging only; no change to buffering, eviction or harvesting. |
 
 ---
 

@@ -5,6 +5,15 @@ import { ObfuscationRule } from "./obfuscate";
 
 const { COLLECTOR } = Constants;
 
+const LOGGING_LEVELS = ["INFO", "WARNING", "ERROR"];
+
+// enableLogging level strings mapped to the minimum Log.level they allow
+const LOGGING_LOG_LEVELS: Record<string, number> = {
+  INFO: Log.Levels.NOTICE,
+  WARNING: Log.Levels.WARNING,
+  ERROR: Log.Levels.ERROR,
+};
+
 export interface NrVideoBrowserInfo {
   region?: string;
   beacon: string;
@@ -17,6 +26,7 @@ export interface NrVideoBrowserConfig {
   qoeAggregate: boolean;
   qoeIntervalFactor: number;
   obfuscate: ObfuscationRule[];
+  enableLogging: boolean | "INFO" | "WARNING" | "ERROR";
 }
 
 export interface NrVideoCdInfo {
@@ -32,6 +42,7 @@ export interface NrVideoCdConfig {
   qoeAggregate: boolean;
   qoeIntervalFactor: number;
   obfuscate: ObfuscationRule[];
+  enableLogging: boolean | "INFO" | "WARNING" | "ERROR";
 }
 
 /** Raw, unvalidated user-supplied config — shape varies by pipeline (`src`). */
@@ -151,7 +162,7 @@ class VideoConfiguration {
       return false;
     }
 
-    const { qoeAggregate, obfuscate } = config;
+    const { qoeAggregate, obfuscate, enableLogging } = config;
 
     if (qoeAggregate !== undefined && typeof qoeAggregate !== "boolean") {
       Log.error("qoeAggregate must be a boolean");
@@ -160,6 +171,15 @@ class VideoConfiguration {
 
     if (obfuscate !== undefined && !Array.isArray(obfuscate)) {
       Log.error("obfuscate must be an array");
+      return false;
+    }
+
+    if (
+      enableLogging !== undefined &&
+      typeof enableLogging !== "boolean" &&
+      !LOGGING_LEVELS.includes(enableLogging)
+    ) {
+      Log.error(`enableLogging must be a boolean or one of ${LOGGING_LEVELS.join(", ")}`);
       return false;
     }
 
@@ -203,6 +223,14 @@ class VideoConfiguration {
    * @param {object} [config] - Optional configuration object
    */
   initializeGlobalConfig(userInfo: RawVideoConfigInfo, config?: RawVideoConfigOptions, src?: string): void {
+    // enableLogging is the single logging switch: it also sets Log.level.
+    // false/undefined leaves Log.level as is.
+    const { enableLogging } = config ?? {};
+    if (enableLogging === true) Log.level = Log.Levels.ALL;
+    else if (typeof enableLogging === "string" && enableLogging in LOGGING_LOG_LEVELS) {
+      Log.level = LOGGING_LOG_LEVELS[enableLogging];
+    }
+
     // Vega path: write `globalThis.__NRVIDEO_CD__` with info+config only.
     // The harvester is owned by `connectedDeviceAgent.js` as a module singleton — no
     // harvester field on this global.
@@ -220,6 +248,7 @@ class VideoConfiguration {
           qoeAggregate: config?.qoeAggregate ?? true,
           qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
           obfuscate: this.filterObfuscateRules(config?.obfuscate),
+          enableLogging: config?.enableLogging ?? false,
         },
       };
       return;
@@ -246,6 +275,7 @@ class VideoConfiguration {
         qoeAggregate: config?.qoeAggregate ?? true,
         qoeIntervalFactor: this.sanitizeQoeIntervalFactor(config?.qoeIntervalFactor),
         obfuscate: this.filterObfuscateRules(config?.obfuscate),
+        enableLogging: config?.enableLogging ?? false,
       }
     };
   }

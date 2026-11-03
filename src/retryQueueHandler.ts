@@ -1,4 +1,5 @@
 import Log from "./log";
+import { BufferDropLogger } from "./bufferDropLogger";
 import { dataSize } from "./utils";
 import Constants from "./constants";
 import { EventAttributes } from "./utils/eventBuilder";
@@ -13,8 +14,10 @@ export class RetryQueueHandler {
   retryQueue: EventAttributes[];
   maxQueueSize: number;
   maxQueueSizeBytes: number;
+  private dropLogger: BufferDropLogger;
 
   constructor() {
+    this.dropLogger = new BufferDropLogger("retry queue");
     this.retryQueue = [];
     this.maxQueueSize = MAX_EVENTS_PER_BATCH; // Max 1000 events
     this.maxQueueSizeBytes = MAX_PAYLOAD_SIZE; // Max 1MB
@@ -40,16 +43,37 @@ export class RetryQueueHandler {
 
         // Check queue memory size and make room if necessary
         const eventSize = dataSize(event) ?? 0;
-        while ((dataSize(this.retryQueue) ?? 0) + eventSize > this.maxQueueSizeBytes) {
+        let queueBytes = dataSize(this.retryQueue) ?? 0;
+        while (queueBytes + eventSize > this.maxQueueSizeBytes) {
           this.evictOldestEvent();
+          queueBytes = dataSize(this.retryQueue) ?? 0;
         }
 
         // Store event directly - no wrapper needed
         this.retryQueue.push({ ...event });
+        this.logFill(queueBytes + eventSize);
       }
     } catch (err: any) {
       Log.error("Failed to add events to retry queue:", err.message);
     }
+  }
+
+  /**
+   * Reports queue fill (whichever of the event-count and byte limits is
+   * closer to full) to the drop logger. Logging only.
+   * @param {number} [bytes] - Queue size in bytes if the caller already has it
+   * @private
+   */
+  private logFill(bytes?: number): void {
+    if (!this.dropLogger.isEnabled()) return;
+    this.dropLogger.update(
+      Math.max(
+        this.retryQueue.length / this.maxQueueSize,
+        (bytes ?? dataSize(this.retryQueue) ?? 0) / this.maxQueueSizeBytes
+      ),
+      this.retryQueue.length,
+      this.maxQueueSize
+    );
   }
 
   /**
@@ -73,6 +97,7 @@ export class RetryQueueHandler {
     if (this.retryQueue.length > 0) {
       const oldest = this.retryQueue.shift();
       this.discardEvent(oldest as EventAttributes, "Queue full - evicted oldest");
+      this.dropLogger.drop(this.maxQueueSize);
     }
   }
 
@@ -107,6 +132,8 @@ export class RetryQueueHandler {
       this.retryQueue.splice(i, 1);
     }
 
+    if (retryEvents.length > 0) this.logFill();
+
     return retryEvents;
   }
 
@@ -123,6 +150,7 @@ export class RetryQueueHandler {
    */
   clear(): void {
     this.retryQueue = [];
+    this.logFill();
   }
 }
 
