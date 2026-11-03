@@ -50,8 +50,6 @@ describe('HarvestScheduler', function() {
     stubs.forEach(stub => stub.restore && stub.restore());
     stubs = [];
     clock.restore();
-    delete global.window;
-    delete global.document;
   });
 
   describe('scheduler lifecycle', function() {

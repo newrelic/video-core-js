@@ -26,8 +26,6 @@ describe('videoAnalyticsHarvester', function() {
       videoAnalyticsHarvester.harvestScheduler.stopScheduler();
     }
 
-    delete global.document;
-    delete global.window;
   });
 
   afterEach(function() {

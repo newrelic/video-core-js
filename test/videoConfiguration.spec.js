@@ -22,7 +22,6 @@ describe('videoConfiguration', function() {
   afterEach(function() {
     stubs.forEach(stub => stub.restore && stub.restore());
     stubs = [];
-    delete global.window;
   });
 
   describe('setVideoConfig()', function() {
