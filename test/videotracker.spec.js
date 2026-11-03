@@ -26,8 +26,6 @@ describe("VideoTracker", () => {
     });
 
     afterAll(() => {
-      delete global.window;
-      delete global.document;
     });
 
     it("should be incremented after sendEnd", () => {
@@ -116,8 +114,6 @@ describe("VideoTracker", () => {
       expect(attrsBeforeStart).toHaveProperty("contentRenditionWidth");
 
       // Cleanup
-      delete global.window;
-      delete global.document;
     });
 
     it("should drop bitrate attributes before ad start", () => {
@@ -149,8 +145,6 @@ describe("VideoTracker", () => {
       expect(attrsBeforeStart).toHaveProperty("adRenditionWidth");
 
       // Cleanup
-      delete global.window;
-      delete global.document;
     });
   });
 

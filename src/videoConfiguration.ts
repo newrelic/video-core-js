@@ -51,16 +51,33 @@ class VideoConfiguration {
    */
 
   setConfiguration(userInfo: RawVideoConfigInfo, config?: RawVideoConfigOptions, src?: string): boolean {
+    // Browser-agent fallback and overwrite-protection only apply to the
+    // window.NRVIDEO (non-Vega) pipeline — Vega's info shape
+    // (applicationToken/endpoint) has no browser-agent equivalent to fall
+    // back to, and a later no-op call there is already a no-op by virtue of
+    // requiring applicationToken every time (unchanged).
+    //
+    // A later call with no new info (e.g. a second Core.addTracker(tracker,
+    // {config: {...}}) that isn't trying to change licenseKey/applicationID)
+    // must not silently re-derive from the browser agent and clobber config
+    // that was already explicitly set — explicit intent from an earlier call
+    // wins over an incidental browser agent fallback on a later one.
+    if (src !== "Vega" && this.isEmptyInfo(userInfo) && this.hasExistingConfig()) {
+      return true;
+    }
+
+    const resolvedInfo = src === "Vega" ? userInfo : this.resolveUserInfo(userInfo);
+
     const validated = src === "Vega"
-      ? this.validateVegaFields(userInfo)
-      : this.validateRequiredFields(userInfo);
+      ? this.validateVegaFields(resolvedInfo)
+      : this.validateRequiredFields(resolvedInfo);
     if (!validated) {
       return false;
     }
     if (!this.validateConfigFields(config)) {
       return false;
     }
-    this.initializeGlobalConfig(userInfo, config, src);
+    this.initializeGlobalConfig(resolvedInfo, config, src);
     Log.notice("Video analytics configuration initialized successfully");
     return true;
   }
@@ -84,6 +101,113 @@ class VideoConfiguration {
       return false;
     }
     return true;
+  }
+
+  /**
+   * True when userInfo is genuinely omitted (undefined) or an empty object —
+   * i.e. the caller supplied no new info at all. Deliberately does NOT treat
+   * null/arrays/primitives as "empty" — those remain invalid-type inputs
+   * that must still fail validation the same way they always have.
+   * @param {*} userInfo
+   * @returns {boolean}
+   */
+  isEmptyInfo(userInfo: any): boolean {
+    return (
+      userInfo === undefined ||
+      (typeof userInfo === "object" &&
+        userInfo !== null &&
+        !Array.isArray(userInfo) &&
+        Object.keys(userInfo).length === 0)
+    );
+  }
+
+  /**
+   * True if video config has already been successfully set (by an earlier
+   * explicit call or an earlier browser-agent fallback).
+   * @returns {boolean}
+   */
+  hasExistingConfig(): boolean {
+    return typeof window !== "undefined" && !!window.NRVIDEO?.info?.licenseKey;
+  }
+
+  /**
+   * Resolves the effective info config, falling back to the browser agent's
+   * licenseKey/applicationID/beacon (NREUM.info) when the caller omits them
+   * and a browser agent is initialized on the same page. Explicit fields on
+   * userInfo always take precedence over the browser agent's values.
+   * @param {object} [userInfo] - User provided configuration
+   * @returns {*} Effective info to validate/use — may be the original
+   *   userInfo unchanged if it's not a plain object (so invalid-type inputs
+   *   still fail validation the same way they did before this fallback existed).
+   */
+  resolveUserInfo(userInfo: any): any {
+    const isPlainObject =
+      userInfo !== null &&
+      typeof userInfo === "object" &&
+      !Array.isArray(userInfo);
+
+    if (userInfo !== undefined && !isPlainObject) {
+      return userInfo;
+    }
+
+    const browserAgentInfo = this.getBrowserAgentConfig();
+    if (!browserAgentInfo) {
+      return userInfo;
+    }
+
+    return { ...browserAgentInfo, ...(userInfo || {}) };
+  }
+
+  /**
+   * Reads licenseKey/applicationID/beacon off the browser agent's global
+   * config if present. Checks two sources, since which one holds the real
+   * values depends on how the browser agent was loaded:
+   *  - window.NREUM.info / window.newrelic.info — populated directly when the
+   *    agent is loaded via the CDN <script> snippet (info is seeded on the
+   *    global *before* the agent runs).
+   *  - window.NREUM.initializedAgents[id].info — populated for EVERY agent
+   *    instance regardless of load mechanism, but is the ONLY place the real
+   *    licenseKey ends up when the agent is constructed via npm with an
+   *    explicit `info` passed directly to `new BrowserAgent({ info })`,
+   *    since that only sets the info on the instance, not on window.NREUM.info.
+   *
+   * window.NREUM/window.newrelic is owned by the browser agent, not this
+   * library — there's no ambient type for it in global.d.ts (which is
+   * explicitly scoped to the two slots this library itself writes), so this
+   * reads it via a loose cast rather than extending that file's documented
+   * scope.
+   * @returns {?object} { licenseKey, applicationID, beacon } or null if no
+   *   browser agent with a licenseKey is present on the page.
+   */
+  getBrowserAgentConfig(): { licenseKey: string; applicationID?: string; beacon?: string } | null {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const win = window as any;
+    const nr = win.NREUM || win.newrelic;
+    if (!nr) {
+      return null;
+    }
+
+    let info = nr.info;
+    if (!info || !info.licenseKey) {
+      const agents = nr.initializedAgents
+        ? Object.values(nr.initializedAgents)
+        : [];
+      const agentWithInfo: any = agents.find((agent: any) => agent?.info?.licenseKey);
+      info = agentWithInfo?.info;
+    }
+
+    if (!info || !info.licenseKey) {
+      return null;
+    }
+
+    return {
+      licenseKey: info.licenseKey,
+      applicationID: info.applicationID,
+      beacon: info.beacon,
+    };
   }
 
   /**

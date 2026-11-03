@@ -22,7 +22,6 @@ describe('videoConfiguration', function() {
   afterEach(function() {
     stubs.forEach(stub => stub.restore && stub.restore());
     stubs = [];
-    delete global.window;
   });
 
   describe('setVideoConfig()', function() {
@@ -295,6 +294,239 @@ describe('videoConfiguration', function() {
         expect(result).toBe(true);
         expect(global.window.NRVIDEO.config.qoeAggregate).toBe(false);
         expect(global.window.NRVIDEO.info.applicationID).toBe('app-123');
+      });
+    });
+
+    describe('browser agent config fallback', function() {
+      beforeEach(function() {
+        // The outer-level `global.window = {}` reset doesn't reliably clear
+        // stale window.NRVIDEO left by earlier tests in this file (same
+        // jsdom quirk other describe blocks work around with explicit
+        // `delete global.window.NRVIDEO` calls) — explicit here too since
+        // hasExistingConfig() now checks window.NRVIDEO.info.licenseKey.
+        delete global.window.NREUM;
+        delete global.window.newrelic;
+        delete global.window.NRVIDEO;
+      });
+
+      afterEach(function() {
+        delete global.window.NREUM;
+        delete global.window.newrelic;
+        delete global.window.NRVIDEO;
+      });
+
+      it('should not throw when info is omitted and no browser agent is present', function() {
+        expect(() => setVideoConfig()).not.toThrow();
+        expect(setVideoConfig()).toBe(false);
+      });
+
+      it('should not throw when info is omitted and a browser agent IS present', function() {
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        expect(() => setVideoConfig()).not.toThrow();
+        expect(setVideoConfig()).toBe(true);
+      });
+
+      it('should use NREUM.info when userInfo is omitted entirely', function() {
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        const result = setVideoConfig();
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('browser-key');
+        expect(global.window.NRVIDEO.info.applicationID).toBe('browser-app-456');
+        expect(global.window.NRVIDEO.info.beacon).toBe('bam.nr-data.net');
+      });
+
+      it('should use NREUM.info when userInfo is an empty object', function() {
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        const result = setVideoConfig({});
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('browser-key');
+      });
+
+      it('should fall back to window.newrelic.info when NREUM is absent', function() {
+        global.window.newrelic = {
+          info: {
+            licenseKey: 'browser-key-2',
+            applicationID: 'browser-app-789',
+            beacon: 'bam-cell.nr-data.net'
+          }
+        };
+
+        const result = setVideoConfig();
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('browser-key-2');
+      });
+
+      it('should fall back to NREUM.initializedAgents[id].info when NREUM.info has no licenseKey (npm-style BrowserAgent construction)', function() {
+        // Mirrors the real npm usage pattern: new BrowserAgent({ info }) sets
+        // info on the agent *instance* only, never back onto window.NREUM.info.
+        global.window.NREUM = {
+          info: {
+            beacon: 'bam.nr-data.net',
+            errorBeacon: 'bam.nr-data.net'
+          },
+          initializedAgents: {
+            abc123: {
+              info: {
+                licenseKey: 'npm-browser-key',
+                applicationID: 'npm-app-999',
+                beacon: 'bam-cell.nr-data.net'
+              }
+            }
+          }
+        };
+
+        const result = setVideoConfig();
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('npm-browser-key');
+        expect(global.window.NRVIDEO.info.applicationID).toBe('npm-app-999');
+      });
+
+      it('should let explicit userInfo fields override the browser agent config', function() {
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        const result = setVideoConfig({ applicationID: 'override-app' });
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('browser-key');
+        expect(global.window.NRVIDEO.info.applicationID).toBe('override-app');
+      });
+
+      it('should ignore a browser agent with no licenseKey yet (not initialized)', function() {
+        global.window.NREUM = { info: {} };
+
+        const result = setVideoConfig();
+
+        expect(result).toBe(false);
+        expect(global.window.NRVIDEO).toBeUndefined();
+      });
+
+      it('should still reject invalid-type userInfo even when a browser agent is present', function() {
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        const result = setVideoConfig('invalid');
+
+        expect(result).toBe(false);
+        expect(global.window.NRVIDEO).toBeUndefined();
+      });
+
+      it('should require explicit config when no browser agent is present and userInfo is omitted', function() {
+        const result = setVideoConfig();
+
+        expect(result).toBe(false);
+        expect(global.window.NRVIDEO).toBeUndefined();
+      });
+
+      it('should NOT let a later no-info call overwrite already-set explicit config, even if a browser agent is present', function() {
+        // Customer explicitly configures their own key first.
+        setVideoConfig({
+          licenseKey: 'MY-OWN-KEY',
+          appName: 'MyApp',
+          region: 'US'
+        });
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('MY-OWN-KEY');
+
+        // A browser agent happens to also be present on the page.
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        // A later call (e.g. via a second Core.addTracker) with no new info
+        // must be a no-op, not silently re-derive from the browser agent.
+        const result = setVideoConfig();
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('MY-OWN-KEY');
+      });
+
+      it('should treat an empty object the same as omitted for the already-configured no-op', function() {
+        setVideoConfig({
+          licenseKey: 'MY-OWN-KEY',
+          appName: 'MyApp',
+          region: 'US'
+        });
+
+        global.window.NREUM = {
+          info: {
+            licenseKey: 'browser-key',
+            applicationID: 'browser-app-456',
+            beacon: 'bam.nr-data.net'
+          }
+        };
+
+        const result = setVideoConfig({});
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('MY-OWN-KEY');
+      });
+
+      it('should still let an explicit new licenseKey override existing config on a later call', function() {
+        setVideoConfig({
+          licenseKey: 'MY-OWN-KEY',
+          appName: 'MyApp',
+          region: 'US'
+        });
+
+        const result = setVideoConfig({
+          licenseKey: 'MY-NEW-KEY',
+          appName: 'MyApp',
+          region: 'US'
+        });
+
+        expect(result).toBe(true);
+        expect(global.window.NRVIDEO.info.licenseKey).toBe('MY-NEW-KEY');
+      });
+
+      it('should still reject null even when existing config is already present', function() {
+        setVideoConfig({
+          licenseKey: 'MY-OWN-KEY',
+          appName: 'MyApp',
+          region: 'US'
+        });
+
+        const result = setVideoConfig(null);
+
+        expect(result).toBe(false);
       });
     });
   });

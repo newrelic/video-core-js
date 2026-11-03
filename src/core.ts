@@ -29,8 +29,12 @@ class Core {
   static addTracker(tracker: TrackerLike, options?: CoreAddTrackerOptions): void {
     // Set video analytics configuration. The optional `options.src` field
     // selects the pipeline: `'Vega'` writes globalThis.__NRVIDEO_CD__,
-    // anything else writes window.NRVIDEO.
-    if (options?.info) {
+    // anything else writes window.NRVIDEO. Called whenever an options object
+    // is passed at all (even without `info`) so the browser-agent config
+    // fallback in setVideoConfig gets a chance to run; omitting options
+    // entirely keeps the original skip-semantics for callers who already
+    // configured elsewhere.
+    if (options) {
       setVideoConfig(options.info, options?.config, options?.src);
     }
 

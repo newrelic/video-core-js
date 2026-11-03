@@ -11,6 +11,7 @@ import { RetryQueueHandler } from "./retryQueueHandler";
 import { OptimizedHttpClient } from "./optimizedHttpClient";
 import { HarvestScheduler } from "./browser/harvestScheduler";
 import { recordEvent, getRegisteredHarvester } from "./recordEvent";
+import { setVideoConfig } from "./videoConfiguration";
 import { version } from "../package.json";
 
 // Harvesters are exported as NAMED exports only — never added to the `nrvideo`
@@ -26,6 +27,7 @@ const nrvideo = {
   VideoTrackerState,
   Core,
   version,
+  setVideoConfig,
 
   NrVideoEventAggregator,
   RetryQueueHandler,
