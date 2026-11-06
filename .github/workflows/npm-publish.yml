@@ -49,10 +49,9 @@ on:
         required: false
 
 permissions:
-  # In order to create the git tag, we must have write permissions.
-  contents: write
-  # This is important. Trusted Publishing requires this for the OIDC exchange.
-  id-token: write
+  contents: write      # create/upload GitHub Release
+  id-token: write      # npm Trusted Publishing + attestation OIDC
+  attestations: write  # actions/attest-build-provenance
 
 jobs:
   publish_and_deploy:
@@ -97,7 +96,7 @@ jobs:
         registry-url: 'https://registry.npmjs.org'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
 
     - name: Build project
       run: npm run build
@@ -116,40 +115,121 @@ jobs:
     - name: Run security audit
       run: npm audit --audit-level=critical
 
-    # - name: Create Git Tag
-    #   run: |
-    #     git tag v${{ env.PACKAGE_VERSION }}
-    #     git push --tags
+    - name: Generate integrity manifest
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      env:
+        DIST_FILE: ${{ inputs.file-to-upload }}
+        RELEASE_TAG: v${{ env.PACKAGE_VERSION }}
+      run: |
+        mkdir -p "$RUNNER_TEMP/integrity"
+        node .github/scripts/generate-integrity-manifest.mjs \
+          "$RUNNER_TEMP/integrity/integrity-manifest.json" \
+          "$RUNNER_TEMP/integrity/checksums.txt" \
+          "$RELEASE_TAG" "$GITHUB_SHA"
 
-    # - name: Create GitHub Release
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   run: |
-    #     gh release create v${{ env.PACKAGE_VERSION }} --generate-notes
+    - name: Attest build provenance
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+      with:
+        subject-checksums: ${{ runner.temp }}/integrity/checksums.txt
+
+    - name: Create or update GitHub Release with manifest
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v${{ env.PACKAGE_VERSION }}"
+        MANIFEST="$RUNNER_TEMP/integrity/integrity-manifest.json"
+
+        if gh release view "$TAG" &>/dev/null; then
+          # Release already exists (e.g. triggered by release: published event)
+          if [ -f "$MANIFEST" ]; then
+            gh release upload "$TAG" "$MANIFEST" --clobber
+            echo "Attached integrity manifest to existing release $TAG"
+          fi
+        else
+          body=$(awk -v ver="${{ env.PACKAGE_VERSION }}" '
+            found && /^## +\[|^# / { exit }
+            found { print }
+            $0 ~ ("^## +\\[" ver "\\]") { found=1 }
+          ' CHANGELOG.md | sed -E 's/ *\(\[[0-9a-f]{6,40}\]\([^)]*\)\) *$//')
+          body=$(printf '%s' "${body}" | sed '/[^[:space:]]/,$!d' | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba}')
+          if [[ -z "${body}" ]]; then
+            body="_No new features, improvements, or bug fixes for this release._"
+          fi
+          if [ -f "$MANIFEST" ]; then
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes "${body}" \
+              --verify-tag \
+              "$MANIFEST"
+          else
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes "${body}" \
+              --verify-tag
+          fi
+          echo "Created GitHub Release $TAG"
+        fi
 
     - name: Publish to NPM
       run: npm publish --tag ${{ env.NPM_TAG }}
 
-    # - name: Configure AWS Credentials
-    #   if: ${{ inputs.s3-path != '' }}
-    #   uses: aws-actions/configure-aws-credentials@v2
+    # TODO: Enable S3 upload once AWS credentials are configured in the npm-release environment.
+    # Uploads two files per release: one versioned (kept forever) and one latest (overwritten each release).
+    # Uncomment and remove this comment block when ready to enable.
+    #
+    # - name: Configure AWS credentials
+    #   if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+    #   uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
     #   with:
     #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
     #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     #     aws-region: us-east-1
-
+    #
     # - name: Upload to S3
     #   if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+    #   env:
+    #     S3_PATH: ${{ inputs.s3-path }}
+    #     DIST_FILE: ${{ inputs.file-to-upload }}
     #   run: |
-    #     FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
+    #     FILE_NAME=$(basename "$DIST_FILE")
     #     BASE_NAME="${FILE_NAME%.min.js}"
     #     VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
     #     LATEST_NAME="${BASE_NAME}.latest.min.js"
     #     S3_BUCKET="nr-downloads-main"
-    #     cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
-    #     cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
-    #     aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
-    #     aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
+    #     cp "$DIST_FILE" "$VERSIONED_NAME"
+    #     cp "$DIST_FILE" "$LATEST_NAME"
+    #     aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${S3_PATH}/${VERSIONED_NAME}"
+    #     aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${S3_PATH}/${LATEST_NAME}"
+    #     echo "Uploaded $VERSIONED_NAME and $LATEST_NAME to s3://${S3_BUCKET}/${S3_PATH}/"
+    #
+    # - name: Verify S3 assets against manifest
+    #   if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+    #   env:
+    #     S3_PATH: ${{ inputs.s3-path }}
+    #     MANIFEST: ${{ runner.temp }}/integrity/integrity-manifest.json
+    #     S3_BUCKET: nr-downloads-main
+    #   run: |
+    #     mkdir -p /tmp/s3-verify
+    #     FAILURES=0
+    #     while IFS= read -r KEY; do
+    #       EXPECTED=$(jq -r ".files[\"$KEY\"].sha384" "$MANIFEST")
+    #       aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}/${KEY}" "/tmp/s3-verify/${KEY}" --quiet
+    #       ACTUAL="sha384-$(openssl dgst -sha384 -binary "/tmp/s3-verify/${KEY}" | openssl base64 -A)"
+    #       if [ "$ACTUAL" = "$EXPECTED" ]; then
+    #         echo "  ✓ ${KEY}"
+    #       else
+    #         echo "  ✗ MISMATCH: ${KEY}"
+    #         echo "    expected: ${EXPECTED}"
+    #         echo "    actual:   ${ACTUAL}"
+    #         FAILURES=$((FAILURES+1))
+    #       fi
+    #     done < <(jq -r '.files | keys[]' "$MANIFEST")
+    #     if [ "$FAILURES" -gt 0 ]; then
+    #       echo "::error::${FAILURES} S3 file(s) failed integrity verification"
+    #       exit 1
+    #     fi
+    #     echo "All S3 assets verified against integrity manifest ✓"
 
     - name: Publish Summary
       run: |
