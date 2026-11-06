@@ -61,13 +61,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Log trigger event
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
       run: |
         echo "## NPM Publish Triggered" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ github.event_name }}" = "release" ]; then
+        if [ "$EVENT_NAME" = "release" ]; then
           echo "- **Trigger**: Automatic (Release published)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release Tag**: ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
-        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "- **Release Tag**: $RELEASE_TAG" >> $GITHUB_STEP_SUMMARY
+        elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
           echo "- **Trigger**: Manual" >> $GITHUB_STEP_SUMMARY
         else
           echo "- **Trigger**: Workflow call" >> $GITHUB_STEP_SUMMARY
@@ -128,7 +131,9 @@ jobs:
     #     gh release create v${{ env.PACKAGE_VERSION }} --generate-notes
 
     - name: Publish to NPM
-      run: npm publish --tag ${{ env.NPM_TAG }}
+      env:
+        NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
+      run: npm publish --tag "$NPM_PUBLISH_TAG"
 
     # - name: Configure AWS Credentials
     #   if: ${{ inputs.s3-path != '' }}
@@ -152,6 +157,8 @@ jobs:
     #     aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
 
     - name: Publish Summary
+      env:
+        S3_PATH: ${{ inputs.s3-path }}
       run: |
         echo "## ✅ Publish Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -160,7 +167,7 @@ jobs:
         echo "- **NPM Tag**: ${{ env.NPM_TAG }}" >> $GITHUB_STEP_SUMMARY
         echo "- **NPM URL**: https://www.npmjs.com/package/@newrelic/video-core/v/${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ inputs.s3-path }}" != "" ]; then
+        if [ -n "$S3_PATH" ]; then
           echo "### S3 Upload" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Files uploaded to S3" >> $GITHUB_STEP_SUMMARY
         fi
