@@ -101,32 +101,6 @@ jobs:
             echo "Created and pushed tag $TAG"
           fi
 
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ needs.check-release.outputs.version }}"
-          TAG="v$VERSION"
-
-          if gh release view "$TAG" &>/dev/null; then
-            echo "Release $TAG already exists — skipping"
-          else
-            body=$(awk -v ver="${VERSION}" '
-              found && /^## +\[|^# / { exit }
-              found { print }
-              $0 ~ ("^## +\\[" ver "\\]") { found=1 }
-            ' CHANGELOG.md | sed -E 's/ *\(\[[0-9a-f]{6,40}\]\([^)]*\)\) *$//')
-            body=$(printf '%s' "${body}" | sed '/[^[:space:]]/,$!d' | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba}')
-            if [[ -z "${body}" ]]; then
-              body="_No new features, improvements, or bug fixes for this release._"
-            fi
-            gh release create "$TAG" \
-              --title "Release $TAG" \
-              --notes "${body}" \
-              --verify-tag
-            echo "Created GitHub Release $TAG"
-          fi
-
       - name: Trigger Build and Publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
