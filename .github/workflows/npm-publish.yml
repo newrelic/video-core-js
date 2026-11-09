@@ -78,7 +78,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
     - name: Checkout code
-      uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
 
@@ -88,7 +88,7 @@ jobs:
         git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
     - name: Set up Node.js
-      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         # Trusted Publishing requires `npm@11.5.1` or later. Compatible
         # versions of `npm` started shipping with Node.js v24.5.0.
