@@ -81,7 +81,7 @@ describe("recordEvent", () => {
     }
     logWarnSpy.restore();
     logErrorSpy.restore();
-    delete global.window;
+    global.window = undefined;
   });
 
   describe("validation", () => {
