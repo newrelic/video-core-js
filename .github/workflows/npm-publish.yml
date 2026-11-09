@@ -28,12 +28,6 @@ on:
         description: 'Specific file to upload to S3 (optional)'
         required: false
         type: string
-      enable-s3-upload:
-        description: 'Upload built artifacts to S3'
-        required: false
-        type: boolean
-        default: false
-
   # Reusable workflow for other workflows to call
   workflow_call:
     inputs:
@@ -65,6 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       package-version: ${{ steps.package-version.outputs.package-version }}
+      release-tag: ${{ steps.package-version.outputs.release-tag }}
     steps:
     - name: Log trigger event
       env:
@@ -117,6 +112,7 @@ jobs:
         PACKAGE_VERSION=$(jq -r '.version' package.json)
         echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
         echo "package-version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+        echo "release-tag=v$PACKAGE_VERSION" >> $GITHUB_OUTPUT
         if echo "$PACKAGE_VERSION" | grep -q "beta"; then
           echo "NPM_TAG=beta" >> $GITHUB_ENV
         else
@@ -187,20 +183,7 @@ jobs:
         NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
       run: npm publish --tag "$NPM_PUBLISH_TAG"
 
-    - name: Share build artifacts for S3 upload
-      if: ${{ inputs.file-to-upload != '' }}
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      with:
-        name: s3-build-artifacts
-        path: |
-          ${{ inputs.file-to-upload }}
-          ${{ runner.temp }}/integrity/integrity-manifest.json
-        if-no-files-found: error
-        retention-days: 1
-
     - name: Publish Summary
-      env:
-        S3_PATH: ${{ inputs.s3-path }}
       run: |
         echo "## ✅ Publish Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -208,11 +191,6 @@ jobs:
         echo "- **Version**: ${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "- **NPM Tag**: ${{ env.NPM_TAG }}" >> $GITHUB_STEP_SUMMARY
         echo "- **NPM URL**: https://www.npmjs.com/package/@newrelic/video-core/v/${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -n "$S3_PATH" ]; then
-          echo "### S3 Upload" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Files uploaded to S3" >> $GITHUB_STEP_SUMMARY
-        fi
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Installation" >> $GITHUB_STEP_SUMMARY
         echo '```bash' >> $GITHUB_STEP_SUMMARY
@@ -222,11 +200,10 @@ jobs:
   s3-upload:
     name: Upload to S3 and Verify
     needs: publish_and_deploy
-    if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
-    uses: ./.github/workflows/s3-upload.yml
+    if: ${{ inputs.s3-path != '' }}
+    uses: newrelic/video-core-js/.github/workflows/s3-upload.yml@master
     with:
+      release-tag: ${{ needs.publish_and_deploy.outputs.release-tag }}
       s3-path: ${{ inputs.s3-path }}
-      file-to-upload: ${{ inputs.file-to-upload }}
-      package-version: ${{ needs.publish_and_deploy.outputs.package-version }}
-      enable-s3-upload: ${{ inputs.enable-s3-upload == true }}
+      enable-s3-upload: false   # ← set to true when AWS credentials are configured in npm-release environment
     secrets: inherit
