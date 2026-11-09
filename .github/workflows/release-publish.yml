@@ -41,9 +41,15 @@ jobs:
 
       - name: Check for new version
         id: check
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            if ! echo "$INPUT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'; then
+              echo "Invalid version format: $INPUT_VERSION (expected X.Y.Z)"
+              exit 1
+            fi
+            VERSION="$INPUT_VERSION"
           else
             VERSION=$(jq -r '.version' package.json)
           fi
