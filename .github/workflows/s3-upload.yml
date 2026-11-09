@@ -11,6 +11,9 @@ name: S3 Upload
 # To enable for automated runs: set enable-s3-upload: true when calling from
 # npm-publish.yml. Defaults to false so automated runs are safe by default.
 
+permissions:
+  contents: read   # checkout only — no write permissions needed
+
 on:
   workflow_dispatch:
     inputs:
