@@ -12,7 +12,8 @@ name: S3 Upload
 # npm-publish.yml. Defaults to false so automated runs are safe by default.
 
 permissions:
-  contents: read   # checkout only — no write permissions needed
+  contents: read   # checkout only
+  id-token: write  # OIDC token for AWS role assumption
 
 on:
   workflow_dispatch:
@@ -47,9 +48,7 @@ on:
         type: boolean
         default: false   # default false for automated — must be explicitly enabled
     secrets:
-      AWS_ACCESS_KEY_ID:
-        required: false
-      AWS_SECRET_ACCESS_KEY:
+      AWS_ROLE_ARN:
         required: false
 
 jobs:
@@ -85,8 +84,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: us-east-1
 
     - name: Upload to S3
