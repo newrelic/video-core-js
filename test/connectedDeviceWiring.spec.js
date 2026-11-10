@@ -26,8 +26,8 @@ describe("Vega core wiring", () => {
 
   afterAll(() => {
     Log.level = Log.Levels.ERROR;
-    delete global.window;
-    delete global.document;
+    global.window = undefined;
+    global.document = undefined;
   });
 
   beforeEach(() => {

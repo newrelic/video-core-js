@@ -61,13 +61,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Log trigger event
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        RELEASE_TAG: ${{ github.event.release.tag_name }}
       run: |
         echo "## NPM Publish Triggered" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ github.event_name }}" = "release" ]; then
+        if [ "$EVENT_NAME" = "release" ]; then
           echo "- **Trigger**: Automatic (Release published)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release Tag**: ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
-        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "- **Release Tag**: $RELEASE_TAG" >> $GITHUB_STEP_SUMMARY
+        elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
           echo "- **Trigger**: Manual" >> $GITHUB_STEP_SUMMARY
         else
           echo "- **Trigger**: Workflow call" >> $GITHUB_STEP_SUMMARY
@@ -75,7 +78,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
 
@@ -85,7 +88,7 @@ jobs:
         git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
     - name: Set up Node.js
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         # Trusted Publishing requires `npm@11.5.1` or later. Compatible
         # versions of `npm` started shipping with Node.js v24.5.0.
@@ -128,29 +131,34 @@ jobs:
     #     gh release create v${{ env.PACKAGE_VERSION }} --generate-notes
 
     - name: Publish to NPM
-      run: npm publish --tag ${{ env.NPM_TAG }}
-    - name: Configure AWS Credentials
-      if: ${{ inputs.s3-path != '' }}
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+      env:
+        NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
+      run: npm publish --tag "$NPM_PUBLISH_TAG"
 
-    - name: Upload to S3
-      if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
-      run: |
-        FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
-        BASE_NAME="${FILE_NAME%.min.js}"
-        VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
-        LATEST_NAME="${BASE_NAME}.latest.min.js"
-        S3_BUCKET="nr-downloads-main"
-        cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
-        cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
-        aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
-        aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
+    # - name: Configure AWS Credentials
+    #   if: ${{ inputs.s3-path != '' }}
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     aws-region: us-east-1
+
+    # - name: Upload to S3
+    #   if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
+    #   run: |
+    #     FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
+    #     BASE_NAME="${FILE_NAME%.min.js}"
+    #     VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
+    #     LATEST_NAME="${BASE_NAME}.latest.min.js"
+    #     S3_BUCKET="nr-downloads-main"
+    #     cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
+    #     cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
+    #     aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
+    #     aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
 
     - name: Publish Summary
+      env:
+        S3_PATH: ${{ inputs.s3-path }}
       run: |
         echo "## ✅ Publish Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -159,7 +167,7 @@ jobs:
         echo "- **NPM Tag**: ${{ env.NPM_TAG }}" >> $GITHUB_STEP_SUMMARY
         echo "- **NPM URL**: https://www.npmjs.com/package/@newrelic/video-core/v/${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ inputs.s3-path }}" != "" ]; then
+        if [ -n "$S3_PATH" ]; then
           echo "### S3 Upload" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Files uploaded to S3" >> $GITHUB_STEP_SUMMARY
         fi
