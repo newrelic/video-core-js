@@ -41,6 +41,31 @@ class Log {
   }
 
   /**
+   * True when the user switched logging on with `enableLogging`, read from whichever
+   * pipeline config is active (browser `window.NRVIDEO` or Vega `globalThis.__NRVIDEO_CD__`).
+   * Off unless `true` or a level string; the minimum level itself is applied through `Log.level`.
+   * @static
+   */
+  static isEnabled(): boolean {
+    const cfg: any =
+      (typeof window !== "undefined" ? window.NRVIDEO?.config : undefined) ??
+      globalThis.__NRVIDEO_CD__?.config;
+    const v = cfg?.enableLogging;
+    return v === true || (typeof v === "string" && v !== "");
+  }
+
+  /**
+   * Logs only when `enableLogging` is on, so opt-in messages stay silent by default
+   * even though `Log.level` defaults to ERROR. Filtered by `Log.level` like any other log.
+   * @param {"notice"|"warn"|"error"} method Log method to use
+   * @param {...any} msg Message to show
+   * @static
+   */
+  static ifEnabled(method: "notice" | "warn" | "error", ...msg: any[]) {
+    if (Log.isEnabled()) Log[method](...msg);
+  }
+
+  /**
    * Sends a debug message to console.
    * @method Log.debug
    * @static

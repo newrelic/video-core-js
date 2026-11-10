@@ -1,4 +1,5 @@
 import Log from "./log";
+import { BufferDropLogger } from "./bufferDropLogger";
 import Constants from "./constants";
 import { dataSize } from "./utils";
 import { EventAttributes } from "./utils/eventBuilder";
@@ -23,6 +24,7 @@ export class NrVideoEventAggregator {
   smartHarvestEventThreshold: number;
   overflowEventThreshold: number;
   onSmartHarvestTrigger: SmartHarvestCallback | null;
+  private dropLogger: BufferDropLogger;
 
   constructor() {
     // Simplified to single priority queue for equal treatment
@@ -44,6 +46,8 @@ export class NrVideoEventAggregator {
 
     // Callback for triggering harvest
     this.onSmartHarvestTrigger = null;
+
+    this.dropLogger = new BufferDropLogger("event");
   }
 
   /**
@@ -151,6 +155,15 @@ export class NrVideoEventAggregator {
           this.currentPayloadSize += eventSize;
       }
 
+      this.dropLogger.update(
+        Math.max(
+          this.totalEvents / this.maxEventsPerBatch,
+          this.currentPayloadSize / this.maxPayloadSize
+        ),
+        this.totalEvents,
+        this.maxEventsPerBatch
+      );
+
       // Check if smart harvest should be triggered
       this.checkSmartHarvestTrigger();
 
@@ -240,6 +253,7 @@ export class NrVideoEventAggregator {
       // Reset counters since buffer is now empty
       this.totalEvents = 0;
       this.currentPayloadSize = 0;
+      this.dropLogger.update(0, 0, this.maxEventsPerBatch);
 
       return events;
     } catch (error: any) {
@@ -270,6 +284,7 @@ export class NrVideoEventAggregator {
   clear(): void {
     this.buffer = [];
     this.totalEvents = 0;
+    this.dropLogger.update(0, 0, this.maxEventsPerBatch);
   }
 
   /**
@@ -301,6 +316,8 @@ export class NrVideoEventAggregator {
 
         // Optional: Log a warning for a dropped event
         Log.warn("Event buffer full, oldest event removed.");
+
+        this.dropLogger.drop(this.maxEventsPerBatch);
       } else {
         // Buffer is somehow empty, but conditions were met. Break the loop.
         break;
