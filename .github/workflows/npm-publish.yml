@@ -167,18 +167,18 @@ jobs:
           echo "Uploaded integrity manifest to draft release $TAG"
         fi
 
+    - name: Publish to NPM
+      env:
+        NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
+      run: npm publish --tag "$NPM_PUBLISH_TAG"
+
     - name: Publish GitHub Release (immutable)
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG="v${{ env.PACKAGE_VERSION }}"
-        gh release publish "$TAG"
+        gh release edit "$TAG" --draft=false
         echo "Published release $TAG — now immutable"
-
-    - name: Publish to NPM
-      env:
-        NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
-      run: npm publish --tag "$NPM_PUBLISH_TAG"
 
     - name: Publish Summary
       run: |
