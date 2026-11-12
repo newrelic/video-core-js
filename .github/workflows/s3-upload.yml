@@ -1,0 +1,148 @@
+name: S3 Upload
+
+# Standalone workflow that checks out a release tag (or master), builds the
+# project, uploads the artifacts to S3, and verifies the upload.
+#
+# Can be triggered in two ways:
+#   1. Automatically — called by npm-publish.yml after a successful npm publish.
+#   2. Manually     — dispatched from GitHub Actions UI, useful for re-uploads
+#                     or when S3 upload failed during a previous release.
+#
+# To enable for automated runs: set enable-s3-upload: true when calling from
+# npm-publish.yml. Defaults to false so automated runs are safe by default.
+
+permissions:
+  contents: read   # checkout only
+  id-token: write  # OIDC token for AWS role assumption
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: 'Release tag to checkout and upload (e.g. v2.2.0). Leave empty to use master.'
+        required: false
+        type: string
+      s3-path:
+        description: 'S3 destination path (e.g. media-agents/browser/hls-js)'
+        required: true
+        type: string
+      enable-s3-upload:
+        description: 'Enable S3 upload'
+        required: false
+        type: boolean
+        default: true    # default true for manual — you're explicitly running it
+
+  workflow_call:
+    inputs:
+      release-tag:
+        description: 'Release tag to checkout (e.g. v2.2.0)'
+        required: false
+        type: string
+      s3-path:
+        description: 'S3 destination path'
+        required: false
+        type: string
+      enable-s3-upload:
+        description: 'Enable S3 upload'
+        required: false
+        type: boolean
+        default: false   # default false for automated — must be explicitly enabled
+    secrets:
+      AWS_ROLE_ARN:
+        required: false
+
+jobs:
+  upload:
+    name: Checkout, Build, Upload and Verify
+    if: ${{ inputs.enable-s3-upload == true }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout release tag or master
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ inputs.release-tag != '' && inputs.release-tag || 'master' }}
+        fetch-depth: 0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '24.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+
+    - name: Build project
+      run: npm run build
+
+    - name: Get package version
+      id: version
+      run: |
+        PACKAGE_VERSION=$(jq -r '.version' package.json)
+        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: us-east-1
+
+    - name: Upload to S3
+      env:
+        S3_PATH: ${{ inputs.s3-path }}
+      run: |
+        DIST_FILE=$(find dist/umd -name "*.min.js" | head -1)
+        if [ -z "$DIST_FILE" ]; then
+          echo "::error::No .min.js file found in dist/umd/"
+          exit 1
+        fi
+        echo "Detected dist file: $DIST_FILE"
+        FILE_NAME=$(basename "$DIST_FILE")
+        BASE_NAME="${FILE_NAME%.min.js}"
+        VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
+        LATEST_NAME="${BASE_NAME}.latest.min.js"
+        S3_BUCKET="nr-downloads-main"
+        cp "$DIST_FILE" "$VERSIONED_NAME"
+        cp "$DIST_FILE" "$LATEST_NAME"
+        aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${S3_PATH}/${VERSIONED_NAME}"
+        aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${S3_PATH}/${LATEST_NAME}"
+        echo "Uploaded $VERSIONED_NAME and $LATEST_NAME to s3://${S3_BUCKET}/${S3_PATH}/"
+
+    - name: Verify S3 assets against manifest
+      env:
+        S3_PATH: ${{ inputs.s3-path }}
+        S3_BUCKET: nr-downloads-main
+      run: |
+        DIST_FILE=$(find dist/umd -name "*.min.js" | head -1)
+        FILE_NAME=$(basename "$DIST_FILE")
+        BASE_NAME="${FILE_NAME%.min.js}"
+        VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
+        LATEST_NAME="${BASE_NAME}.latest.min.js"
+        FAILURES=0
+        for KEY in "$VERSIONED_NAME" "$LATEST_NAME"; do
+          EXPECTED="sha384-$(openssl dgst -sha384 -binary "$DIST_FILE" | openssl base64 -A)"
+          aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}/${KEY}" "/tmp/${KEY}" --quiet
+          ACTUAL="sha384-$(openssl dgst -sha384 -binary "/tmp/${KEY}" | openssl base64 -A)"
+          if [ "$ACTUAL" = "$EXPECTED" ]; then
+            echo "  ✓ ${KEY}"
+          else
+            echo "  ✗ MISMATCH: ${KEY}"
+            FAILURES=$((FAILURES+1))
+          fi
+        done
+        if [ "$FAILURES" -gt 0 ]; then
+          echo "::error::${FAILURES} S3 file(s) failed integrity verification"
+          exit 1
+        fi
+        echo "All S3 assets verified ✓"
+
+    - name: S3 Upload Summary
+      env:
+        S3_PATH: ${{ inputs.s3-path }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+      run: |
+        echo "## ✅ S3 Upload Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag**: ${RELEASE_TAG:-master}" >> $GITHUB_STEP_SUMMARY
+        echo "- **S3 Path**: s3://nr-downloads-main/${S3_PATH}/" >> $GITHUB_STEP_SUMMARY
+        echo "- **Files**: versioned + latest uploaded and verified ✓" >> $GITHUB_STEP_SUMMARY

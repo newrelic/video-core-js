@@ -12,11 +12,6 @@ name: Publish Module
 # This workflow can be triggered automatically when a release is published,
 # or manually via the GitHub Actions interface.
 on:
-  # Trigger automatically when a new release is published
-  release:
-    types:
-      - published
-
   # Manual trigger with optional S3 upload
   workflow_dispatch:
     inputs:
@@ -28,7 +23,6 @@ on:
         description: 'Specific file to upload to S3 (optional)'
         required: false
         type: string
-
   # Reusable workflow for other workflows to call
   workflow_call:
     inputs:
@@ -49,16 +43,18 @@ on:
         required: false
 
 permissions:
-  # In order to create the git tag, we must have write permissions.
-  contents: write
-  # This is important. Trusted Publishing requires this for the OIDC exchange.
-  id-token: write
+  contents: write      # create/upload GitHub Release
+  id-token: write      # npm Trusted Publishing + attestation OIDC
+  attestations: write  # actions/attest-build-provenance
 
 jobs:
   publish_and_deploy:
     # Run when: release published, manually triggered, or called by another workflow
     if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
     runs-on: ubuntu-latest
+    outputs:
+      package-version: ${{ steps.package-version.outputs.package-version }}
+      release-tag: ${{ steps.package-version.outputs.release-tag }}
     steps:
     - name: Log trigger event
       env:
@@ -100,7 +96,7 @@ jobs:
         registry-url: 'https://registry.npmjs.org'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --ignore-scripts
 
     - name: Build project
       run: npm run build
@@ -110,6 +106,8 @@ jobs:
       run: |
         PACKAGE_VERSION=$(jq -r '.version' package.json)
         echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
+        echo "package-version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+        echo "release-tag=v$PACKAGE_VERSION" >> $GITHUB_OUTPUT
         if echo "$PACKAGE_VERSION" | grep -q "beta"; then
           echo "NPM_TAG=beta" >> $GITHUB_ENV
         else
@@ -119,46 +117,70 @@ jobs:
     - name: Run security audit
       run: npm audit --audit-level=critical
 
-    # - name: Create Git Tag
-    #   run: |
-    #     git tag v${{ env.PACKAGE_VERSION }}
-    #     git push --tags
+    - name: Generate integrity manifest
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      env:
+        DIST_FILE: ${{ inputs.file-to-upload }}
+        RELEASE_TAG: v${{ env.PACKAGE_VERSION }}
+      run: |
+        mkdir -p "$RUNNER_TEMP/integrity"
+        node .github/scripts/generate-integrity-manifest.mjs \
+          "$RUNNER_TEMP/integrity/integrity-manifest.json" \
+          "$RUNNER_TEMP/integrity/checksums.txt" \
+          "$RELEASE_TAG" "$GITHUB_SHA"
 
-    # - name: Create GitHub Release
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #   run: |
-    #     gh release create v${{ env.PACKAGE_VERSION }} --generate-notes
+    - name: Attest build provenance
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+      with:
+        subject-checksums: ${{ runner.temp }}/integrity/checksums.txt
+
+    - name: Create GitHub Release (draft)
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v${{ env.PACKAGE_VERSION }}"
+        body=$(awk -v ver="${{ env.PACKAGE_VERSION }}" '
+          found && /^## +\[|^# / { exit }
+          found { print }
+          $0 ~ ("^## +\\[" ver "\\]") { found=1 }
+        ' CHANGELOG.md | sed -E 's/ *\(\[[0-9a-f]{6,40}\]\([^)]*\)\) *$//')
+        body=$(printf '%s' "${body}" | sed '/[^[:space:]]/,$!d' | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba}')
+        if [[ -z "${body}" ]]; then
+          body="_No new features, improvements, or bug fixes for this release._"
+        fi
+        gh release create "$TAG" \
+          --draft \
+          --title "Release $TAG" \
+          --notes "${body}" \
+          --verify-tag
+        echo "Created draft release $TAG"
+
+    - name: Upload integrity manifest to draft release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v${{ env.PACKAGE_VERSION }}"
+        MANIFEST="$RUNNER_TEMP/integrity/integrity-manifest.json"
+        if [ -f "$MANIFEST" ]; then
+          gh release upload "$TAG" "$MANIFEST"
+          echo "Uploaded integrity manifest to draft release $TAG"
+        fi
+
+    - name: Publish GitHub Release (immutable)
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v${{ env.PACKAGE_VERSION }}"
+        gh release publish "$TAG"
+        echo "Published release $TAG — now immutable"
 
     - name: Publish to NPM
       env:
         NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
       run: npm publish --tag "$NPM_PUBLISH_TAG"
 
-    # - name: Configure AWS Credentials
-    #   if: ${{ inputs.s3-path != '' }}
-    #   uses: aws-actions/configure-aws-credentials@v2
-    #   with:
-    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     aws-region: us-east-1
-
-    # - name: Upload to S3
-    #   if: ${{ inputs.s3-path != '' && inputs.file-to-upload != '' }}
-    #   run: |
-    #     FILE_NAME=$(basename "${{ inputs.file-to-upload }}")
-    #     BASE_NAME="${FILE_NAME%.min.js}"
-    #     VERSIONED_NAME="${BASE_NAME}.${PACKAGE_VERSION}.min.js"
-    #     LATEST_NAME="${BASE_NAME}.latest.min.js"
-    #     S3_BUCKET="nr-downloads-main"
-    #     cp "${{ inputs.file-to-upload }}" "$VERSIONED_NAME"
-    #     cp "${{ inputs.file-to-upload }}" "$LATEST_NAME"
-    #     aws s3 cp "$VERSIONED_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$VERSIONED_NAME"
-    #     aws s3 cp "$LATEST_NAME" "s3://${S3_BUCKET}/${{ inputs.s3-path }}/$LATEST_NAME"
-
     - name: Publish Summary
-      env:
-        S3_PATH: ${{ inputs.s3-path }}
       run: |
         echo "## ✅ Publish Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -167,12 +189,18 @@ jobs:
         echo "- **NPM Tag**: ${{ env.NPM_TAG }}" >> $GITHUB_STEP_SUMMARY
         echo "- **NPM URL**: https://www.npmjs.com/package/@newrelic/video-core/v/${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -n "$S3_PATH" ]; then
-          echo "### S3 Upload" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Files uploaded to S3" >> $GITHUB_STEP_SUMMARY
-        fi
-        echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Installation" >> $GITHUB_STEP_SUMMARY
         echo '```bash' >> $GITHUB_STEP_SUMMARY
         echo "npm install @newrelic/video-core@${{ env.PACKAGE_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
+
+  s3-upload:
+    name: Upload to S3 and Verify
+    needs: publish_and_deploy
+    if: ${{ inputs.s3-path != '' }}
+    uses: newrelic/video-core-js/.github/workflows/s3-upload.yml@master
+    with:
+      release-tag: ${{ needs.publish_and_deploy.outputs.release-tag }}
+      s3-path: ${{ inputs.s3-path }}
+      enable-s3-upload: false   # ← set to true when AWS credentials are configured in npm-release environment
+    secrets: inherit
