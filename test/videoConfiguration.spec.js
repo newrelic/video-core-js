@@ -299,3 +299,41 @@ describe('videoConfiguration', function() {
     });
   });
 });
+
+describe('VideoConfiguration logging options', function() {
+  const info = { licenseKey: 'k', appName: 'A', region: 'US' };
+  beforeEach(function() { global.window.NRVIDEO = undefined; });
+
+  it('defaults enableLogging to false', function() {
+    expect(setVideoConfig(info)).toBe(true);
+    expect(global.window.NRVIDEO.config.enableLogging).toBe(false);
+  });
+
+  it('accepts booleans and level strings', function() {
+    [false, true, 'INFO', 'WARNING', 'ERROR'].forEach(v => {
+      expect(setVideoConfig(info, { enableLogging: v })).toBe(true);
+      expect(global.window.NRVIDEO.config.enableLogging).toBe(v);
+    });
+  });
+
+  it('ties enableLogging to Log.level', function() {
+    const cases = [[true, Log.Levels.ALL], ['INFO', Log.Levels.NOTICE], ['WARNING', Log.Levels.WARNING], ['ERROR', Log.Levels.ERROR]];
+    cases.forEach(([v, level]) => {
+      Log.level = Log.Levels.SILENT;
+      setVideoConfig(info, { enableLogging: v });
+      expect(Log.level).toBe(level);
+    });
+    [undefined, false].forEach(v => {
+      Log.level = Log.Levels.WARNING;
+      setVideoConfig(info, { enableLogging: v });
+      expect(Log.level).toBe(Log.Levels.WARNING);
+    });
+    Log.level = Log.Levels.ERROR;
+  });
+
+  it('rejects invalid values', function() {
+    expect(setVideoConfig(info, { enableLogging: 'yes' })).toBe(false);
+    expect(setVideoConfig(info, { enableLogging: 'DEBUG' })).toBe(false);
+    expect(setVideoConfig(info, { enableLogging: 1 })).toBe(false);
+  });
+});
