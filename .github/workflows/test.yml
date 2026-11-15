@@ -32,3 +32,6 @@ jobs:
 
       - name: Run tests with coverage
         run: npm test
+
+      - name: Run integrity manifest script tests
+        run: node --test .github/scripts/generate-integrity-manifest.test.mjs
