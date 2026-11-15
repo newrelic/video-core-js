@@ -1,0 +1,58 @@
+name: Integrity manifest
+description: Writes integrity-manifest.json and SHA256SUMS for release files (same schema for every agent).
+
+inputs:
+  name:
+    description: Name of the agent or package
+    required: true
+  version:
+    description: Release version
+    required: true
+  tag:
+    description: Release tag
+    required: true
+  commit:
+    description: Commit the files were built from
+    required: true
+  files:
+    description: One file per line, as "path" or "path:name1,name2"
+    required: true
+  output-dir:
+    description: Directory for integrity-manifest.json and SHA256SUMS (created if missing)
+    required: true
+
+outputs:
+  manifest-path:
+    description: Path to integrity-manifest.json
+    value: ${{ steps.generate.outputs.manifest-path }}
+  checksums-path:
+    description: Path to SHA256SUMS
+    value: ${{ steps.generate.outputs.checksums-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate
+      id: generate
+      shell: bash
+      env:
+        IN_NAME: ${{ inputs.name }}
+        IN_VERSION: ${{ inputs.version }}
+        IN_TAG: ${{ inputs.tag }}
+        IN_COMMIT: ${{ inputs.commit }}
+        IN_FILES: ${{ inputs.files }}
+        IN_OUT: ${{ inputs.output-dir }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        mkdir -p "$IN_OUT"
+        args=()
+        while IFS= read -r line; do
+          [ -n "$line" ] && args+=(--file "$line")
+        done <<< "$IN_FILES"
+        node "$ACTION_PATH/../../scripts/generate-integrity-manifest.mjs" \
+          --manifest-out "$IN_OUT/integrity-manifest.json" \
+          --checksums-out "$IN_OUT/SHA256SUMS" \
+          --name "$IN_NAME" --version "$IN_VERSION" --tag "$IN_TAG" --commit "$IN_COMMIT" \
+          "${args[@]}"
+        echo "manifest-path=$IN_OUT/integrity-manifest.json" >> "$GITHUB_OUTPUT"
+        echo "checksums-path=$IN_OUT/SHA256SUMS" >> "$GITHUB_OUTPUT"
