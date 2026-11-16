@@ -114,6 +114,19 @@ jobs:
           echo "NPM_TAG=latest" >> $GITHUB_ENV
         fi
 
+    # A published release is immutable, so a version that is already released cannot be redone.
+    - name: Stop if this version is already released
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG_NAME: v${{ env.PACKAGE_VERSION }}
+      run: |
+        PUBLISHED=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate | jq -r --arg t "$TAG_NAME" '.[] | select(.tag_name == $t and (.draft | not)) | .tag_name')
+        if [ -n "$PUBLISHED" ]; then
+          echo "::error::$TAG_NAME is already released and cannot be changed. Bump the version and release again."
+          exit 1
+        fi
+        echo "No published release for $TAG_NAME."
+
     - name: Run security audit
       run: npm audit --audit-level=critical
 
