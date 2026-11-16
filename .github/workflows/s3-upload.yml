@@ -81,6 +81,19 @@ jobs:
         PACKAGE_VERSION=$(jq -r '.version' package.json)
         echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
 
+    - name: Verify the file to upload matches its attestation
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Fails before any AWS step if the bytes about to be uploaded are not the
+        # bytes npm-publish.yml attested.
+        DIST_FILE=$(find dist/umd -name "*.min.js" | head -1)
+        if [ -z "$DIST_FILE" ]; then
+          echo "::error::No .min.js file found in dist/umd/"
+          exit 1
+        fi
+        gh attestation verify "$DIST_FILE" --repo "$GITHUB_REPOSITORY" --signer-workflow "newrelic/video-core-js/.github/workflows/npm-publish.yml"
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
