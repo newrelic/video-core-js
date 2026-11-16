@@ -126,21 +126,21 @@ jobs:
         mkdir -p "$RUNNER_TEMP/integrity"
         node .github/scripts/generate-integrity-manifest.mjs \
           "$RUNNER_TEMP/integrity/integrity-manifest.json" \
-          "$RUNNER_TEMP/integrity/checksums.txt" \
+          "$RUNNER_TEMP/integrity/SHA256SUMS" \
           "$RELEASE_TAG" "$GITHUB_SHA"
 
     - name: Attest build provenance
       if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
       with:
-        subject-checksums: ${{ runner.temp }}/integrity/checksums.txt
+        subject-checksums: ${{ runner.temp }}/integrity/SHA256SUMS
 
     - name: Attest manifest and checksums
       if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
       with:
         subject-path: |
-          ${{ runner.temp }}/integrity/checksums.txt
+          ${{ runner.temp }}/integrity/SHA256SUMS
           ${{ runner.temp }}/integrity/integrity-manifest.json
 
     - name: Create GitHub Release (draft)

@@ -10,7 +10,7 @@
  * Outputs:
  *   <manifest-out>  — JSON mapping each S3 key to its SRI sha384 digest.
  *                     Customers can use these as `integrity` attributes in <script> tags.
- *   <checksums-out> — sha256sum-format listing consumed by actions/attest-build-provenance
+ *   <checksums-out> — SHA256SUMS, a sha256sum-format listing consumed by actions/attest-build-provenance
  *                     as `subject-checksums`.
  */
 import { createHash } from 'node:crypto'
