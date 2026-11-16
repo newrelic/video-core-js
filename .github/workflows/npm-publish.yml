@@ -170,10 +170,11 @@ jobs:
         DIST_FILE: ${{ inputs.file-to-upload }}
       run: |
         # The built file is attested under its S3 names, so it is checked by digest.
+        # This workflow is shared: when an agent repo calls it, the signer is still this file in video-core-js.
         EXPECTED=$(sha256sum "$DIST_FILE" | cut -d' ' -f1)
         grep -q "^$EXPECTED  " "$RUNNER_TEMP/integrity/SHA256SUMS"
         for f in "$DIST_FILE" "$RUNNER_TEMP/integrity/SHA256SUMS" "$RUNNER_TEMP/integrity/integrity-manifest.json"; do
-          gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/npm-publish.yml"
+          gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "newrelic/video-core-js/.github/workflows/npm-publish.yml"
         done
 
     - name: Create GitHub Release (draft)
@@ -226,8 +227,10 @@ jobs:
       env:
         NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
       run: |
-        if npm view "@newrelic/video-core@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-          echo "@newrelic/video-core@${PACKAGE_VERSION} is already on npm, skipping publish."
+        # Shared workflow: the package is the calling repo's, not always @newrelic/video-core.
+        PKG=$(jq -r .name package.json)
+        if npm view "${PKG}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+          echo "${PKG}@${PACKAGE_VERSION} is already on npm, skipping publish."
         else
           npm publish --tag "$NPM_PUBLISH_TAG"
         fi
