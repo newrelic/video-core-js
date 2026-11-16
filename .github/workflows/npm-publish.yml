@@ -143,6 +143,19 @@ jobs:
           ${{ runner.temp }}/integrity/SHA256SUMS
           ${{ runner.temp }}/integrity/integrity-manifest.json
 
+    - name: Verify checksums and attestations
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DIST_FILE: ${{ inputs.file-to-upload }}
+      run: |
+        # The built file is attested under its S3 names, so it is checked by digest.
+        EXPECTED=$(sha256sum "$DIST_FILE" | cut -d' ' -f1)
+        grep -q "^$EXPECTED  " "$RUNNER_TEMP/integrity/SHA256SUMS"
+        for f in "$DIST_FILE" "$RUNNER_TEMP/integrity/SHA256SUMS" "$RUNNER_TEMP/integrity/integrity-manifest.json"; do
+          gh attestation verify "$f" --repo "$GITHUB_REPOSITORY"
+        done
+
     - name: Create GitHub Release (draft)
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
