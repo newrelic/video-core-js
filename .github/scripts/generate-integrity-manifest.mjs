@@ -8,9 +8,9 @@
  *   DIST_FILE  — path to the built file to hash (e.g. dist/umd/newrelic-video-hls.min.js)
  *
  * Outputs:
- *   <manifest-out>  — JSON mapping each S3 key to its SRI sha384 digest.
+ *   <manifest-out>  — JSON mapping each S3 key to its sha256 and SRI sha384 digests.
  *                     Customers can use these as `integrity` attributes in <script> tags.
- *   <checksums-out> — sha256sum-format listing consumed by actions/attest-build-provenance
+ *   <checksums-out> — SHA256SUMS, a sha256sum-format listing consumed by actions/attest-build-provenance
  *                     as `subject-checksums`.
  */
 import { createHash } from 'node:crypto'
@@ -42,8 +42,8 @@ const manifest = {
   version,
   commit,
   files: {
-    [versionedKey]: { sha384 },
-    [latestKey]: { sha384 },
+    [versionedKey]: { sha256, sha384 },
+    [latestKey]: { sha256, sha384 },
   },
 }
 
