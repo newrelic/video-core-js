@@ -177,15 +177,28 @@ jobs:
           --verify-tag
         echo "Created draft release $TAG"
 
-    - name: Upload integrity manifest to draft release
+    - name: Upload integrity manifest and checksums to draft release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG="v${{ env.PACKAGE_VERSION }}"
-        MANIFEST="$RUNNER_TEMP/integrity/integrity-manifest.json"
-        if [ -f "$MANIFEST" ]; then
-          gh release upload "$TAG" "$MANIFEST"
-          echo "Uploaded integrity manifest to draft release $TAG"
+        DIR="$RUNNER_TEMP/integrity"
+        if [ -f "$DIR/integrity-manifest.json" ]; then
+          gh release upload "$TAG" "$DIR/integrity-manifest.json" "$DIR/SHA256SUMS" --clobber
+          echo "Uploaded integrity manifest and SHA256SUMS to draft release $TAG"
+        fi
+
+    # npm publish and the release publish cannot be undone, so check the draft first.
+    - name: Check the draft release assets match the verified files
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v${{ env.PACKAGE_VERSION }}"
+        DIR="$RUNNER_TEMP/integrity"
+        if [ -f "$DIR/integrity-manifest.json" ]; then
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate | jq -r --arg t "$TAG" '.[] | select(.tag_name == $t) | .assets[] | "\(.name) \(.digest)"' | sort > "$RUNNER_TEMP/uploaded.txt"
+          for f in integrity-manifest.json SHA256SUMS; do echo "$f sha256:$(sha256sum "$DIR/$f" | cut -d' ' -f1)"; done | sort > "$RUNNER_TEMP/expected.txt"
+          diff "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/uploaded.txt"
         fi
 
     - name: Publish to NPM
