@@ -11,10 +11,21 @@ name: Publish Module
 #
 # This workflow can be triggered automatically when a release is published,
 # or manually via the GitHub Actions interface.
+#
+# Beta releases: run manually with `beta-release` checked, choosing any branch
+# in "Use workflow from". The version is derived as
+# <next-patch>-beta.<branch-slug>.<run-number> (e.g. 5.1.2-beta.feat-foo.42),
+# published under the `beta` dist-tag. No git tag, GitHub Release or S3 upload
+# is created and nothing is committed back to the branch.
 on:
   # Manual trigger with optional S3 upload
   workflow_dispatch:
     inputs:
+      beta-release:
+        description: 'Publish a beta prerelease from the selected branch (npm dist-tag "beta")'
+        required: false
+        type: boolean
+        default: false
       s3-path:
         description: 'Path within the S3 bucket (optional)'
         required: false
@@ -60,12 +71,15 @@ jobs:
       env:
         EVENT_NAME: ${{ github.event_name }}
         RELEASE_TAG: ${{ github.event.release.tag_name }}
+        BETA_RELEASE: ${{ inputs.beta-release }}
       run: |
         echo "## NPM Publish Triggered" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         if [ "$EVENT_NAME" = "release" ]; then
           echo "- **Trigger**: Automatic (Release published)" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Tag**: $RELEASE_TAG" >> $GITHUB_STEP_SUMMARY
+        elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$BETA_RELEASE" = "true" ]; then
+          echo "- **Trigger**: Manual (Beta release from \`$GITHUB_REF_NAME\`)" >> $GITHUB_STEP_SUMMARY
         elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
           echo "- **Trigger**: Manual" >> $GITHUB_STEP_SUMMARY
         else
@@ -98,6 +112,21 @@ jobs:
     - name: Install dependencies
       run: npm ci --ignore-scripts
 
+    # Must run before the build: package.json version is bundled into dist.
+    - name: Set beta version
+      if: ${{ inputs.beta-release == true }}
+      run: |
+        BASE=$(jq -r '.version' package.json | sed -E 's/[-+].*$//')
+        IFS=. read -r MAJOR MINOR PATCH <<< "$BASE"
+        # Lowercase, replace anything outside [a-z0-9] with '-', trim and cap length
+        SLUG=$(echo "$GITHUB_REF_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40 | sed -E 's/-+$//')
+        # semver forbids empty or leading-zero numeric prerelease identifiers
+        SLUG="${SLUG:-branch}"
+        if echo "$SLUG" | grep -qE '^[0-9]+$'; then SLUG="b${SLUG}"; fi
+        BETA_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))-beta.${SLUG}.${GITHUB_RUN_NUMBER}"
+        npm version "$BETA_VERSION" --no-git-tag-version --allow-same-version
+        echo "Beta version: $BETA_VERSION"
+
     - name: Build project
       run: npm run build
 
@@ -118,7 +147,7 @@ jobs:
       run: npm audit --audit-level=critical
 
     - name: Generate integrity manifest
-      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      if: ${{ inputs.beta-release != true && (inputs.file-to-upload != '' || github.event_name == 'workflow_call') }}
       env:
         DIST_FILE: ${{ inputs.file-to-upload }}
         RELEASE_TAG: v${{ env.PACKAGE_VERSION }}
@@ -130,12 +159,13 @@ jobs:
           "$RELEASE_TAG" "$GITHUB_SHA"
 
     - name: Attest build provenance
-      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      if: ${{ inputs.beta-release != true && (inputs.file-to-upload != '' || github.event_name == 'workflow_call') }}
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
       with:
         subject-checksums: ${{ runner.temp }}/integrity/checksums.txt
 
     - name: Create GitHub Release (draft)
+      if: ${{ inputs.beta-release != true }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -157,6 +187,7 @@ jobs:
         echo "Created draft release $TAG"
 
     - name: Upload integrity manifest to draft release
+      if: ${{ inputs.beta-release != true }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -173,6 +204,7 @@ jobs:
       run: npm publish --tag "$NPM_PUBLISH_TAG"
 
     - name: Publish GitHub Release (immutable)
+      if: ${{ inputs.beta-release != true }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -197,7 +229,7 @@ jobs:
   s3-upload:
     name: Upload to S3 and Verify
     needs: publish_and_deploy
-    if: ${{ inputs.s3-path != '' }}
+    if: ${{ inputs.s3-path != '' && inputs.beta-release != true }}
     uses: newrelic/video-core-js/.github/workflows/s3-upload.yml@master
     with:
       release-tag: ${{ needs.publish_and_deploy.outputs.release-tag }}
