@@ -13,7 +13,7 @@ name: Publish Module
 # or manually via the GitHub Actions interface.
 #
 # Beta releases: run manually with `beta-release` checked, choosing any branch
-# in "Use workflow from". The version is derived as
+# in "Use workflow from" (or pass `beta-release: true` via workflow_call). The version is derived as
 # <next-patch>-beta.<branch-slug>.<run-number> (e.g. 5.1.2-beta.feat-foo.42),
 # published under the `beta` dist-tag. No git tag, GitHub Release or S3 upload
 # is created and nothing is committed back to the branch.
@@ -37,6 +37,11 @@ on:
   # Reusable workflow for other workflows to call
   workflow_call:
     inputs:
+      beta-release:
+        description: 'Publish a beta prerelease from the caller branch (npm dist-tag "beta")'
+        required: false
+        type: boolean
+        default: false
       s3-path:
         description: 'Path within the S3 bucket'
         required: false
