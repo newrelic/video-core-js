@@ -913,6 +913,26 @@ describe("VideoTrackerState", () => {
       });
 
       describe("resetViewIdTrackedState() - v1.1 metrics reset", () => {
+        it("should reset initial buffering, rebuffering and error flags", () => {
+          state.initialBufferingHappened = true;
+          state.totalRebufferingTime = 1200;
+          state.hadStartupError = true;
+          state.hadPlaybackError = true;
+
+          state.resetViewIdTrackedState();
+          expect(state.initialBufferingHappened).toBe(false);
+          expect(state.totalRebufferingTime).toBe(0);
+          expect(state.hadStartupError).toBe(false);
+          expect(state.hadPlaybackError).toBe(false);
+        });
+
+        it("should not reset numberOfErrors in goEnd()", () => {
+          state.goRequest();
+          state.goError();
+          expect(state.goEnd()).toBe(true);
+          expect(state.numberOfErrors).toBe(1);
+        });
+
         it("should reset _downloadBitrates to empty array", () => {
           state.trackDownloadRate(5000);
           state.trackDownloadRate(6000);

@@ -569,7 +569,8 @@ class VideoTrackerState {
    */
   goEnd(): boolean {
     if (this.isRequested) {
-      this.numberOfErrors = 0;
+      // numberOfErrors is reset by sendEnd() after the END event is sent, so
+      // CONTENT_END and the final QOE_AGGREGATE report the view's error count.
       this.resetFlags();
       this.timeSinceRequested.stop();
       this.timeSinceStarted.stop();
@@ -905,6 +906,10 @@ class VideoTrackerState {
     this.totalSwitchDowns = 0;
     this.timeSincePaused.reset();
     this._playedRenditions = new Set();
+    this.initialBufferingHappened = false;
+    this.totalRebufferingTime = 0;
+    this.hadStartupError = false;
+    this.hadPlaybackError = false;
   }
 
   /** Methods to manage total ads time chrono */

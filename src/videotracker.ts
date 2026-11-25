@@ -742,6 +742,7 @@ class VideoTracker extends Tracker {
 
       if (this.parentTracker && this.isAd())
         this.parentTracker.state.goLastAd();
+      this.state.numberOfErrors = 0;
       this.state.goViewCountUp();
       this.state.totalPlaytime = 0;
       if(!this.isAd()) {

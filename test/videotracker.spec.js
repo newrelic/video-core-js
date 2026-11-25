@@ -516,4 +516,87 @@ describe("VideoTracker", () => {
       done();
     });
   });
+
+  describe("Per-view QoE state", () => {
+    beforeEach(() => {
+      tracker = new VideoTracker();
+    });
+
+    const capture = (event) => {
+      const events = [];
+      tracker.on(event, (e) => events.push(e.data));
+      return events;
+    };
+
+    it("should report numberOfErrors on CONTENT_END and its QoE", () => {
+      const ends = capture(VideoTracker.Events.CONTENT_END);
+
+      tracker.sendRequest();
+      tracker.sendStart();
+      tracker.sendError({ errorCode: "TEST" });
+      tracker.sendEnd();
+
+      expect(ends[0].numberOfErrors).toBe(1);
+      expect(ends[0].qoe.numberOfErrors).toBe(1);
+      expect(ends[0].qoe.hadPlaybackError).toBe(true);
+    });
+
+    it("should report numberOfErrors when the view fails before start", () => {
+      const ends = capture(VideoTracker.Events.CONTENT_END);
+
+      tracker.sendRequest();
+      tracker.sendError({ errorCode: "TEST" });
+      tracker.sendEnd();
+
+      expect(ends[0].numberOfErrors).toBe(1);
+      expect(ends[0].qoe.numberOfErrors).toBe(1);
+      expect(ends[0].qoe.hadStartupError).toBe(true);
+    });
+
+    it("should start the next view on the same tracker with clean QoE state", () => {
+      const ends = capture(VideoTracker.Events.CONTENT_END);
+      const bufferStarts = capture(VideoTracker.Events.CONTENT_BUFFER_START);
+
+      // View 1: initial buffer, rebuffering, playback error
+      tracker.sendRequest();
+      tracker.sendBufferStart();
+      tracker.sendBufferEnd();
+      tracker.sendStart();
+      tracker.state.totalRebufferingTime = 500;
+      tracker.sendError({ errorCode: "TEST" });
+      tracker.sendEnd();
+
+      // View 2 (zap / retry): startup buffer, plays cleanly
+      tracker.sendRequest();
+      tracker.sendBufferStart();
+      tracker.sendBufferEnd();
+      tracker.sendStart();
+      tracker.sendEnd();
+
+      // View 1 keeps its values on its own END
+      expect(ends[0].qoe.totalRebufferingTime).toBe(500);
+      expect(ends[0].qoe.hadPlaybackError).toBe(true);
+
+      // View 2 does not inherit them
+      expect(bufferStarts[1].bufferType).toBe("initial");
+      expect(ends[1].numberOfErrors).toBe(0);
+      expect(ends[1].qoe.numberOfErrors).toBe(0);
+      expect(ends[1].qoe.totalRebufferingTime).toBe(0);
+      expect(ends[1].qoe.hadStartupError).toBe(false);
+      expect(ends[1].qoe.hadPlaybackError).toBe(false);
+    });
+
+    it("should report numberOfErrors on AD_END and reset it afterwards", () => {
+      tracker.setIsAd(true);
+      const ends = capture(VideoTracker.Events.AD_END);
+
+      tracker.sendRequest();
+      tracker.sendStart();
+      tracker.sendError({ errorCode: "TEST" });
+      tracker.sendEnd();
+
+      expect(ends[0].numberOfErrors).toBe(1);
+      expect(tracker.state.numberOfErrors).toBe(0);
+    });
+  });
 });

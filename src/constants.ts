@@ -55,7 +55,8 @@ class Constants {
     "contentSrc", "numberOfVideos", "pageUrl", "trackerName", "trackerVersion", "contentDuration", "contentPlayrate", "contentPlayhead",
     "contentPreload", "elapsedTime", "contentTitle", "contentId", "contentIsLive", "deviceType", "deviceGroup", "deviceManufacturer",
     "deviceModel", "deviceName", "deviceSize", "deviceUuid", "contentRenditionName", "contentIsFullscreen", "contentCdn",
-    "contentFps", "asnOrganization", "asnLongitude", "asnLatitude", "asn", "timeSinceRequested", "timeSinceStarted"
+    "contentFps", "asnOrganization", "asnLongitude", "asnLatitude", "asn", "timeSinceRequested", "timeSinceStarted",
+    "enduser.id"
   ];
 }
 
