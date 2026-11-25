@@ -265,6 +265,19 @@ describe("recordEvent", () => {
       expect(qoeEventObject).not.toHaveProperty("otherAttribute");
     });
 
+    it("should include enduser.id in QoE event", () => {
+      const attributes = {
+        viewId: "view-123",
+        "enduser.id": "user-456",
+        playerName: "TestPlayer"
+      };
+
+      recordEvent("VideoAction", attributes);
+
+      const qoeEventObject = addEventStub.secondCall.args[0];
+      expect(qoeEventObject["enduser.id"]).toBe("user-456");
+    });
+
     it("should add timestamp and timeSinceLoad to QoE event", () => {
       const attributes = {
         qoe: {
