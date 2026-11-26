@@ -114,6 +114,26 @@ jobs:
           echo "NPM_TAG=latest" >> $GITHUB_ENV
         fi
 
+    # A published release is immutable, so a version that is already released cannot be redone.
+    # A draft left by an earlier failed run can be, so it is deleted and rebuilt.
+    - name: Stop if this version is already released
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG_NAME: v${{ env.PACKAGE_VERSION }}
+      run: |
+        EXISTING=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate | jq -r --arg t "$TAG_NAME" '.[] | select(.tag_name == $t) | "\(.id) \(.draft)"')
+        if [ -z "$EXISTING" ]; then
+          echo "No release for $TAG_NAME yet."
+          exit 0
+        fi
+        read -r ID DRAFT <<< "$EXISTING"
+        if [ "$DRAFT" != "true" ]; then
+          echo "::error::$TAG_NAME is already released and cannot be changed. Bump the version and release again."
+          exit 1
+        fi
+        echo "Deleting the leftover draft for $TAG_NAME from an earlier failed run."
+        gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$ID"
+
     - name: Run security audit
       run: npm audit --audit-level=critical
 
@@ -126,14 +146,36 @@ jobs:
         mkdir -p "$RUNNER_TEMP/integrity"
         node .github/scripts/generate-integrity-manifest.mjs \
           "$RUNNER_TEMP/integrity/integrity-manifest.json" \
-          "$RUNNER_TEMP/integrity/checksums.txt" \
+          "$RUNNER_TEMP/integrity/SHA256SUMS" \
           "$RELEASE_TAG" "$GITHUB_SHA"
 
     - name: Attest build provenance
       if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
       with:
-        subject-checksums: ${{ runner.temp }}/integrity/checksums.txt
+        subject-checksums: ${{ runner.temp }}/integrity/SHA256SUMS
+
+    - name: Attest manifest and checksums
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+      with:
+        subject-path: |
+          ${{ runner.temp }}/integrity/SHA256SUMS
+          ${{ runner.temp }}/integrity/integrity-manifest.json
+
+    - name: Verify checksums and attestations
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DIST_FILE: ${{ inputs.file-to-upload }}
+      run: |
+        # The built file is attested under its S3 names, so it is checked by digest.
+        # This workflow is shared: when an agent repo calls it, the signer is still this file in video-core-js.
+        EXPECTED=$(sha256sum "$DIST_FILE" | cut -d' ' -f1)
+        grep -q "^$EXPECTED  " "$RUNNER_TEMP/integrity/SHA256SUMS"
+        for f in "$DIST_FILE" "$RUNNER_TEMP/integrity/SHA256SUMS" "$RUNNER_TEMP/integrity/integrity-manifest.json"; do
+          gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "newrelic/video-core-js/.github/workflows/npm-publish.yml"
+        done
 
     - name: Create GitHub Release (draft)
       env:
@@ -156,21 +198,42 @@ jobs:
           --verify-tag
         echo "Created draft release $TAG"
 
-    - name: Upload integrity manifest to draft release
+    - name: Upload integrity manifest and checksums to draft release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG="v${{ env.PACKAGE_VERSION }}"
-        MANIFEST="$RUNNER_TEMP/integrity/integrity-manifest.json"
-        if [ -f "$MANIFEST" ]; then
-          gh release upload "$TAG" "$MANIFEST"
-          echo "Uploaded integrity manifest to draft release $TAG"
+        DIR="$RUNNER_TEMP/integrity"
+        if [ -f "$DIR/integrity-manifest.json" ]; then
+          gh release upload "$TAG" "$DIR/integrity-manifest.json" "$DIR/SHA256SUMS" --clobber
+          echo "Uploaded integrity manifest and SHA256SUMS to draft release $TAG"
         fi
 
+    # npm publish and the release publish cannot be undone, so check the draft first.
+    - name: Check the draft release assets match the verified files
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="v${{ env.PACKAGE_VERSION }}"
+        DIR="$RUNNER_TEMP/integrity"
+        if [ -f "$DIR/integrity-manifest.json" ]; then
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate | jq -r --arg t "$TAG" '.[] | select(.tag_name == $t) | .assets[] | "\(.name) \(.digest)"' | sort > "$RUNNER_TEMP/uploaded.txt"
+          for f in integrity-manifest.json SHA256SUMS; do echo "$f sha256:$(sha256sum "$DIR/$f" | cut -d' ' -f1)"; done | sort > "$RUNNER_TEMP/expected.txt"
+          diff "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/uploaded.txt"
+        fi
+
+    # A re-run after a later failure must not fail here because the version is already on npm.
     - name: Publish to NPM
       env:
         NPM_PUBLISH_TAG: ${{ env.NPM_TAG }}
-      run: npm publish --tag "$NPM_PUBLISH_TAG"
+      run: |
+        # Shared workflow: the package is the calling repo's, not always @newrelic/video-core.
+        PKG=$(jq -r .name package.json)
+        if npm view "${PKG}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+          echo "${PKG}@${PACKAGE_VERSION} is already on npm, skipping publish."
+        else
+          npm publish --tag "$NPM_PUBLISH_TAG"
+        fi
 
     - name: Publish GitHub Release (immutable)
       env:
