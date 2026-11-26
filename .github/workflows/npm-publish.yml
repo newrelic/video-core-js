@@ -117,6 +117,15 @@ jobs:
     - name: Run security audit
       run: npm audit --audit-level=critical
 
+    - name: Checkout video-core-js scripts
+      if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: newrelic/video-core-js
+        path: .video-core-js
+        sparse-checkout: .github/scripts
+        sparse-checkout-cone-mode: false
+
     - name: Generate integrity manifest
       if: ${{ inputs.file-to-upload != '' || github.event_name == 'workflow_call' }}
       env:
@@ -124,7 +133,7 @@ jobs:
         RELEASE_TAG: v${{ env.PACKAGE_VERSION }}
       run: |
         mkdir -p "$RUNNER_TEMP/integrity"
-        node .github/scripts/generate-integrity-manifest.mjs \
+        node .video-core-js/.github/scripts/generate-integrity-manifest.mjs \
           "$RUNNER_TEMP/integrity/integrity-manifest.json" \
           "$RUNNER_TEMP/integrity/checksums.txt" \
           "$RELEASE_TAG" "$GITHUB_SHA"
