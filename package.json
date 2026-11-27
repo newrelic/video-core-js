@@ -46,7 +46,10 @@
     "Bharat Sarsawat"
   ],
   "license": "Apache-2.0",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/browser/agent.ts",
+    "./src/connectedDevice/connectedDeviceAgent.ts"
+  ],
   "devDependencies": {
     "@babel/core": "7.24.5",
     "@babel/plugin-transform-modules-commonjs": "7.24.1",
